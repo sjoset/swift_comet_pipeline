@@ -2,3 +2,5 @@
 swift_data_dir: "~/Downloads/swift"
 # horizon ID for Catalina C/2013 US10
 jpl_horizons_id: "90004183"
+# where to store stacked images
+stacked_data_dir: "stacked"

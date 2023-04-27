@@ -1,6 +1,7 @@
 import os
 import pathlib
 import glob
+import numpy as np
 import pandas as pd
 
 from enum import Enum
@@ -10,17 +11,27 @@ from typing import Optional, TypeAlias, List
 
 __all__ = [
     "SwiftObservationLog",
-    "SwiftFilterType",
+    "SwiftImage",
+    "SwiftFilterFileString",
+    "SwiftFilterObsString",
     "SwiftUVOTImageType",
+    "SwiftOrbitID",
     "SwiftObservationID",
+    "swift_orbit_id_from_obsid",
+    "swift_observation_id_from_int",
     "SwiftData",
+    "PixelCoord",
 ]
 
 
 SwiftObservationLog: TypeAlias = pd.DataFrame
+SwiftImage: TypeAlias = np.ndarray
+SwiftObservationID: TypeAlias = str
 
 
-class SwiftFilterType(str, Enum):
+class SwiftFilterFileString(str, Enum):
+    """Enumeration for describing how the filter influences the image file name"""
+
     uuu = "uuu"
     ubb = "ubb"
     uvv = "uvv"
@@ -39,6 +50,19 @@ class SwiftFilterType(str, Enum):
         return [x for x in cls]
 
 
+class SwiftFilterObsString(str, Enum):
+    """Enumeration describing how the FITS files denote which filter was used for taking the image"""
+
+    uvv = "V"
+    uw1 = "UVW1"
+    uw2 = "UVW2"
+    ugrism = "UGRISM"
+
+    @classmethod
+    def all_filters(cls):
+        return [x for x in cls]
+
+
 class SwiftUVOTImageType(str, Enum):
     raw = "rw"
     detector = "dt"
@@ -50,22 +74,22 @@ class SwiftUVOTImageType(str, Enum):
         return [x for x in cls]
 
 
-@dataclass
+@dataclass(order=True)
 class SwiftOrbitID:
     """Swift orbit ids are 8 digit numbers assigned per Swift orbit"""
 
     orbit_id: str
 
 
-@dataclass
-class SwiftObservationID:
-    """Swift observation IDs are 11 digit numbers: [orbit id] followed by 3 digit identifier"""
-
-    obsid: str
+# @dataclass(order=True)
+# class SwiftObservationID:
+#     """Swift observation IDs are 11 digit numbers: [orbit id] followed by 3 digit identifier"""
+#
+#     obsid: str
 
 
 def swift_orbit_id_from_obsid(obsid: SwiftObservationID) -> SwiftOrbitID:
-    obsid_int = int(obsid.obsid)
+    obsid_int = int(obsid)
     orbit_int = round(obsid_int / 1000)
     return SwiftOrbitID(f"{orbit_int:08}")
 
@@ -92,20 +116,10 @@ class SwiftData:
     def __init__(self, data_path: pathlib.Path):
         self.base_path = data_path
 
-    def get_all_observation_ids_old(self) -> List[SwiftObservationID]:
-        """
-        build a list of folders in the swift data directory, which should all be named for their observation id
-        returns a list of every observation id found
-        """
-        # get a list of everything in the top-level data directory
-        file_list = os.listdir(self.base_path)
-
-        return list(map(SwiftObservationID, file_list))
-
     def get_all_observation_ids(self) -> List[SwiftObservationID]:
         """
-        build a list of folders in the swift data directory, which should all be named for their observation id
-        returns a list of every observation id found
+        build a list of folders in the swift data directory, filtering any directories
+        that don't match the naming structure of 11 numerical digits, and returns a list of every observation id found
         """
         # get a list of everything in the top-level data directory
         file_list = os.listdir(self.base_path)
@@ -129,19 +143,29 @@ class SwiftData:
 
         return list(map(lambda x: SwiftObservationID(x.name), numeric_names))
 
+    def get_all_orbit_ids(self) -> List[SwiftOrbitID]:
+        """
+        build a list of orbit ids based on the folder names in the swift data directory
+        """
+
+        # these should already be validated, so we can just chop off the last three digits to get the orbit id
+        obsid_list = self.get_all_observation_ids()
+
+        return np.unique(list(map(swift_orbit_id_from_obsid, obsid_list)))  # type: ignore
+
     def get_swift_uvot_image_paths(
         self,
         obsid: SwiftObservationID,
-        filter_type: SwiftFilterType,
+        filter_type: SwiftFilterFileString,
         image_type: SwiftUVOTImageType,
     ) -> Optional[List[pathlib.Path]]:
         """
         Given an observation ID, filter type, and image type, returns a list of FITS files that match
         Some observations have multiple files using the same filter, so we have to do it this way
         """
-        # TODO: find a directory where this happens so we can make sure this is the proper way to handle this
-        image_path = self.base_path / obsid.obsid / "uvot" / "image"
-        image_name_base = "sw" + obsid.obsid + filter_type + "_" + image_type
+        # TODO: find a directory where there are multiple _sk.img.gz files so we can make sure this is the proper way to handle this
+        image_path = self.swift_uvot_image_directory(obsid)
+        image_name_base = "sw" + obsid + filter_type + "_" + image_type
         image_name = image_path / image_name_base
 
         matching_files = glob.glob(str(image_name) + "*.img.gz")
@@ -153,5 +177,13 @@ class SwiftData:
 
     def swift_uvot_image_directory(self, obsid: SwiftObservationID) -> pathlib.Path:
         """Returns a path to the directory containing the uvot images of the given observation id"""
-        image_path = self.base_path / obsid.obsid / "uvot" / "image"
+        image_path = self.base_path / obsid / "uvot" / "image"
         return image_path
+
+
+@dataclass
+class PixelCoord:
+    """Use floats instead of ints to allow sub-pixel addressing"""
+
+    x: float
+    y: float

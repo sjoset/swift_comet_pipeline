@@ -13,30 +13,59 @@ from astropy.visualization import (
 )
 from astropy.io import fits
 from astropy.time import Time
-
-# from typing import Optional, TypeAlias, List
+from typing import Tuple
 from argparse import ArgumentParser
 
 from swift_types import (
     SwiftObservationID,
-    SwiftUVOTImageType,
-    SwiftFilterType,
-    SwiftData,
-    # SwiftObservationLog,
-    swift_observation_id_from_int,
+    SwiftFilterObsString,
+    SwiftImage,
+    # SwiftData,
+    PixelCoord,
 )
+from read_swift_config import read_swift_config
+from swift_observation_log import get_observation_log_rows_that_match
 
 
 __version__ = "0.0.1"
 
 
-# # TODO: fix type for ImageHDU
-# def center_image_on_coords(image: fits.ImageHDU, old_coords_to_center, size_of_new_image):
+def get_necessary_image_size_for_recentering(
+    source_image: SwiftImage, source_coords_to_center: PixelCoord
+) -> Tuple[int, int]:
+    """
+    If we want to re-center the source_image on source_coords_to_center, we need to figure out the dimensions the new image
+    needs to be to fit the old picture after we scoot it over to its new position
+    Returns tuple of (rows, columns) the new image would have to be
+    """
+    num_rows, num_columns = source_image.shape
+    center_row = num_rows / 2.0
+    center_col = num_columns / 2.0
+    print(num_rows, num_columns)
+    print(center_row, center_col)
+    d_rows = center_row - source_coords_to_center.y
+    d_cols = center_col - source_coords_to_center.x
+    print(f"drows: {d_rows}")
+    print(f"dcols: {d_cols}")
+
+    return (num_rows + np.abs(d_rows), num_columns + np.abs(d_cols))
+
+
+# def center_image_on_coords(
+#     source_image: SwiftImage,
+#     source_coords_to_center: Tuple[int, int],
+#     size_of_new_image: Tuple[int, int],
+# ) -> SwiftImage:
 #     """
 #     size is the (rows, columns) size of the positive quandrant of the new image
 #     """
 #
-#     pass
+#     return (0, 0)
+
+
+# def stack_by_orbit_id(orbid: SwiftOrbitID, filter_type: SwiftFilterType, image_type: SwiftUVOTImageType) -> SwiftImage:
+#
+#     return None
 
 
 def set_coord(image_array, target_index, size):
@@ -178,8 +207,8 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swiftdatadir", nargs=1, help="top-level directory of Swift data"
-    )  # the nargs=? specifies 0 or 1 arguments: it is optional
+        "--config", "-c", default="config.yaml", help="YAML configuration file to use"
+    )
     parser.add_argument(
         "observation_log_file", nargs=1, help="Filename of observation log input"
     )
@@ -199,40 +228,90 @@ def process_args():
 
 def main():
     args = process_args()
-    sdd = SwiftData(data_path=pathlib.Path(args.swiftdatadir[0]).expanduser())
+
+    swift_config = read_swift_config(pathlib.Path(args.config))
+    if swift_config is None:
+        print("Error reading config file {args.config}, exiting.")
+        return 1
+
+    # sdd = SwiftData(
+    #     data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
+    # )
+    #
+    # print(sdd.get_all_orbit_ids())
 
     df = pd.read_csv(args.observation_log_file[0])
 
-    # obsid_strings = ["00034318005"]
-    # obsid_strings = ["00020405001", "00020405002", "00020405003", "00034318005"]
-    obsid_strings = ["00020405003"]
-    obsids = list(map(lambda x: SwiftObservationID(x), obsid_strings))
+    # print(
+    newdf = get_observation_log_rows_that_match(
+        df, SwiftObservationID("00033760003"), filter_type=SwiftFilterObsString.uw1
+    )
 
-    for _, row in df.iterrows():
-        obsid = swift_observation_id_from_int(row["OBS_ID"])  # type: ignore
-        if obsid is None:
-            continue
-        if obsid != obsids[0]:
-            continue
+    for _, row in newdf.iterrows():
+        # print("\n\n\n")
+        print("\n")
+        # print(row)
+        print(f"{row['OBS_ID']} | {row['EXTENSION']} | {row['FILTER']}")
+    # )
 
-        for filt in [SwiftFilterType.uw1]:
-            for image_type in [SwiftUVOTImageType.sky_units]:
-                img_file_list = sdd.get_swift_uvot_image_paths(
-                    obsid=obsid, filter_type=filt, image_type=image_type
-                )
-                if img_file_list is None:
-                    continue
-                print(img_file_list)
-                for img_file in img_file_list:
-                    print(row["PX"], row["PY"], row["EXTENSION"])
-                    image_data = fits.getdata(img_file, ext=row["EXTENSION"])
-                    # numpy uses (row, col) indexing - so (y, x)
-                    new_image = set_coord(
-                        image_data,
-                        np.array([row["PY"] - 1, row["PX"] - 1]),
-                        (1500, 1500),
-                    )
-                    show_fits_scaled(image_data, new_image)
+    # TODO: script to break down how many images and through which filters are found in each obsid/orbit
+
+    # # obsid_strings = ["00034318005"]
+    # # obsid_strings = ["00020405001", "00020405002", "00020405003", "00034318005"]
+    # obsid_strings = ["00020405003"]
+    # obsids = list(map(lambda x: SwiftObservationID(x), obsid_strings))
+    #
+    # # loop through every row of the observation log
+    # for _, row in df.iterrows():
+    #     obsid = swift_observation_id_from_int(row["OBS_ID"])  # type: ignore
+    #     if obsid is None:
+    #         print(
+    #             f"Failed getting observation id {obsid} from the observing log, skipping entry."
+    #         )
+    #         continue
+    #     # skip whatever isn't in our list above
+    #     if obsid != obsids[0]:
+    #         continue
+    #
+    #     for filt in [SwiftFilterType.uw1]:
+    #         for image_type in [SwiftUVOTImageType.sky_units]:
+    #             # Get list of image files for this filter and image type
+    #             img_file_list = sdd.get_swift_uvot_image_paths(
+    #                 obsid=obsid, filter_type=filt, image_type=image_type
+    #             )
+    #             if img_file_list is None:
+    #                 continue
+    #             # print(img_file_list)
+    #
+    #             new_image_sizes = [
+    #                 get_necessary_image_size_for_recentering(
+    #                     fits.getdata(img_file, ext=row["EXTENSION"]),
+    #                     PixelCoord(x=row["PX"], y=row["PY"]),
+    #                 )
+    #                 for img_file in img_file_list
+    #             ]
+    #             print(new_image_sizes)
+    #
+    #             for img_file in img_file_list:
+    #                 print(
+    #                     f"Processing {img_file.name}, extension {row['EXTENSION']}: Comet center at {row['PX']}, {row['PY']}"
+    #                 )
+    #
+    #                 image_data = fits.getdata(img_file, ext=row["EXTENSION"])
+    #                 print(
+    #                     get_necessary_image_size_for_recentering(
+    #                         image_data, PixelCoord(x=row["PX"], y=row["PY"])  # type: ignore
+    #                     )
+    #                 )
+    #
+    #                 #
+    #                 # # numpy uses (row, col) indexing - so (y, x)
+    #                 # new_image = set_coord(
+    #                 #     image_data,
+    #                 #     np.array([row["PY"] - 1, row["PX"] - 1]),
+    #                 #     (1500, 1500),
+    #                 # )
+    #                 # show_fits_scaled(image_data, new_image)
 
 
 if __name__ == "__main__":
