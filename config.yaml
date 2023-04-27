@@ -1,0 +1,4 @@
+# top-level directory of our data
+swift_data_dir: "~/Downloads/swift"
+# horizon ID for Catalina C/2013 US10
+jpl_horizons_id: "90004183"
