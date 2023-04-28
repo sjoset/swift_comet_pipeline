@@ -10,12 +10,11 @@ from typing import List, Optional
 
 from swift_types import (
     SwiftObservationID,
-    SwiftUVOTImageType,
-    SwiftFilterObsString,
-    SwiftFilterFileString,
-    SwiftData,
+    SwiftFilter,
     SwiftObservationLog,
+    filter_to_obs_string,
 )
+from swift_data import SwiftData
 
 
 __all__ = ["build_observation_log", "get_observation_log_rows_that_match"]
@@ -32,8 +31,7 @@ def build_observation_log(
     and returns an observation log in the form of a pandas dataframe
     """
 
-    image_type = SwiftUVOTImageType.sky_units
-    all_filters = SwiftFilterFileString.all_filters()
+    all_filters = SwiftFilter.all_filters()
 
     fits_header_entries_to_read = [
         "OBS_ID",
@@ -60,9 +58,7 @@ def build_observation_log(
         print(f"Processing images for observation ID {obsid} ({k+1}/{len(obsids)}) ...")
         # get list of image file names from all filters that match the selected image type (sk, ex, ..)
         image_path_list = [
-            swift_data.get_swift_uvot_image_paths(
-                obsid=obsid, filter_type=filter_type, image_type=image_type
-            )
+            swift_data.get_swift_uvot_image_paths(obsid=obsid, filter_type=filter_type)
             for filter_type in all_filters
         ]
         # filter out the ones that were not found
@@ -157,7 +153,7 @@ def build_observation_log(
 def get_observation_log_rows_that_match(
     obs_log: SwiftObservationLog,
     obsid: SwiftObservationID,
-    filter_type: SwiftFilterObsString,
+    filter_type: SwiftFilter,
 ) -> SwiftObservationLog:
     """
     With an observation log built by the first step in the pipeline, we can return a dataframe
@@ -165,8 +161,8 @@ def get_observation_log_rows_that_match(
     """
 
     # observation log stores obsids as ints
-    obsid_to_match = int(obsid)
-
-    mask = (obs_log["FILTER"] == filter_type) & (obs_log["OBS_ID"] == obsid_to_match)
+    mask = (obs_log["FILTER"] == filter_to_obs_string(filter_type)) & (
+        obs_log["OBS_ID"] == int(obsid)
+    )
 
     return obs_log[mask]

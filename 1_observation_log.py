@@ -9,7 +9,7 @@ import logging as log
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-from swift_types import SwiftData
+from swift_data import SwiftData
 from read_swift_config import read_swift_config
 from swift_observation_log import build_observation_log
 
