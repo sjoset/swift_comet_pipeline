@@ -1,14 +1,16 @@
+import pathlib
 import numpy as np
 import pandas as pd
 
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Optional, TypeAlias
+from typing import Optional, TypeAlias, List, Tuple
 
 
 __all__ = [
     "SwiftObservationLog",
-    "SwiftImage",
+    "SwiftUVOTImage",
+    "SwiftStackedUVOTImage",
     "SwiftFilter",
     "SwiftUVOTImageType",
     "SwiftOrbitID",
@@ -22,8 +24,14 @@ __all__ = [
 
 
 SwiftObservationLog: TypeAlias = pd.DataFrame
-SwiftImage: TypeAlias = np.ndarray
+SwiftUVOTImage: TypeAlias = np.ndarray
 SwiftObservationID: TypeAlias = str
+# SwiftPixelResolution: TypeAlias = float
+
+
+class SwiftPixelResolution(Enum):
+    event_mode = 0.502
+    data_mode = 1.0
 
 
 class SwiftFilter(str, Enum):
@@ -121,9 +129,26 @@ def swift_observation_id_from_int(number: int) -> Optional[SwiftObservationID]:
     return SwiftObservationID(converted_string)
 
 
+def swift_orbit_id_from_int(number: int) -> Optional[SwiftOrbitID]:
+    converted_string = f"{number:08}"
+    if len(converted_string) != 8:
+        return None
+    return SwiftOrbitID(converted_string)
+
+
 @dataclass
 class PixelCoord:
     """Use floats instead of ints to allow sub-pixel addressing"""
 
     x: float
     y: float
+
+
+@dataclass
+class SwiftStackedUVOTImage:
+    stacked_image: SwiftUVOTImage
+    # Tuple with the obsids, filenames, and extensions of each image that contributed to the stacked image
+    sources: List[Tuple[SwiftObservationID, pathlib.Path, int]]
+    # sum of exposure times of the stacked images
+    exposure_time: float
+    filter_type: SwiftFilter

@@ -4,6 +4,12 @@ import numpy as np
 from astropy.io import fits
 from astropy.time import Time
 
+# FITS header: datamode = 'image' -> 1.0 scale : 1.0 arcseconds per pixel
+# solar spectrum model
+# look at sub_img (commented out)
+# redden solar spectrum
+# production_rate.py --> general outline of the pipeline
+#      fits_sub: contains the reddening assumption about the dust (0% to ~25%; free parameter you have to chose and possibly bayesian search for best %)
 
 __all__ = ["set_coord", "stack_image"]
 

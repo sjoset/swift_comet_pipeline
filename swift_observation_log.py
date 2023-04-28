@@ -10,14 +10,19 @@ from typing import List, Optional
 
 from swift_types import (
     SwiftObservationID,
+    SwiftOrbitID,
     SwiftFilter,
     SwiftObservationLog,
     filter_to_obs_string,
 )
-from swift_data import SwiftData
+from swift_data import SwiftData, swift_orbit_id_from_obsid
 
 
-__all__ = ["build_observation_log", "get_observation_log_rows_that_match"]
+__all__ = [
+    "build_observation_log",
+    "match_by_obsid_and_filter",
+    "match_by_orbit_id_and_filter",
+]
 
 
 def build_observation_log(
@@ -150,7 +155,13 @@ def build_observation_log(
     return obs_log
 
 
-def get_observation_log_rows_that_match(
+# TODO: just return the masks
+
+# TODO: match_within_timeframe
+
+
+# TODO: convert to take a list of obsids
+def match_by_obsid_and_filter(
     obs_log: SwiftObservationLog,
     obsid: SwiftObservationID,
     filter_type: SwiftFilter,
@@ -166,3 +177,24 @@ def get_observation_log_rows_that_match(
     )
 
     return obs_log[mask]
+
+
+# TODO: convert to take a list of orbits
+def match_by_orbit_id_and_filter(
+    obs_log: SwiftObservationLog, orbit_id: SwiftOrbitID, filter_type: SwiftFilter
+) -> SwiftObservationLog:
+    # print(orbit_id.orbit_id)
+    # obsids =
+
+    # print(obs_log["OBS_ID"][0])
+    # print(swift_orbit_id_from_obsid(obs_log["OBS_ID"][0]))
+
+    # take the list of obsids and make them into orbit ids
+    df = pd.DataFrame(obs_log["OBS_ID"])
+    df["ORBIT_ID"] = [swift_orbit_id_from_obsid(x) for x in df["OBS_ID"]]
+    mask_orbit = df["ORBIT_ID"] == orbit_id
+    # print(df)
+
+    mask_filter = obs_log["FILTER"] == filter_to_obs_string(filter_type)
+
+    return obs_log[mask_orbit & mask_filter]
