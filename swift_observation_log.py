@@ -1,4 +1,6 @@
+import pathlib
 import logging as log
+import numpy as np
 import pandas as pd
 import itertools
 from astropy.io import fits
@@ -14,14 +16,20 @@ from swift_types import (
     SwiftFilter,
     SwiftObservationLog,
     filter_to_obs_string,
+    swift_observation_id_from_int,
+    obs_string_to_filter,
+    swift_orbit_id_from_obsid,
+    # file_string_to_filter,
 )
-from swift_data import SwiftData, swift_orbit_id_from_obsid
+from swift_data import SwiftData
 
 
 __all__ = [
     "build_observation_log",
-    "match_by_obsid_and_filter",
-    "match_by_orbit_id_and_filter",
+    "read_observation_log",
+    "match_by_obsids_and_filters",
+    "match_by_orbit_ids_and_filters",
+    "get_obsids_in_orbits",
 ]
 
 
@@ -155,46 +163,67 @@ def build_observation_log(
     return obs_log
 
 
-# TODO: just return the masks
+def read_observation_log(obs_log_path: pathlib.Path) -> SwiftObservationLog:
+    obs_log = pd.read_csv(obs_log_path)
+    obs_log["OBS_ID"] = obs_log["OBS_ID"].map(swift_observation_id_from_int)
+    obs_log["DATE_OBS"] = obs_log["DATE_OBS"].map(Time)
+    obs_log["DATE_END"] = obs_log["DATE_END"].map(Time)
+    obs_log["FILTER"] = obs_log["FILTER"].map(obs_string_to_filter)
+    # exposure times are stored in seconds
+    # obs_log["EXPOSURE"] = obs_log["EXPOSURE"].map(lambda t: t * u.s)
+    obs_log["MID_TIME"] = obs_log["MID_TIME"].map(Time)
+    obs_log["FITS_FILENAME"] = obs_log["FITS_FILENAME"].map(pathlib.Path)
 
-# TODO: match_within_timeframe
+    obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
+
+    return obs_log
 
 
-# TODO: convert to take a list of obsids
-def match_by_obsid_and_filter(
-    obs_log: SwiftObservationLog,
-    obsid: SwiftObservationID,
-    filter_type: SwiftFilter,
-) -> SwiftObservationLog:
-    """
-    With an observation log built by the first step in the pipeline, we can return a dataframe
-    that matches the given parameters
-    """
-
-    # observation log stores obsids as ints
-    mask = (obs_log["FILTER"] == filter_to_obs_string(filter_type)) & (
-        obs_log["OBS_ID"] == int(obsid)
+def get_obsids_in_orbits(
+    obs_log: SwiftObservationLog, orbit_ids: List[SwiftOrbitID]
+) -> List[SwiftObservationID]:
+    """Returns a list of all the observation ids contained in the given orbit_ids"""
+    ml = match_by_orbit_ids_and_filters(
+        obs_log=obs_log, orbit_ids=orbit_ids, filter_types=SwiftFilter.all_filters()
     )
+
+    return sorted(np.unique(ml["OBS_ID"].values))
+
+
+def match_by_obsids_and_filters(
+    obs_log: SwiftObservationLog,
+    obsids: List[SwiftObservationID],
+    filter_types: List[SwiftFilter],
+) -> SwiftObservationLog:
+    """Returns the matching rows of the observation log that match any combination of the given obsids & filters"""
+    masks = []
+    for obsid, filter_type in itertools.product(obsids, filter_types):
+        masks.append((obs_log["FILTER"] == filter_type) & (obs_log["OBS_ID"] == obsid))
+
+    mask = np.logical_or.reduce(masks)
 
     return obs_log[mask]
 
 
-# TODO: convert to take a list of orbits
-def match_by_orbit_id_and_filter(
-    obs_log: SwiftObservationLog, orbit_id: SwiftOrbitID, filter_type: SwiftFilter
+def match_by_orbit_ids_and_filters(
+    obs_log: SwiftObservationLog,
+    orbit_ids: List[SwiftOrbitID],
+    filter_types: List[SwiftFilter],
 ) -> SwiftObservationLog:
-    # print(orbit_id.orbit_id)
-    # obsids =
+    """Returns the matching rows of the observation log that match any combination of the given orbit_ids & filters"""
+    masks = []
+    for orbit_id, filter_type in itertools.product(orbit_ids, filter_types):
+        masks.append(
+            (obs_log["ORBIT_ID"] == orbit_id) & (obs_log["FILTER"] == filter_type)
+        )
 
-    # print(obs_log["OBS_ID"][0])
-    # print(swift_orbit_id_from_obsid(obs_log["OBS_ID"][0]))
+    mask = np.logical_or.reduce(masks)
+    return obs_log[mask]
 
-    # take the list of obsids and make them into orbit ids
-    df = pd.DataFrame(obs_log["OBS_ID"])
-    df["ORBIT_ID"] = [swift_orbit_id_from_obsid(x) for x in df["OBS_ID"]]
-    mask_orbit = df["ORBIT_ID"] == orbit_id
-    # print(df)
 
-    mask_filter = obs_log["FILTER"] == filter_to_obs_string(filter_type)
+def match_within_timeframe(
+    obs_log: SwiftObservationLog, start_time: Time, end_time: Time
+) -> SwiftObservationLog:
+    mask = (obs_log["MID_TIME"] >= start_time) & (obs_log["MID_TIME"] <= end_time)
 
-    return obs_log[mask_orbit & mask_filter]
+    return obs_log[mask]

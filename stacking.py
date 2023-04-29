@@ -11,6 +11,7 @@ from dataclasses import asdict
 
 from swift_types import (
     SwiftObservationID,
+    SwiftOrbitID,
     SwiftObservationLog,
     SwiftFilter,
     SwiftUVOTImage,
@@ -21,7 +22,8 @@ from swift_types import (
 )
 from swift_data import SwiftData
 from swift_observation_log import (
-    match_by_obsid_and_filter,
+    match_by_obsids_and_filters,
+    match_by_orbit_ids_and_filters,
 )
 from coincidence_correction import coincidence_correction
 
@@ -30,8 +32,9 @@ __all__ = [
     "get_image_dimensions_to_center_comet",
     "determine_stacking_image_size",
     "center_image_on_coords",
-    "coincidence_loss_correction",
     "stack_by_obsid",
+    "stack_by_orbits",
+    "is_OH_stackable",
 ]
 
 
@@ -76,7 +79,7 @@ def determine_stacking_image_size(
     image_dir = swift_data.get_uvot_image_directory(obsid)
 
     # dataframe holding the observation log entries for this obsid and this filter
-    matching_observations = match_by_obsid_and_filter(obs_log, obsid, filter_type)
+    matching_observations = match_by_obsids_and_filters(obs_log, [obsid], [filter_type])
 
     if len(matching_observations) == 0:
         return None
@@ -153,11 +156,6 @@ def center_image_on_coords(
     return centered_image
 
 
-# TODO: move this over
-def coincidence_loss_correction(image_data: SwiftUVOTImage) -> SwiftUVOTImage:
-    return image_data
-
-
 def stack_by_obsid(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
@@ -168,8 +166,8 @@ def stack_by_obsid(
 ) -> Optional[SwiftStackedUVOTImage]:
     """Returns the stacked image and the total exposure time as a tuple"""
     # get the observations we care about
-    matching_obs_log = match_by_obsid_and_filter(
-        obs_log=obs_log, obsid=obsid, filter_type=filter_type
+    matching_obs_log = match_by_obsids_and_filters(
+        obs_log=obs_log, obsids=[obsid], filter_types=[filter_type]
     )
 
     # determine how big our stacked image needs to be
@@ -252,37 +250,108 @@ def stack_by_obsid(
     )
 
 
-def stack_by_orbit(
+def stack_by_orbits(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
-    obsid: SwiftObservationID,
+    stacked_image_dir: pathlib.Path,
+    orbit_ids: List[SwiftOrbitID],
     filter_type: SwiftFilter,
     do_coincidence_correction: bool = True,
     detector_scale: SwiftPixelResolution = SwiftPixelResolution.data_mode,
 ) -> SwiftStackedUVOTImage:
-    # matching_data =
+    """ """
+    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
+    matching_data = match_by_orbit_ids_and_filters(
+        obs_log=obs_log, orbit_ids=orbit_ids, filter_types=filter_types
+    )
+
+    # for every orbit passed in,
+    for orbit_id in orbit_ids:
+        obsids = get_obsids_in_orbits(obs_log=obs_log, orbit_ids=[orbit_id])
+        # get all the obsids in the orbit
+        for obsid in obsids:
+            pass
+            # # stack all the images per observation_id
+            # stack_by_obsid(swift_data=swift_data, obs_log=obs_log, )
+
     pass
 
 
-def write_stacked_image(
-    stacked_image_dir: pathlib.Path, image: SwiftStackedUVOTImage
-) -> None:
-    filter_str = filter_to_file_string(image.filter_type)
+def get_stacked_image_base_str(
+    contributing_obsids: List[SwiftObservationID], filter_type: SwiftFilter
+) -> str:
+    """
+    Returns a base name for a stacked image based on the filter and the observation ids that contributed to it
+    """
+    filter_str = filter_to_file_string(filter_type)
 
-    contributing_obsids = np.unique([x[0] for x in image.sources])
+    contributing_obsids = sorted(np.unique(contributing_obsids))
     obsids_str = "_".join(contributing_obsids)
 
     # name the file after all of the contributing observation ids
     base_name = obsids_str + "_" + filter_str
 
+    return base_name
+
+
+def get_stacked_image_path(
+    stacked_image_dir: pathlib.Path,
+    contributing_obsids: List[SwiftObservationID],
+    filter_type: SwiftFilter,
+) -> pathlib.Path:
+    base_name = get_stacked_image_base_str(
+        contributing_obsids=contributing_obsids, filter_type=filter_type
+    )
     stacked_image_path = stacked_image_dir / pathlib.Path(base_name + ".fits")
+
+    return stacked_image_path
+
+
+def get_stacked_image_info_path(
+    stacked_image_dir: pathlib.Path,
+    contributing_obsids: List[SwiftObservationID],
+    filter_type: SwiftFilter,
+) -> pathlib.Path:
+    base_name = get_stacked_image_base_str(
+        contributing_obsids=contributing_obsids, filter_type=filter_type
+    )
     stacked_image_info_path = stacked_image_dir / pathlib.Path(base_name + ".json")
+
+    return stacked_image_info_path
+
+
+def write_stacked_image(
+    stacked_image_dir: pathlib.Path, image: SwiftStackedUVOTImage
+) -> None:
+    # filter_str = filter_to_file_string(image.filter_type)
+    #
+    contributing_obsids = [x[0] for x in image.sources]
+
+    # obsids_str = "_".join(contributing_obsids)
+    #
+    # # name the file after all of the contributing observation ids
+    # base_name = obsids_str + "_" + filter_str
+
+    # stacked_image_path = stacked_image_dir / pathlib.Path(base_name + ".fits")
+    # stacked_image_info_path = stacked_image_dir / pathlib.Path(base_name + ".json")
+
+    stacked_image_path = get_stacked_image_path(
+        stacked_image_dir=stacked_image_dir,
+        contributing_obsids=contributing_obsids,
+        filter_type=image.filter_type,
+    )
 
     # log.info(
     #     "Saving to %s with filter type %s",
     #     stacked_image_path,
     #     filter_str,
     # )
+
+    stacked_image_info_path = get_stacked_image_info_path(
+        stacked_image_dir=stacked_image_dir,
+        contributing_obsids=contributing_obsids,
+        filter_type=image.filter_type,
+    )
 
     # turn our non-image data into JSON and write it out
     info_dict = asdict(image)
@@ -299,3 +368,32 @@ def write_stacked_image(
     # now save the image
     hdu = fits.PrimaryHDU(image.stacked_image)
     hdu.writeto(stacked_image_path)
+
+
+def is_OH_stackable(
+    obs_log: SwiftObservationLog, orbit_ids: List[SwiftOrbitID]
+) -> Tuple[bool, List[SwiftOrbitID]]:
+    """
+    To perform OH subtraction we need data from the UV and UW1 filter from somewhere across the given orbit ids.
+    Returns a list of orbits that have UV or UW1 images, and leaves out orbits that only have data in other filters
+    """
+    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
+
+    matching_obs_log = match_by_orbit_ids_and_filters(
+        obs_log, orbit_ids=orbit_ids, filter_types=filter_types
+    )
+
+    ml = matching_obs_log
+
+    has_uvv_filter = ml[ml["FILTER"] == SwiftFilter.uvv]
+    has_uvv_set = set(has_uvv_filter["ORBIT_ID"])
+
+    has_uw1_filter = ml[ml["FILTER"] == SwiftFilter.uw1]
+    has_uw1_set = set(has_uw1_filter["ORBIT_ID"])
+
+    contributing_orbits = has_uvv_set
+    contributing_orbits.update(has_uw1_set)
+
+    can_be_OH_stacked = len(has_uvv_set & has_uw1_set) > 0
+
+    return (can_be_OH_stacked, list(contributing_orbits))

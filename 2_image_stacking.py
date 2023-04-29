@@ -17,6 +17,7 @@ from swift_types import SwiftFilter, SwiftObservationID
 from read_swift_config import read_swift_config
 from swift_data import SwiftData
 from stacking import stack_by_obsid, write_stacked_image
+from swift_observation_log import read_observation_log
 
 
 __version__ = "0.0.1"
@@ -81,7 +82,8 @@ def main():
     swift_data = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
-    obs_log = pd.read_csv(args.observation_log_file[0])
+    # obs_log = pd.read_csv(args.observation_log_file[0])
+    obs_log = read_observation_log(args.observation_log_file[0])
     stacked_image_dir = pathlib.Path(swift_config["stacked_image_dir"])
 
     obsid = SwiftObservationID(args.obsid[0])

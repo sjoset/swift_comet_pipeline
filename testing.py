@@ -5,36 +5,37 @@ import pathlib
 import sys
 import logging as log
 import numpy as np
-import pandas as pd
+
+# import pandas as pd
 import matplotlib.pyplot as plt
 
 from astropy.visualization import (
     ZScaleInterval,
 )
 from astropy.io import fits
+from astropy.time import Time
 from argparse import ArgumentParser
-from typing import List
 
 from read_swift_config import read_swift_config
-from swift_data import SwiftData, swift_orbit_id_from_obsid
+from swift_data import SwiftData
 from swift_types import (
     SwiftObservationLog,
     SwiftObservationID,
     SwiftFilter,
     SwiftOrbitID,
     PixelCoord,
-    swift_observation_id_from_int,
 )
 from swift_observation_log import (
-    match_by_obsid_and_filter,
-    match_by_orbit_id_and_filter,
+    match_by_obsids_and_filters,
+    # match_by_orbit_ids_and_filters,
+    read_observation_log,
+    get_obsids_in_orbits,
+    match_within_timeframe,
 )
 from stacking import (
-    # get_image_dimensions_to_center_comet,
     determine_stacking_image_size,
     center_image_on_coords,
-    # coincidence_loss_correction,
-    # stack_by_obsid,
+    is_OH_stackable,
 )
 import sushi
 
@@ -77,48 +78,58 @@ def test_swift_data(sdd: SwiftData) -> None:
     print(sdd.get_all_orbit_ids())
 
 
-# TODO: a similar function could identify
 def test_observation_log_obsid_match(obs_log: SwiftObservationLog) -> None:
-    for obsid_int in np.unique(obs_log["OBS_ID"]):
+    # for every observation ID, match uw1 and uvv filters and print the results
+    for obsid in np.unique(obs_log["OBS_ID"]):
         for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-            obsid = swift_observation_id_from_int(obsid_int)
-            if obsid is None:
-                continue
-
-            newdf = match_by_obsid_and_filter(
+            newdf = match_by_obsids_and_filters(
                 obs_log,
-                obsid,
-                filter_type=filter_type,
+                obsids=[obsid],
+                filter_types=[filter_type],
             )
 
             for _, row in newdf.iterrows():
                 print(f"{row['OBS_ID']} | {row['EXTENSION']} | {row['FILTER']}")
 
 
-def test_observation_log_orbit_match(obs_log: SwiftObservationLog) -> None:
-    obsid_ints = np.unique(obs_log["OBS_ID"])
-    obsids = map(SwiftObservationID, obsid_ints)
-    orbit_ids = np.unique(list(map(swift_orbit_id_from_obsid, obsids)))
-    # print(obsid_ints, obsids, orbit_ids)
+def test_observation_log_multi_match(obs_log: SwiftObservationLog) -> None:
+    obsids = list(map(SwiftObservationID, ["00034423001", "00033824004"]))
+    filters = [SwiftFilter.uw1, SwiftFilter.ugrism]
 
-    for orbit in orbit_ids:
-        contains_filters = {SwiftFilter.uvv: False, SwiftFilter.uw1: False}
-        for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-            newdf = match_by_orbit_id_and_filter(
-                obs_log,
-                orbit,
-                filter_type=filter_type,
-            )
-            if len(newdf) != 0:
-                contains_filters[filter_type] = True
+    matching_obs_log = match_by_obsids_and_filters(
+        obs_log=obs_log, obsids=obsids, filter_types=filters
+    )
+    print(matching_obs_log)
+    print(matching_obs_log["FILTER"], matching_obs_log["OBS_ID"])
 
-            # for _, row in newdf.iterrows():
-            #     print(f"{row['OBS_ID']} | {row['EXTENSION']} | {row['FILTER']}")
 
-        if all(filter_found == True for filter_found in contains_filters.values()):
-            print(f"Candidate for OH subtraction: orbit {orbit.orbit_id}")
-        # else:
-        #     print(f"Not a candidate for OH subtraction: orbit {orbit.orbit_id}")
+def test_OH_stackable(obs_log: SwiftObservationLog) -> None:
+    # orbit_ids = list(map(SwiftOrbitID, ["00033759", "00033760"]))
+    orbit_ids = list(
+        map(SwiftOrbitID, ["00033759", "00033760", "00033822", "00033826", "00033827"])
+    )
+    a = is_OH_stackable(obs_log=obs_log, orbit_ids=orbit_ids)
+    print(a)
+
+    # has_both = set({})
+    # for orbit in orbit_ids:
+    #     contains_filters = {SwiftFilter.uvv: False, SwiftFilter.uw1: False}
+    #     for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
+    #         newdf = match_by_orbit_ids_and_filters(
+    #             obs_log,
+    #             orbit_ids=[orbit],
+    #             filter_types=[filter_type],
+    #         )
+    #         if len(newdf) != 0:
+    #             contains_filters[filter_type] = True
+    #
+    #         # for _, row in newdf.iterrows():
+    #         #     print(f"{row['OBS_ID']} | {row['EXTENSION']} | {row['FILTER']}")
+    #
+    #     if all(filter_found == True for filter_found in contains_filters.values()):
+    #         # print(f"Candidate for OH subtraction: orbit {orbit}")
+    #         has_both.add(orbit)
+    # print(has_both)
 
 
 def show_fits_scaled(image_data_one, image_data_two, image_data_three):
@@ -143,14 +154,22 @@ def show_fits_scaled(image_data_one, image_data_two, image_data_three):
 def test_image_resizing_method_vs_lucy(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
-    obsids: List[SwiftObservationID],
-    filter_type: SwiftFilter,
 ) -> None:
-    # Look at our resized images vs a poorly chosen a-priori guessed size
+    obsid_strings = ["00020405001", "00020405002", "00020405003", "00034318005"]
+    # # obsid_strings = [
+    # #     "00034316001",
+    # #     "00034316002",
+    # #     "00034318001",
+    # #     "00034318002",
+    # #     "00034318003",
+    # # ]
+    obsids = list(map(SwiftObservationID, obsid_strings))
+    filter_type = SwiftFilter.uw1
 
+    # Look at our resized images vs a poorly chosen a-priori guessed size
     for obsid in obsids:
-        matching_obs_log = match_by_obsid_and_filter(
-            obs_log=obs_log, obsid=obsid, filter_type=filter_type
+        matching_obs_log = match_by_obsids_and_filters(
+            obs_log=obs_log, obsids=[obsid], filter_types=[filter_type]
         )
         for _, row in matching_obs_log.iterrows():
             # Get list of image files for this filter and image type
@@ -193,6 +212,27 @@ def test_image_resizing_method_vs_lucy(
                 print("-------")
 
 
+def test_obsids_from_orbits(obs_log: SwiftObservationLog) -> None:
+    orbit_ids = list(
+        map(SwiftOrbitID, ["00033759", "00033760", "00033822", "00033826", "00033827"])
+    )
+    a = get_obsids_in_orbits(obs_log, orbit_ids=orbit_ids)
+    print(a)
+
+
+def test_timeframe_matching(obs_log: SwiftObservationLog) -> None:
+    start_time = Time("2014-12-19T00:27:21.000")
+    end_time = Time("2015-09-01T12:04:21.000")
+    ml = match_within_timeframe(
+        obs_log=obs_log, start_time=start_time, end_time=end_time
+    )
+
+    # print(ml["MID_TIME"])
+    ts = ml["MID_TIME"].values
+    ts.sort()
+    print(ts)
+
+
 def main():
     args = process_args()
 
@@ -204,28 +244,19 @@ def main():
     swift_data = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
-
     # test_swift_data(swift_data)
 
-    obs_log = pd.read_csv(args.observation_log_file[0])
-    # test_observation_log_obsid_match(obs_log)
-    test_observation_log_orbit_match(obs_log)
+    obs_log = read_observation_log(args.observation_log_file[0])
 
-    # obsid_strings = ["00020405001", "00020405002", "00020405003", "00034318005"]
-    # # obsid_strings = [
-    # #     "00034316001",
-    # #     "00034316002",
-    # #     "00034318001",
-    # #     "00034318002",
-    # #     "00034318003",
-    # # ]
-    # obsids = list(map(lambda x: SwiftObservationID(x), obsid_strings))
-    # test_image_resizing_method_vs_lucy(
-    #     swift_data=swift_data,
-    #     obs_log=obs_log,
-    #     obsids=obsids,
-    #     filter_type=SwiftFilter.uw1,
-    # )
+    test_timeframe_matching(obs_log=obs_log)
+
+    # test_observation_log_obsid_match(obs_log)
+
+    # test_observation_log_multi_match(obs_log)
+
+    # test_OH_stackable(obs_log)
+
+    # test_image_resizing_method_vs_lucy(swift_data=swift_data, obs_log=obs_log)
 
 
 if __name__ == "__main__":

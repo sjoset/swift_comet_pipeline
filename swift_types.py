@@ -19,14 +19,16 @@ __all__ = [
     "swift_observation_id_from_int",
     "PixelCoord",
     "filter_to_file_string",
+    "file_string_to_filter",
     "filter_to_obs_string",
+    "obs_string_to_filter",
 ]
 
 
 SwiftObservationLog: TypeAlias = pd.DataFrame
 SwiftUVOTImage: TypeAlias = np.ndarray
 SwiftObservationID: TypeAlias = str
-# SwiftPixelResolution: TypeAlias = float
+SwiftOrbitID: TypeAlias = str
 
 
 class SwiftPixelResolution(Enum):
@@ -74,15 +76,21 @@ def filter_to_file_string(filter_type: SwiftFilter) -> str:
     return filter_to_file_string_dict[filter_type]
 
 
+def file_string_to_filter(filter_str: str) -> SwiftFilter:
+    inverse_dict = {v: k for k, v in filter_to_file_string_dict.items()}
+    return inverse_dict[filter_str]
+
+
 # TODO: look these up and finish this
+# TODO: verify each of these
 # how the filter is represented in the FITS file headers and the observation log
 filter_to_obs_string_dict = {
-    # SwiftFilter.uuu: "uuu",
+    SwiftFilter.uuu: "U",
     # SwiftFilter.ubb: "ubb",
     SwiftFilter.uvv: "V",
     SwiftFilter.uw1: "UVW1",
     SwiftFilter.uw2: "UVW2",
-    # SwiftFilter.um2: "um2",
+    SwiftFilter.um2: "UVM2",
     # SwiftFilter.white: "uwh",
     # SwiftFilter.vgrism: "ugv",
     SwiftFilter.ugrism: "UGRISM",
@@ -98,6 +106,11 @@ def filter_to_obs_string(filter_type: SwiftFilter) -> str:
     return filter_to_obs_string_dict[filter_type]
 
 
+def obs_string_to_filter(filter_str: str) -> SwiftFilter:
+    inverse_dict = {v: k for k, v in filter_to_obs_string_dict.items()}
+    return inverse_dict[filter_str]
+
+
 class SwiftUVOTImageType(str, Enum):
     raw = "rw"
     detector = "dt"
@@ -107,13 +120,6 @@ class SwiftUVOTImageType(str, Enum):
     @classmethod
     def all_image_types(cls):
         return [x for x in cls]
-
-
-@dataclass(order=True)
-class SwiftOrbitID:
-    """Swift orbit ids are 8 digit numbers assigned per Swift orbit"""
-
-    orbit_id: str
 
 
 def swift_orbit_id_from_obsid(obsid: SwiftObservationID) -> SwiftOrbitID:
