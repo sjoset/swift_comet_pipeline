@@ -3,9 +3,12 @@
 import os
 import pathlib
 import sys
-import pandas as pd
+import itertools
 import logging as log
 import matplotlib.pyplot as plt
+
+import astropy.units as u
+from astropy.time import Time
 
 from astropy.visualization import (
     ZScaleInterval,
@@ -13,11 +16,22 @@ from astropy.visualization import (
 
 from argparse import ArgumentParser
 
-from swift_types import SwiftFilter, SwiftObservationID
+from swift_types import (
+    SwiftData,
+    SwiftFilter,
+    SwiftOrbitID,
+    SwiftObservationLog,
+    SwiftStackingMethod,
+    SwiftPixelResolution,
+    filter_to_string,
+)
 from read_swift_config import read_swift_config
-from swift_data import SwiftData
-from stacking import stack_by_obsid, write_stacked_image
-from swift_observation_log import read_observation_log
+from stacking import (
+    stack_image_by_selection,
+    write_stacked_image,
+    includes_uvv_and_uw1_filters,
+)
+from swift_observation_log import read_observation_log, match_within_timeframe
 
 
 __version__ = "0.0.1"
@@ -56,7 +70,7 @@ def process_args():
     parser.add_argument(
         "observation_log_file", nargs=1, help="Filename of observation log input"
     )
-    parser.add_argument("obsid", nargs=1, help="Observation id to stack")
+    parser.add_argument("orbit", nargs=1, help="orbit id to stack")
 
     args = parser.parse_args()
 
@@ -69,6 +83,50 @@ def process_args():
         log.basicConfig(format="%(levelname)s: %(message)s")
 
     return args
+
+
+def do_stack(
+    swift_data: SwiftData,
+    obs_log: SwiftObservationLog,
+    stacked_image_dir: pathlib.Path,
+    do_coincidence_correction: bool,
+    detector_scale: SwiftPixelResolution,
+) -> None:
+    # test if there are uvv and uw1 images in the data set
+    (stackable, _) = includes_uvv_and_uw1_filters(obs_log=obs_log)
+    if not stackable:
+        print("The data does not have data in both filters!")
+
+    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
+    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
+
+    for filter_type, stacking_method in itertools.product(
+        filter_types, stacking_methods
+    ):
+        print(
+            f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
+        )
+
+        # now narrow down the data to just one filter at a time
+        filter_mask = obs_log["FILTER"] == filter_type
+        ml = obs_log[filter_mask]
+
+        stacked_image = stack_image_by_selection(
+            swift_data=swift_data,
+            obs_log=ml,
+            do_coincidence_correction=do_coincidence_correction,
+            detector_scale=detector_scale,
+            stacking_method=stacking_method,
+        )
+
+        if stacked_image is None:
+            print("Stacking image failed :( ")
+            continue
+
+        stacked_path, stacked_info_path = write_stacked_image(
+            stacked_image_dir=stacked_image_dir, image=stacked_image
+        )
+        print(f"Wrote to {stacked_path}, info at {stacked_info_path}")
 
 
 def main():
@@ -86,29 +144,25 @@ def main():
     obs_log = read_observation_log(args.observation_log_file[0])
     stacked_image_dir = pathlib.Path(swift_config["stacked_image_dir"])
 
-    obsid = SwiftObservationID(args.obsid[0])
+    orbit_id = SwiftOrbitID(args.orbit[0])
 
-    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
-        stacked_image = stack_by_obsid(
-            swift_data=swift_data,
-            obs_log=obs_log,
-            obsid=obsid,
-            filter_type=filter_type,
-        )
-        if stacked_image is None:
-            print(
-                f"Stacking unsuccessful for observation id {obsid} in filter {str(filter_type)} :("
-            )
-            continue
+    # start_time = Time("2016-03-14T00:00:00.000")
+    # # end_time = start_time + (52 * u.week)
+    # end_time = start_time + (8 * u.week)
 
-        print(f"Total exposure time: {stacked_image.exposure_time}")
-        print("Contributing source images:")
-        for i in stacked_image.sources:
-            print(f"Obsid: {i[0]}, filename: {i[1]}, extension: {i[2]}")
+    # time_match = match_within_timeframe(
+    #     obs_log=obs_log, start_time=start_time, end_time=end_time
+    # )
 
-        show_fits_scaled(stacked_image.stacked_image)
+    obsid_match = obs_log[obs_log["ORBIT_ID"] == orbit_id]
 
-        write_stacked_image(stacked_image_dir, stacked_image)
+    do_stack(
+        swift_data=swift_data,
+        obs_log=obsid_match,
+        stacked_image_dir=stacked_image_dir,
+        do_coincidence_correction=True,
+        detector_scale=SwiftPixelResolution.data_mode,
+    )
 
 
 if __name__ == "__main__":

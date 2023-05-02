@@ -3,11 +3,8 @@
 import os
 import pathlib
 import sys
-import itertools
 import logging as log
-import astropy.units as u
 
-from astropy.time import Time
 from argparse import ArgumentParser
 
 from read_swift_config import read_swift_config
@@ -15,19 +12,13 @@ from swift_types import (
     SwiftData,
     SwiftObservationLog,
     SwiftFilter,
+    SwiftOrbitID,
     filter_to_string,
     SwiftStackingMethod,
     SwiftPixelResolution,
 )
-from swift_observation_log import (
-    read_observation_log,
-    match_within_timeframe,
-)
-from stacking import (
-    stack_image_by_selection,
-    write_stacked_image,
-    includes_uvv_and_uw1_filters,
-)
+from swift_observation_log import read_observation_log
+from stacking import stack_image_by_selection, write_stacked_image
 
 
 __version__ = "0.0.1"
@@ -64,42 +55,34 @@ def process_args():
     return args
 
 
-def test_stacking_by_selection(
+def test_stacking_by_orbit(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
     stacked_image_dir: pathlib.Path,
-    do_coincidence_correction: bool,
-    detector_scale: SwiftPixelResolution,
+    stacking_method: SwiftStackingMethod,
 ) -> None:
-    # test if there are uvv and uw1 images in the data set
-    (stackable, which_orbit_ids) = includes_uvv_and_uw1_filters(obs_log=obs_log)
-    if stackable:
-        print("In the given time frame, these orbit ids have the necessary data:")
-        for orbit_id in which_orbit_ids:
-            print(f"\t{orbit_id}")
-    else:
-        print("The time frame given does not have data in both filters!")
-        return
+    # select an orbit
+    orbit_id = SwiftOrbitID("00034423")
+    mask = obs_log["ORBIT_ID"] == orbit_id
 
-    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
-    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
+    ml = obs_log[mask]
 
-    for filter_type, stacking_method in itertools.product(
-        filter_types, stacking_methods
-    ):
-        print(
-            f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
-        )
+    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
+        print(f"Stacking for filter {filter_to_string(filter_type)} ...")
+        filter_mask = ml["FILTER"] == filter_type
+        match_by_filter = ml[filter_mask]
 
-        # now narrow down the data to just one filter at a time
-        filter_mask = obs_log["FILTER"] == filter_type
-        ml = obs_log[filter_mask]
+        if len(match_by_filter) == 0:
+            print(
+                f"No data found for orbit {orbit_id} in filter {filter_to_string(filter_type)}: skipping."
+            )
+            continue
 
         stacked_image = stack_image_by_selection(
             swift_data=swift_data,
-            obs_log=ml,
-            do_coincidence_correction=do_coincidence_correction,
-            detector_scale=detector_scale,
+            obs_log=match_by_filter,
+            do_coincidence_correction=False,
+            detector_scale=SwiftPixelResolution.data_mode,
             stacking_method=stacking_method,
         )
 
@@ -128,20 +111,11 @@ def main():
 
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    start_time = Time("2016-03-14T00:00:00.000")
-    # end_time = start_time + (52 * u.week)
-    end_time = start_time + (8 * u.week)
-
-    time_match = match_within_timeframe(
-        obs_log=obs_log, start_time=start_time, end_time=end_time
-    )
-
-    test_stacking_by_selection(
+    test_stacking_by_orbit(
         swift_data=swift_data,
-        obs_log=time_match,
+        obs_log=obs_log,
         stacked_image_dir=stacked_image_dir,
-        do_coincidence_correction=True,
-        detector_scale=SwiftPixelResolution.data_mode,
+        stacking_method=SwiftStackingMethod.median,
     )
 
 
