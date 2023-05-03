@@ -1,0 +1,5 @@
+Swift filter effective area files found at:
+http://svo2.cab.inta-csic.es/svo/theory/fps3/index.php?mode=browse&gname=Swift&asttype=
+
+Solar spectra:
+https://lasp.colorado.edu/lisird/data/sorce_ssi_l3

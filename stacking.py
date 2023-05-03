@@ -29,10 +29,10 @@ __all__ = [
     "get_image_dimensions_to_center_comet",
     "determine_stacking_image_size",
     "center_image_on_coords",
-    # "stack_by_obsid",
-    # "stack_by_orbits",
     "includes_uvv_and_uw1_filters",
     "stack_image_by_selection",
+    "write_stacked_image",
+    "read_stacked_image",
 ]
 
 
@@ -267,15 +267,20 @@ def includes_uvv_and_uw1_filters(
     return (has_both, list(contributing_orbits))
 
 
-# # TODO
-# def read_stacked_image(
-#         stacked_image_dir: pathlib.Path, stacked_image_path: pathlib.Path, stacked_image_info_path: pathlib.Path
-# ) -> SwiftStackedUVOTImage:
-#     # read the fits file
-#     image_data = fits.getdata(stacked_image_dir / stacked_image_path)
-#     # load its metadata
-#     with open(stack_image_info_path, "r") as f:
-#         image_info = json.load(f)
+def read_stacked_image(
+    stacked_image_path: pathlib.Path, stacked_image_info_path: pathlib.Path
+) -> Optional[SwiftStackedUVOTImage]:
+    # read the fits file
+    image_data = fits.getdata(stacked_image_path)
+    if not isinstance(image_data, SwiftUVOTImage):
+        print(f"Error reading fits image at {stacked_image_path}!")
+        return None
+    # load its metadata
+    with open(stacked_image_info_path, "r") as f:
+        image_info = json.load(f)
+
+    # the image_info dict should match the arguments that this data type wants to see, so pass the contents as arugments with **
+    return SwiftStackedUVOTImage(stacked_image=image_data, **image_info)
 
 
 def stack_image_by_selection(

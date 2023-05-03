@@ -178,9 +178,10 @@ class SwiftStackedUVOTImage:
     filter_type: SwiftFilter
     coincidence_corrected: bool
     # The detector scale might be in the FITS source file headers
-    # TODO: see if we can find detector scale
     detector_scale: SwiftPixelResolution
     stacking_method: SwiftStackingMethod
+    # TODO: add this in the stacker
+    # exposure_mid_time: Time
 
 
 class SwiftData:

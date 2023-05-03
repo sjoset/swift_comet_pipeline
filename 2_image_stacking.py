@@ -100,6 +100,9 @@ def do_stack(
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
     stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
 
+    # TODO: build a dictionary of [uw1, uvv] filenames for [sum, median]: both images and info files
+    #  then we can point the stacking loader in oh.py to this file so it can grab all of the images in both filters
+
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
@@ -122,6 +125,8 @@ def do_stack(
         if stacked_image is None:
             print("Stacking image failed :( ")
             continue
+
+        print(stacked_image)
 
         stacked_path, stacked_info_path = write_stacked_image(
             stacked_image_dir=stacked_image_dir, image=stacked_image
@@ -160,7 +165,7 @@ def main():
         swift_data=swift_data,
         obs_log=obsid_match,
         stacked_image_dir=stacked_image_dir,
-        do_coincidence_correction=True,
+        do_coincidence_correction=False,
         detector_scale=SwiftPixelResolution.data_mode,
     )
 
