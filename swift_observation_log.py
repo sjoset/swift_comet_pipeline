@@ -169,7 +169,6 @@ def read_observation_log(obs_log_path: pathlib.Path) -> SwiftObservationLog:
     obs_log["DATE_OBS"] = obs_log["DATE_OBS"].map(Time)
     obs_log["DATE_END"] = obs_log["DATE_END"].map(Time)
     obs_log["FILTER"] = obs_log["FILTER"].map(obs_string_to_filter)
-    # TODO: this would probably break serializing into/out of JSON when we store the stacked image info
     # exposure times are stored in seconds
     # obs_log["EXPOSURE"] = obs_log["EXPOSURE"].map(lambda t: t * u.s)
     obs_log["MID_TIME"] = obs_log["MID_TIME"].map(Time)

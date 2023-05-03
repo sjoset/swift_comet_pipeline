@@ -151,36 +151,40 @@ def center_image_on_coords(
 
 
 def get_stacked_image_base_str(
-    contributing_obsids: List[SwiftObservationID],
-    filter_type: SwiftFilter,
-    stack_method: SwiftStackingMethod,
+    # contributing_obsids: List[SwiftObservationID],
+    stacked_image: SwiftStackedUVOTImage,
+    # filter_type: SwiftFilter,
+    # stack_method: SwiftStackingMethod,
 ) -> str:
     """
     Returns a base name for a stacked image based on the filter and the observation ids that contributed to it
     """
-    filter_str = filter_to_file_string(filter_type)
+    filter_str = filter_to_file_string(stacked_image.filter_type)
 
-    contributing_obsids = sorted(np.unique(contributing_obsids))
+    contributing_obsids = sorted(np.unique([x[0] for x in stacked_image.sources]))
     obsids_str = "_".join(contributing_obsids)
 
     obsids_str = contributing_obsids[0] + "_through_" + contributing_obsids[-1]
 
     # name the file
-    base_name = obsids_str + "_" + filter_str + "_" + stack_method
+    base_name = obsids_str + "_" + filter_str + "_" + stacked_image.stacking_method
 
     return base_name
 
 
 def get_stacked_image_path(
     stacked_image_dir: pathlib.Path,
-    contributing_obsids: List[SwiftObservationID],
-    filter_type: SwiftFilter,
-    stack_method: SwiftStackingMethod,
+    # contributing_obsids: List[SwiftObservationID],
+    stacked_image: SwiftStackedUVOTImage,
+    # filter_type: SwiftFilter,
+    # stack_method: SwiftStackingMethod,
 ) -> pathlib.Path:
+    # contributing_obsids = [x[0] for x in stacked_image.sources]
     base_name = get_stacked_image_base_str(
-        contributing_obsids=contributing_obsids,
-        filter_type=filter_type,
-        stack_method=stack_method,
+        # contributing_obsids=contributing_obsids,
+        # filter_type=filter_type,
+        # stack_method=stack_method,
+        stacked_image=stacked_image
     )
     stacked_image_path = stacked_image_dir / pathlib.Path(base_name + ".fits")
 
@@ -189,14 +193,16 @@ def get_stacked_image_path(
 
 def get_stacked_image_info_path(
     stacked_image_dir: pathlib.Path,
-    contributing_obsids: List[SwiftObservationID],
-    filter_type: SwiftFilter,
-    stack_method: SwiftStackingMethod,
+    stacked_image: SwiftStackedUVOTImage,
+    # contributing_obsids: List[SwiftObservationID],
+    # filter_type: SwiftFilter,
+    # stack_method: SwiftStackingMethod,
 ) -> pathlib.Path:
     base_name = get_stacked_image_base_str(
-        contributing_obsids=contributing_obsids,
-        filter_type=filter_type,
-        stack_method=stack_method,
+        # contributing_obsids=contributing_obsids,
+        # filter_type=filter_type,
+        # stack_method=stack_method,
+        stacked_image=stacked_image
     )
     stacked_image_info_path = stacked_image_dir / pathlib.Path(base_name + ".json")
 
@@ -204,31 +210,32 @@ def get_stacked_image_info_path(
 
 
 def write_stacked_image(
-    stacked_image_dir: pathlib.Path, image: SwiftStackedUVOTImage
+    stacked_image_dir: pathlib.Path, stacked_image: SwiftStackedUVOTImage
 ) -> Tuple[pathlib.Path, pathlib.Path]:
     """
     Takes the stacked image, names it systematically, and writes two files: one FITS image and one for JSON metadata
-    Returns a tuple of the path of the written file and the path of the JSON file
+    Returns a tuple of the absolute paths of the written file and the JSON info
     """
-    contributing_obsids = [x[0] for x in image.sources]
+    # contributing_obsids = [x[0] for x in image.sources]
 
     # TODO: just pass the image to the function instead
     stacked_image_path = get_stacked_image_path(
         stacked_image_dir=stacked_image_dir,
-        contributing_obsids=contributing_obsids,
-        filter_type=image.filter_type,
-        stack_method=image.stacking_method,
+        stacked_image=stacked_image
+        # filter_type=image.filter_type,
+        # stack_method=image.stacking_method,
     )
 
     stacked_image_info_path = get_stacked_image_info_path(
         stacked_image_dir=stacked_image_dir,
-        contributing_obsids=contributing_obsids,
-        filter_type=image.filter_type,
-        stack_method=image.stacking_method,
+        stacked_image=stacked_image
+        # contributing_obsids=contributing_obsids,
+        # filter_type=image.filter_type,
+        # stack_method=image.stacking_method,
     )
 
     # turn our non-image data into JSON and write it out
-    info_dict = asdict(image)
+    info_dict = asdict(stacked_image)
     info_dict.pop("stacked_image")
     info_dict["sources"] = [
         (str(obs), str(imgpath), extension)
@@ -239,10 +246,26 @@ def write_stacked_image(
         json.dump(info_dict, f)
 
     # now save the image
-    hdu = fits.PrimaryHDU(image.stacked_image)
+    hdu = fits.PrimaryHDU(stacked_image.stacked_image)
     hdu.writeto(stacked_image_path, overwrite=True)
 
-    return (stacked_image_path, stacked_image_info_path)
+    return (stacked_image_path.resolve(), stacked_image_info_path.resolve())
+
+
+def read_stacked_image(
+    stacked_image_path: pathlib.Path, stacked_image_info_path: pathlib.Path
+) -> Optional[SwiftStackedUVOTImage]:
+    # read the fits file
+    image_data = fits.getdata(stacked_image_path)
+    if not isinstance(image_data, SwiftUVOTImage):
+        print(f"Error reading fits image at {stacked_image_path}!")
+        return None
+    # load its metadata
+    with open(stacked_image_info_path, "r") as f:
+        image_info = json.load(f)
+
+    # the image_info dict should match the arguments that this data type wants to see, so pass the contents as arugments with **
+    return SwiftStackedUVOTImage(stacked_image=image_data, **image_info)
 
 
 def includes_uvv_and_uw1_filters(
@@ -267,22 +290,6 @@ def includes_uvv_and_uw1_filters(
     return (has_both, list(contributing_orbits))
 
 
-def read_stacked_image(
-    stacked_image_path: pathlib.Path, stacked_image_info_path: pathlib.Path
-) -> Optional[SwiftStackedUVOTImage]:
-    # read the fits file
-    image_data = fits.getdata(stacked_image_path)
-    if not isinstance(image_data, SwiftUVOTImage):
-        print(f"Error reading fits image at {stacked_image_path}!")
-        return None
-    # load its metadata
-    with open(stacked_image_info_path, "r") as f:
-        image_info = json.load(f)
-
-    # the image_info dict should match the arguments that this data type wants to see, so pass the contents as arugments with **
-    return SwiftStackedUVOTImage(stacked_image=image_data, **image_info)
-
-
 def stack_image_by_selection(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
@@ -291,7 +298,7 @@ def stack_image_by_selection(
     stacking_method: SwiftStackingMethod = SwiftStackingMethod.summation,
 ) -> Optional[SwiftStackedUVOTImage]:
     """
-    Takes every entry in the given SwiftObservationLog and attempts to stack it - it will not check if there are mixed filters!
+    Takes every entry in the given SwiftObservationLog and attempts to stack it - obs_log should not include entries from different filters
     """
 
     has_both_filters, _ = includes_uvv_and_uw1_filters(obs_log)
@@ -310,13 +317,6 @@ def stack_image_by_selection(
     if stacking_image_size is None:
         print("Could not determine stacking image size!  Not stacking.")
         return None
-
-    for _, row in obs_log.iterrows():
-        log.info(
-            "Found extension %s of %s to stack ...",
-            row["EXTENSION"],
-            row["FITS_FILENAME"],
-        )
 
     image_data_to_stack: List[SwiftUVOTImage] = []
     exposure_times: List[float] = []
@@ -366,6 +366,14 @@ def stack_image_by_selection(
         log.info("Invalid stacking method specified, defaulting to summation...")
         stacked_image = np.sum(image_data_to_stack, axis=0)
 
+    # approximate the time the stack occurred by the middle of the observation periods
+    mid_times = sorted(obs_log["MID_TIME"])
+    start_time, end_time = mid_times[0], mid_times[-1]
+    dt = end_time - start_time
+    mid_time = start_time + dt / 2.0
+    # use a FITS string format to represent the date so JSON will play nicely
+    mid_time = mid_time.fits
+
     return SwiftStackedUVOTImage(
         stacked_image=stacked_image,
         sources=list(
@@ -381,4 +389,5 @@ def stack_image_by_selection(
         coincidence_corrected=do_coincidence_correction,
         detector_scale=detector_scale,
         stacking_method=stacking_method,
+        observation_mid_time=mid_time,
     )

@@ -4,11 +4,12 @@ import os
 import pathlib
 import sys
 import itertools
+import json
 import logging as log
 import matplotlib.pyplot as plt
 
-import astropy.units as u
-from astropy.time import Time
+# import astropy.units as u
+# from astropy.time import Time
 
 from astropy.visualization import (
     ZScaleInterval,
@@ -30,6 +31,7 @@ from stacking import (
     stack_image_by_selection,
     write_stacked_image,
     includes_uvv_and_uw1_filters,
+    # get_stacked_image_base_str,
 )
 from swift_observation_log import read_observation_log, match_within_timeframe
 
@@ -68,9 +70,16 @@ def process_args():
         "--config", "-c", default="config.yaml", help="YAML configuration file to use"
     )
     parser.add_argument(
+        "--stackinfo",
+        "-s",
+        default=None,
+        help="filename for saving stacking information",
+    )
+    parser.add_argument(
         "observation_log_file", nargs=1, help="Filename of observation log input"
     )
-    parser.add_argument("orbit", nargs=1, help="orbit id to stack")
+    parser.add_argument("orbit_start", nargs=1, help="first orbit id to stack")
+    parser.add_argument("orbit_end", nargs=1, help="last orbit id to stack")
 
     args = parser.parse_args()
 
@@ -89,6 +98,7 @@ def do_stack(
     swift_data: SwiftData,
     obs_log: SwiftObservationLog,
     stacked_image_dir: pathlib.Path,
+    stackinfo_output_path: pathlib.Path,
     do_coincidence_correction: bool,
     detector_scale: SwiftPixelResolution,
 ) -> None:
@@ -97,11 +107,11 @@ def do_stack(
     if not stackable:
         print("The data does not have data in both filters!")
 
+    # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
     stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
 
-    # TODO: build a dictionary of [uw1, uvv] filenames for [sum, median]: both images and info files
-    #  then we can point the stacking loader in oh.py to this file so it can grab all of the images in both filters
+    stacking_outputs = {}
 
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
@@ -126,12 +136,28 @@ def do_stack(
             print("Stacking image failed :( ")
             continue
 
-        print(stacked_image)
-
         stacked_path, stacked_info_path = write_stacked_image(
-            stacked_image_dir=stacked_image_dir, image=stacked_image
+            stacked_image_dir=stacked_image_dir, stacked_image=stacked_image
         )
         print(f"Wrote to {stacked_path}, info at {stacked_info_path}")
+
+        stacking_outputs[(filter_type, stacking_method)] = (
+            str(stacked_path),
+            str(stacked_info_path),
+        )
+
+    # build a record of all files created in this stacking run for use later
+    stack_dict = {}
+    for filter_type, stacking_method in itertools.product(
+        filter_types, stacking_methods
+    ):
+        img_key = f"{filter_to_string(filter_type)}_{stacking_method}"
+        img_key_json = f"{filter_to_string(filter_type)}_{stacking_method}_info"
+        stack_dict[img_key] = stacking_outputs[(filter_type, stacking_method)][0]
+        stack_dict[img_key_json] = stacking_outputs[(filter_type, stacking_method)][1]
+
+    with open(stackinfo_output_path, "w") as f:
+        json.dump(stack_dict, f)
 
 
 def main():
@@ -142,6 +168,11 @@ def main():
         print("Error reading config file {args.config}, exiting.")
         return 1
 
+    if args.stackinfo is None:
+        stackinfo_output_path = pathlib.Path("stack.json")
+    else:
+        stackinfo_output_path = args.stackinfo
+
     swift_data = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
@@ -149,7 +180,15 @@ def main():
     obs_log = read_observation_log(args.observation_log_file[0])
     stacked_image_dir = pathlib.Path(swift_config["stacked_image_dir"])
 
-    orbit_id = SwiftOrbitID(args.orbit[0])
+    # orbit_id = SwiftOrbitID(args.orbit[0])
+    # orbit_match = obs_log[obs_log["ORBIT_ID"] == orbit_id]
+    # do_stack(
+    #     swift_data=swift_data,
+    #     obs_log=orbit_match,
+    #     stacked_image_dir=stacked_image_dir,
+    #     do_coincidence_correction=False,
+    #     detector_scale=SwiftPixelResolution.data_mode,
+    # )
 
     # start_time = Time("2016-03-14T00:00:00.000")
     # # end_time = start_time + (52 * u.week)
@@ -159,12 +198,23 @@ def main():
     #     obs_log=obs_log, start_time=start_time, end_time=end_time
     # )
 
-    obsid_match = obs_log[obs_log["ORBIT_ID"] == orbit_id]
+    orbit_start = int(SwiftOrbitID(args.orbit_start[0]))
+    orbit_end = int(SwiftOrbitID(args.orbit_end[0]))
+    obs_log["orbit_ints"] = obs_log["ORBIT_ID"].map(int)
+
+    mask_start = obs_log["orbit_ints"] >= orbit_start
+    mask_end = obs_log["orbit_ints"] <= orbit_end
+
+    # orbit_match = obs_log[
+    #     obs_log["orbit_ints"] >= orbit_start & obs_log["orbit_ints"] <= orbit_end
+    # ]
+    orbit_match = obs_log[mask_start & mask_end]
 
     do_stack(
         swift_data=swift_data,
-        obs_log=obsid_match,
+        obs_log=orbit_match,
         stacked_image_dir=stacked_image_dir,
+        stackinfo_output_path=stackinfo_output_path,
         do_coincidence_correction=False,
         detector_scale=SwiftPixelResolution.data_mode,
     )

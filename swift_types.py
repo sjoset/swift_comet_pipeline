@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import glob
 
+from astropy.time import Time
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional, TypeAlias, List, Tuple
@@ -177,11 +178,10 @@ class SwiftStackedUVOTImage:
     exposure_time: float
     filter_type: SwiftFilter
     coincidence_corrected: bool
-    # The detector scale might be in the FITS source file headers
+    # TODO: The detector scale might be in the FITS source file headers
     detector_scale: SwiftPixelResolution
     stacking_method: SwiftStackingMethod
-    # TODO: add this in the stacker
-    # exposure_mid_time: Time
+    observation_mid_time: str
 
 
 class SwiftData:
