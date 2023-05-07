@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 
 from astropy.time import Time
-
 from dataclasses import dataclass
+from scipy.interpolate import interp1d
+
+from effective_areas import read_effective_area
 
 
 @dataclass
@@ -21,6 +23,7 @@ __all__ = [
     "read_solar_spectrum",
     "read_solar_spectrum_sorce",
     "get_sorce_spectrum",
+    "solar_count_rate_in_filter",
     "SolarSpectrum",
 ]
 
@@ -59,31 +62,73 @@ def read_solar_spectrum_sorce(
     return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
 
 
-# def read_solar_spectrum_sorce_full(solar_spectrum_path: pathlib.Path) -> SolarSpectrum:
-#     # load the solar spectrum
-#     solar_spectrum = pd.read_csv(solar_spectrum_path)
-#
-#     # select the spectrum from the current date
-#     solar_spectrum["time (Julian Date)"].map(lambda x: Time(x, format="jd"))
-#
-#     # the sorce spectra include some non-contiguous information at low wavelengths
-#     mask = solar_spectrum["wavelength (nm)"] > 115.0
-#
-#     solar_lambdas = solar_spectrum["wavelength (nm)"][mask]
-#     solar_irradiances = solar_spectrum["irradiance (W/m^2/nm)"][mask]
-#
-#     return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
-
-
 def get_sorce_spectrum(t: Time) -> SolarSpectrum:
     """
     Looks in the directory data/solar_spectra/[year] for the file sorce_ssi_l3.csv, which should contain columns
     named 'time (Julian Date)', 'wavelength (nm)' and 'irradiance (W/m^2/nm)'
     """
-    year = t.to_datetime().date().year
+    year = t.to_datetime().date().year  # type: ignore
     spectrum_path = pathlib.Path(
         "data/solar_spectra/sorce/" + str(year) + "/sorce_ssi_l3.csv"
     )
     ss = read_solar_spectrum_sorce(spectrum_path, t)
-    # ss.irradiances = ss.irradiances * 100
+
+    # fix the units to be the same as those given from the file read by read_solar_spectrum
+    ss.irradiances = ss.irradiances * 100
+
     return ss
+
+
+# Convolution of the solar spectrum with a filter effective area
+def solar_count_rate_in_filter(
+    solar_spectrum_path: pathlib.Path,
+    solar_spectrum_time: Time,
+    effective_area_path: pathlib.Path,
+) -> float:
+    """
+    use effective area and theoretical spectra to calculate count rate in a filter duo to solar activity
+    """
+    # large enough for beta to converge on its proper value
+    num_interpolation_lambdas = 1000
+
+    # read each file
+    solar_spectrum = read_solar_spectrum(solar_spectrum_path)
+    ea_data = read_effective_area(effective_area_path=effective_area_path)
+
+    ea_lambdas = ea_data.lambdas
+    ea_responses = ea_data.responses
+
+    solar_lambdas = solar_spectrum.lambdas
+    solar_irradiances = solar_spectrum.irradiances
+    if len(solar_lambdas) == 0:
+        print(f"Could not load solar spectrum data for {solar_spectrum_time}!")
+        return 0.0
+
+    # pick new set of lambdas to do the convolution over - the spectrum's range of wavelengths is much larger than the filter, so
+    # the filter's wavelengths will determine the bounds of the integration
+    lambdas, dlambda = np.linspace(
+        np.min(ea_lambdas),
+        np.max(ea_lambdas),
+        endpoint=True,
+        num=num_interpolation_lambdas,
+        retstep=True,
+    )
+
+    # interpolate solar spectrum on new lambdas
+    solar_irradiances_interpolation = interp1d(solar_lambdas, solar_irradiances)
+    solar_irradiances_on_filter_lambdas = solar_irradiances_interpolation(lambdas)
+
+    # interpolate responses on new lambdas
+    ea_response_interpolation = interp1d(ea_lambdas, ea_responses)
+    ea_responses_on_lambdas = ea_response_interpolation(lambdas)
+
+    # assemble columns of [lambdas, irradiances, responses]
+    spec = np.c_[
+        np.c_[lambdas, solar_irradiances_on_filter_lambdas.T], ea_responses_on_lambdas.T
+    ]
+
+    cr = (
+        np.sum(spec[:, 0] * spec[:, 1] * spec[:, 2]) * dlambda * 1e7 * 5.034116651114543
+    )
+
+    return cr

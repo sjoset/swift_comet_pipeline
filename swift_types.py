@@ -182,6 +182,9 @@ class SwiftStackedUVOTImage:
     detector_scale: SwiftPixelResolution
     stacking_method: SwiftStackingMethod
     observation_mid_time: str
+    helio_r_au: float
+    helio_v_kms: float
+    delta_au: float
 
 
 class SwiftData:

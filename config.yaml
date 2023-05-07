@@ -4,10 +4,10 @@ swift_data_dir: "~/Downloads/swift"
 jpl_horizons_id: "90004183"
 # where to store stacked images
 # stacked_image_dir: "stacked"
-stacked_image_dir: "stack_long"
+stacked_image_dir: "stacked"
 
 # solar_spectrum_path: "data/solar_spectra/sorce_ssi_l3.csv"
 solar_spectrum_path: "data/solar_spectra/sun_1A.csv"
 effective_area_uw1_path: "data/swift_effective_areas/w1.arf"
 effective_area_uvv_path: "data/swift_effective_areas/v.arf"
-oh_fluorescence_path: "data/fluorescence/fluorescenceOH.txt"
+oh_fluorescence_path: "data/fluorescence/fluorescence_OH.csv"

@@ -11,7 +11,6 @@ from dataclasses import asdict
 
 from swift_types import (
     SwiftData,
-    # SwiftObservationID,
     SwiftOrbitID,
     SwiftObservationLog,
     SwiftFilter,
@@ -375,6 +374,13 @@ def stack_image_by_selection(
     # use a FITS string format to represent the date so JSON will play nicely
     mid_time = mid_time.fits
 
+    # take the average heliocentric distance
+    helio_r_au = np.mean(obs_log["HELIO"])
+    # take the average heliocentric velocity
+    helio_v_kms = np.mean(obs_log["HELIO_V"])
+    # take the average distance to @swift
+    delta_au = np.mean(obs_log["OBS_DIS"])
+
     return SwiftStackedUVOTImage(
         stacked_image=stacked_image,
         sources=list(
@@ -391,4 +397,7 @@ def stack_image_by_selection(
         detector_scale=detector_scale,
         stacking_method=stacking_method,
         observation_mid_time=mid_time,
+        helio_r_au=helio_r_au,
+        helio_v_kms=helio_v_kms,
+        delta_au=delta_au,
     )
