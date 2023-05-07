@@ -11,7 +11,7 @@ from dataclasses import asdict
 
 from swift_types import (
     SwiftData,
-    SwiftObservationID,
+    # SwiftObservationID,
     SwiftOrbitID,
     SwiftObservationLog,
     SwiftFilter,
@@ -22,7 +22,7 @@ from swift_types import (
     SwiftPixelResolution,
     SwiftStackingMethod,
 )
-from image_cleanup import coincidence_correction
+from coincidence_correction import coincidence_correction
 
 
 __all__ = [
@@ -351,7 +351,8 @@ def stack_image_by_selection(
 
         # do any processing before stacking
         if do_coincidence_correction:
-            image_data = coincidence_correction(image_data, detector_scale)
+            coi_map = coincidence_correction(image_data, detector_scale)
+            image_data = image_data * coi_map
 
         image_data_to_stack.append(image_data)
         exposure_times.append(float(row["EXPOSURE"]))

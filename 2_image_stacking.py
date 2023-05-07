@@ -4,7 +4,6 @@ import os
 import pathlib
 import sys
 import itertools
-import json
 import logging as log
 import matplotlib.pyplot as plt
 
@@ -33,7 +32,8 @@ from stacking import (
     includes_uvv_and_uw1_filters,
     # get_stacked_image_base_str,
 )
-from swift_observation_log import read_observation_log, match_within_timeframe
+from swift_observation_log import read_observation_log
+from stack_info import stackinfo_from_stacked_images
 
 
 __version__ = "0.0.1"
@@ -146,18 +146,7 @@ def do_stack(
             str(stacked_info_path),
         )
 
-    # build a record of all files created in this stacking run for use later
-    stack_dict = {}
-    for filter_type, stacking_method in itertools.product(
-        filter_types, stacking_methods
-    ):
-        img_key = f"{filter_to_string(filter_type)}_{stacking_method}"
-        img_key_json = f"{filter_to_string(filter_type)}_{stacking_method}_info"
-        stack_dict[img_key] = stacking_outputs[(filter_type, stacking_method)][0]
-        stack_dict[img_key_json] = stacking_outputs[(filter_type, stacking_method)][1]
-
-    with open(stackinfo_output_path, "w") as f:
-        json.dump(stack_dict, f)
+    stackinfo_from_stacked_images(stackinfo_output_path, stacking_outputs)
 
 
 def main():
@@ -215,8 +204,8 @@ def main():
         obs_log=orbit_match,
         stacked_image_dir=stacked_image_dir,
         stackinfo_output_path=stackinfo_output_path,
-        do_coincidence_correction=False,
-        detector_scale=SwiftPixelResolution.data_mode,
+        do_coincidence_correction=True,
+        detector_scale=SwiftPixelResolution.event_mode,
     )
 
 

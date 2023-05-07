@@ -3,13 +3,15 @@
 import os
 import pathlib
 import sys
-import json
-import itertools
+
+# import json
+# import itertools
 import logging as log
 import numpy as np
-import pandas as pd
 
-from astropy.io import fits
+# import pandas as pd
+
+# from astropy.io import fits
 from astropy.time import Time
 
 from scipy.interpolate import interp1d, CubicSpline
@@ -22,6 +24,7 @@ from photutils.aperture import (
 )
 
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from typing import Dict
 
 import matplotlib.pyplot as plt
@@ -32,27 +35,17 @@ from astropy.visualization import (
 
 from read_swift_config import read_swift_config
 from swift_types import (
-    # SwiftData,
-    # SwiftObservationLog,
     SwiftFilter,
     filter_to_string,
     SwiftStackingMethod,
-    # SwiftPixelResolution,
     SwiftUVOTImage,
     SwiftStackedUVOTImage,
 )
 
-# from swift_observation_log import (
-#     read_observation_log,
-#     match_within_timeframe,
-# )
-from stacking import (
-    # stack_image_by_selection,
-    # write_stacked_image,
-    read_stacked_image,
-    # includes_uvv_and_uw1_filters,
-)
-from dataclasses import dataclass
+from solar_spectrum import read_solar_spectrum
+from effective_areas import read_effective_area
+from reddening_correction import reddening_correction, DustReddeningPercent
+from stack_info import stacked_images_from_stackinfo
 
 
 @dataclass
@@ -63,18 +56,6 @@ class AperturePhotometryResult:
     source_count_rate: float
     background_count: float
     background_count_rate: float
-
-
-@dataclass
-class FilterEffectiveArea:
-    lambdas: np.ndarray
-    responses: np.ndarray
-
-
-@dataclass
-class SolarSpectrum:
-    lambdas: np.ndarray
-    irradiances: np.ndarray
 
 
 __version__ = "0.0.1"
@@ -100,9 +81,9 @@ def process_args():
         default=None,
         help="filename containing stacking information",
     )
-    parser.add_argument(
-        "observation_log_file", nargs=1, help="Filename of observation log input"
-    )
+    # parser.add_argument(
+    #     "observation_log_file", nargs=1, help="Filename of observation log input"
+    # )
 
     args = parser.parse_args()
 
@@ -132,144 +113,59 @@ def show_fits_scaled(image_sum, image_median):
     plt.show()
 
 
-def read_effective_area(effective_area_path: pathlib.Path) -> FilterEffectiveArea:
-    # TODO: tag with astropy units, convert later?
-    filter_ea_data = fits.open(effective_area_path)[1].data  # type: ignore
-    ea_lambdas = (filter_ea_data["WAVE_MIN"] + filter_ea_data["WAVE_MAX"]) / 2
-    # wavelengths are given in angstroms: convert to nm
-    ea_lambdas = ea_lambdas / 10
-    ea_responses = filter_ea_data["SPECRESP"]
-
-    # handle some lambda values repeating (their corresponding responses are 0, which is wrong, so throw them out)
-    # Contstruct new list of unique lambdas, and the responses are now a list because we see some twice.
-    # The bad response values are 0.0, so we take the max between the 'good' value and this throwaway response value
-    new_lambdas = []
-    new_responses = []
-    for lmbda, r in zip(ea_lambdas, ea_responses):
-        if lmbda not in new_lambdas:
-            new_lambdas.append(lmbda)
-            new_responses.append([r])
-        else:
-            idx = new_lambdas.index(lmbda)
-            new_responses[idx].append(r)
-    new_responses = list(map(max, new_responses))
-
-    return FilterEffectiveArea(
-        lambdas=np.array(new_lambdas), responses=np.array(new_responses)
-    )
-
-
-def read_solar_spectrum(
-    solar_spectrum_path: pathlib.Path, solar_spectrum_time: Time
-) -> SolarSpectrum:
-    # TODO: find the nearest solar spectrum to the stacked image's mid exposure time
-
-    # get the solar spectrum for the given julian date
-    solar_spectrum_df = pd.read_csv(solar_spectrum_path)
-    solar_spectrum_df["time (Julian Date)"].map(lambda x: Time(x, format="jd"))
-    solar_mask = solar_spectrum_df["time (Julian Date)"] == np.round(
-        solar_spectrum_time.jd
-    )
-    solar_spectrum = solar_spectrum_df[solar_mask]
-    solar_lambdas = solar_spectrum["wavelength (nm)"]
-    solar_irradiances = solar_spectrum["irradiance (W/m^2/nm)"]
-
-    return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
-
-
-# TODO: rename this
-# Convolution of the solar spectrum with the filter response
-def mag_sb_flux_from_spec(
+# Convolution of the solar spectrum with a filter effective area
+def solar_count_rate_in_filter(
     solar_spectrum_path: pathlib.Path,
     solar_spectrum_time: Time,
     effective_area_path: pathlib.Path,
 ) -> float:
-    """use effective area and theoretical spectra
-    to calculate apparent magnitude
     """
+    use effective area and theoretical spectra to calculate apparent magnitude
+    """
+    # large enough for beta to converge on its proper value
+    num_interpolation_lambdas = 1000
 
-    # TODO: can we rewrite this in terms of np.convolve?
-    # TODO: find the nearest solar spectrum to the stacked image's mid exposure time
+    # read each file
+    solar_spectrum = read_solar_spectrum(solar_spectrum_path)
+    ea_data = read_effective_area(effective_area_path=effective_area_path)
 
-    solar_spectrum = read_solar_spectrum(solar_spectrum_path, solar_spectrum_time)
+    ea_lambdas = ea_data.lambdas
+    ea_responses = ea_data.responses
+
     solar_lambdas = solar_spectrum.lambdas
     solar_irradiances = solar_spectrum.irradiances
-    # print(solar_lambdas)
     if len(solar_lambdas) == 0:
         print(f"Could not load solar spectrum data for {solar_spectrum_time}!")
         return 0.0
 
-    ea_data = read_effective_area(effective_area_path=effective_area_path)
-    ea_lambdas = ea_data.lambdas
-    ea_responses = ea_data.responses
-    # print(ea_lambdas, ea_responses)
-
-    # interpolate ea to cater for spec
-    ea_response_interpolated = interp1d(
-        ea_lambdas, ea_responses, fill_value="extrapolate"  # type: ignore
+    # pick new set of lambdas to do the convolution over - the spectrum's range of wavelengths is much larger than the filter, so
+    # the filter's wavelengths will determine the bounds of the integration
+    lambdas, dlambda = np.linspace(
+        np.min(ea_lambdas),
+        np.max(ea_lambdas),
+        endpoint=True,
+        num=num_interpolation_lambdas,
+        retstep=True,
     )
-    # ea_response_interpolated = CubicSpline(ea_lambdas, ea_responses)
-    responses_on_solar_lambdas = ea_response_interpolated(solar_lambdas)
-    # print(responses_on_solar_lambdas)
 
-    # decide integration bounds
-    wave_min = max([np.min(solar_lambdas), np.min(ea_lambdas)])
-    wave_max = min([np.max(solar_lambdas), np.max(ea_lambdas)])
+    # interpolate solar spectrum on new lambdas
+    solar_irradiances_interpolation = interp1d(solar_lambdas, solar_irradiances)
+    solar_irradiances_on_filter_lambdas = solar_irradiances_interpolation(lambdas)
 
+    # interpolate responses on new lambdas
+    ea_response_interpolation = interp1d(ea_lambdas, ea_responses)
+    ea_responses_on_lambdas = ea_response_interpolation(lambdas)
+
+    # assemble columns of [lambdas, irradiances, responses]
     spec = np.c_[
-        np.c_[solar_lambdas, solar_irradiances.T], responses_on_solar_lambdas.T
+        np.c_[lambdas, solar_irradiances_on_filter_lambdas.T], ea_responses_on_lambdas.T
     ]
-    spec_reduce = spec[spec[:, 0] > wave_min, :]
-    spec_reduce = spec_reduce[spec_reduce[:, 0] < wave_max, :]
-    spec = spec_reduce[spec_reduce[:, 2] > 0, :]
 
-    # integral
-    delta_wave = spec[1, 0] - spec[0, 0]
-    cr = 0.0
-    for i in range(len(spec)):
-        cr += (
-            spec[i, 0] * spec[i, 1] * spec[i, 2] * delta_wave * 1e7 * 5.034116651114543
-        )  # 10^8 for Kurucz
+    cr = (
+        np.sum(spec[:, 0] * spec[:, 1] * spec[:, 2]) * dlambda * 1e7 * 5.034116651114543
+    )
 
-    # cr to mag
     return cr
-
-
-# TODO:
-def reddening_correction(
-    effective_area_uw1_path: pathlib.Path,
-    effective_area_uvv_path: pathlib.Path,
-    dust_redness: float,
-):
-    """get the correction factor of beta
-    r: %/100nm
-    """
-
-    ea_data_uw1 = read_effective_area(effective_area_path=effective_area_uw1_path)
-    uw1_lambdas = ea_data_uw1.lambdas
-    uw1_responses = ea_data_uw1.responses
-    ea_data_uvv = read_effective_area(effective_area_path=effective_area_uvv_path)
-    uvv_lambdas = ea_data_uvv.lambdas
-    uvv_responses = ea_data_uvv.responses
-
-    wave_uw1 = 0
-    ea_uw1 = 0
-    wave_v = 0
-    ea_v = 0
-
-    delta_wave_uw1 = uw1_lambdas[1] - uw1_lambdas[0]
-    delta_wave_v = uvv_lambdas[1] - uvv_lambdas[0]
-    for i in range(len(uw1_lambdas)):
-        wave_uw1 += uw1_lambdas[i] * uw1_responses[i] * delta_wave_uw1
-        ea_uw1 += uw1_responses[i] * delta_wave_uw1
-    wave_uw1 = wave_uw1 / ea_uw1
-    for i in range(len(uvv_lambdas)):
-        wave_v += uvv_lambdas[i] * uvv_responses[i] * delta_wave_v
-        ea_v += uvv_responses[i] * delta_wave_v
-    wave_v = wave_v / ea_v
-    # get reddening correction factor
-    middle_factor = (wave_v - wave_uw1) * dust_redness / 200000
-    return (1 - middle_factor) / (1 + middle_factor)
 
 
 def OH_flux_from_count_rate(
@@ -279,37 +175,40 @@ def OH_flux_from_count_rate(
     effective_area_uvv_path: pathlib.Path,
     result_uw1: AperturePhotometryResult,
     result_uvv: AperturePhotometryResult,
-    dust_redness,
+    dust_redness: DustReddeningPercent,
 ) -> float:
     alpha = 2.0
 
     print("---------")
 
-    sun_count_rate_in_uw1 = mag_sb_flux_from_spec(
+    solar_count_rate_in_uw1 = solar_count_rate_in_filter(
         solar_spectrum_path=solar_spectrum_path,
         solar_spectrum_time=solar_spectrum_time,
         effective_area_path=effective_area_uw1_path,
     )
-    sun_count_rate_in_uvv = mag_sb_flux_from_spec(
+    solar_count_rate_in_uvv = solar_count_rate_in_filter(
         solar_spectrum_path=solar_spectrum_path,
         solar_spectrum_time=solar_spectrum_time,
         effective_area_path=effective_area_uvv_path,
     )
 
-    print(f"solar count rate in uw1: {sun_count_rate_in_uw1}")
-    print(f"solar count rate in uvv: {sun_count_rate_in_uvv}")
-    beta = sun_count_rate_in_uw1 / sun_count_rate_in_uvv
+    # print(f"solar count rate in uw1: {sun_count_rate_in_uw1}")
+    # print(f"solar count rate in uvv: {sun_count_rate_in_uvv}")
+    beta_pre_reddening = solar_count_rate_in_uw1 / solar_count_rate_in_uvv
     beta = (
         reddening_correction(
-            effective_area_uw1_path, effective_area_uvv_path, dust_redness
+            effective_area_uw1_path=effective_area_uw1_path,
+            effective_area_uvv_path=effective_area_uvv_path,
+            dust_redness=dust_redness,
         )
-        * beta
+        * beta_pre_reddening
     )
     print(f"Beta: {beta}")
 
     oh_flux = alpha * (result_uw1.net_count_rate - beta * result_uvv.net_count_rate)
     print(f"OH flux: {oh_flux}")
     print("---------")
+    print("")
 
     # TODO: cr_to_flux.py -> error_prop
     # propogate error for beta * count_rate_uvv
@@ -325,10 +224,11 @@ def OH_flux_from_count_rate1(
     effective_area_uvv_path: pathlib.Path,
     result_uw1: AperturePhotometryResult,
     result_uvv: AperturePhotometryResult,
-    dust_redness,
+    dust_redness: DustReddeningPercent,
 ) -> float:
     """get OH flux from OH cr"""
-    beta = 0.09276191501510327
+    # beta = 0.09276191501510327
+    beta = 0.1043724648186691
     beta = (
         reddening_correction(
             effective_area_uw1_path=effective_area_uw1_path,
@@ -428,8 +328,8 @@ def magnitude_from_count_rate(count_rate, filter_type) -> float:
 
 
 def determine_background(image_data: SwiftUVOTImage) -> float:
-    inner_radius = 13
-    outer_radius = 24
+    inner_radius = 14
+    outer_radius = 30
 
     image_center_row = np.ceil(image_data.shape[0] / 2)
     image_center_col = np.ceil(image_data.shape[1] / 2)
@@ -461,7 +361,7 @@ def do_aperture_photometry(
     print(f"Aperture center: {image_center_row}, {image_center_col}")
 
     # aperture radius: hard-coded
-    comet_aperture_radius = 11
+    comet_aperture_radius = 14
     comet_aperture = CircularAperture(
         (image_center_col, image_center_row), r=comet_aperture_radius
     )
@@ -506,31 +406,6 @@ def do_aperture_photometry(
     )
 
 
-def stacked_images_from_stackinfo(stackinfo_path: pathlib.Path) -> Dict:
-    with open(stackinfo_path, "r") as f:
-        stackinfo_dict = json.load(f)
-
-    image_dict = {}
-    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
-    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
-
-    for filter_type, stacking_method in itertools.product(
-        filter_types, stacking_methods
-    ):
-        # this is the key format of the stackinfo dict
-        img_key = f"{filter_to_string(filter_type)}_{stacking_method}"
-        img_key_json = f"{filter_to_string(filter_type)}_{stacking_method}_info"
-        # get paths of image and its json info
-        sip = pathlib.Path(stackinfo_dict[img_key])
-        siip = pathlib.Path(stackinfo_dict[img_key_json])
-        # reconstruct the stacked images from the FITS and JSON info
-        image_dict[(filter_type, stacking_method)] = read_stacked_image(
-            stacked_image_path=sip, stacked_image_info_path=siip
-        )
-
-    return image_dict
-
-
 def main():
     args = process_args()
 
@@ -544,13 +419,12 @@ def main():
     else:
         stackinfo_path = args.stackinfo
 
+    print(f"Loading stacked image information from {stackinfo_path}")
     stacked_images = stacked_images_from_stackinfo(stackinfo_path=stackinfo_path)
 
-    # collect aperture results for uw1 and uvv filters
+    # collect aperture results for uw1 and uvv filters from the stacked images
     aperture_results = {}
-    # filter_types = [SwiftFilter.uw1, SwiftFilter.uvv]
-    filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
-    for filter_type in filter_types:
+    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
         summed_image = stacked_images[(filter_type, SwiftStackingMethod.summation)]
         median_image = stacked_images[(filter_type, SwiftStackingMethod.median)]
         # show_fits_scaled(summed_image.stacked_image, median_image.stacked_image)
@@ -558,24 +432,25 @@ def main():
             summed_image, median_image
         )
 
-    dust_redness = 0.1
+    dust_redness = DustReddeningPercent(10)
     # calculate OH flux based on the aperture results in uw1 and uvv filters
     print("Calculating OH flux ...")
-    # OH_flux_from_count_rate(
-    #     solar_spectrum_path=swift_config["solar_spectrum_path"],
-    #     solar_spectrum_time=Time("2457753", format="jd"),
-    #     # solar_spectrum_time=Time(
-    #     #     stacked_images[
-    #     #         (SwiftFilter.uw1, SwiftStackingMethod.summation)
-    #     #     ].observation_mid_time,
-    #     #     format="fits",
-    #     # ),
-    #     effective_area_uw1_path=swift_config["effective_area_uw1_path"],
-    #     effective_area_uvv_path=swift_config["effective_area_uvv_path"],
-    #     result_uw1=aperture_results[SwiftFilter.uw1],
-    #     result_uvv=aperture_results[SwiftFilter.uvv],
-    #     dust_redness=dust_redness,
-    # )
+    OH_flux_from_count_rate(
+        solar_spectrum_path=swift_config["solar_spectrum_path"],
+        # solar_spectrum_time=Time("2457422", format="jd"),
+        # solar_spectrum_time=Time("2016-02-01"),
+        solar_spectrum_time=Time(
+            stacked_images[
+                (SwiftFilter.uw1, SwiftStackingMethod.summation)
+            ].observation_mid_time,
+            format="fits",
+        ),
+        effective_area_uw1_path=swift_config["effective_area_uw1_path"],
+        effective_area_uvv_path=swift_config["effective_area_uvv_path"],
+        result_uw1=aperture_results[SwiftFilter.uw1],
+        result_uvv=aperture_results[SwiftFilter.uvv],
+        dust_redness=dust_redness,
+    )
     OH_flux_from_count_rate1(
         effective_area_uw1_path=swift_config["effective_area_uw1_path"],
         effective_area_uvv_path=swift_config["effective_area_uvv_path"],
