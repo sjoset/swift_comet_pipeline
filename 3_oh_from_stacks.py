@@ -3,27 +3,25 @@
 import os
 import pathlib
 import sys
+import numpy as np
 import logging as log
 
 from astropy.time import Time
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
-
 from astropy.visualization import (
     ZScaleInterval,
 )
+from typing import Tuple
 
 from read_swift_config import read_swift_config
-from swift_types import (
-    SwiftFilter,
-    SwiftStackingMethod,
-)
+from swift_types import SwiftFilter, SwiftStackingMethod, SwiftUVOTImage
 from reddening_correction import DustReddeningPercent
 from stack_info import stacked_images_from_stackinfo
 from fluorescence_OH import flux_OH_to_num_OH, read_gfactor_1au
 from flux_OH import OH_flux_from_count_rate, OH_flux_from_count_rate_fixed_beta
 from aperture_photometry import do_aperture_photometry
-
+from vectorial_model import num_OH_to_Q
 
 __version__ = "0.0.1"
 
@@ -43,10 +41,10 @@ def process_args():
         "--config", "-c", default="config.yaml", help="YAML configuration file to use"
     )
     parser.add_argument(
-        "--stackinfo",
-        "-s",
+        "stackinfo",
         default=None,
-        help="filename containing stacking information",
+        nargs="?",
+        help="JSON file containing stacking information",
     )
 
     args = parser.parse_args()
@@ -77,6 +75,70 @@ def show_fits_scaled(image_sum, image_median):
     plt.show()
 
 
+def pad_to_match_sizes(
+    uw1: SwiftUVOTImage, uvv: SwiftUVOTImage
+) -> Tuple[SwiftUVOTImage, SwiftUVOTImage]:
+    # pads the edges of the smaller image so that the two images share dimensions, allowing the dust-subtraction uw1 - beta * uvv to be visualized
+    cols_to_add = round((uw1.shape[1] - uvv.shape[1]) / 2)
+    rows_to_add = round((uw1.shape[0] - uvv.shape[0]) / 2)
+
+    if cols_to_add > 0:
+        # uw1 is larger, pad uvv to be larger
+        uvv = np.pad(
+            uvv,
+            ((0, 0), (cols_to_add, cols_to_add)),
+            mode="constant",
+            constant_values=0.0,
+        )
+    else:
+        cols_to_add = np.abs(cols_to_add)
+        uw1 = np.pad(
+            uw1,
+            ((0, 0), (cols_to_add, cols_to_add)),
+            mode="constant",
+            constant_values=0.0,
+        )
+
+    if rows_to_add > 0:
+        # uw1 is larger, pad uvv to be larger
+        uvv = np.pad(
+            uvv,
+            ((rows_to_add, rows_to_add), (0, 0)),
+            mode="constant",
+            constant_values=0.0,
+        )
+    else:
+        rows_to_add = np.abs(rows_to_add)
+        uw1 = np.pad(
+            uw1,
+            ((rows_to_add, rows_to_add), (0, 0)),
+            mode="constant",
+            constant_values=0.0,
+        )
+
+    return (uw1, uvv)
+
+
+def show_fits_subtracted(uw1_stack, uvv_stack, beta):
+    uw1 = uw1_stack.stacked_image
+    uvv = uvv_stack.stacked_image
+
+    uw1, uvv = pad_to_match_sizes(uw1, uvv)
+    dust_subtracted = uw1 - beta * uvv
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 1, 1)
+
+    zscale = ZScaleInterval()
+    vmin, vmax = zscale.get_limits(dust_subtracted)
+
+    im1 = ax1.imshow(dust_subtracted, vmin=vmin, vmax=vmax)
+    # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
+    fig.colorbar(im1)
+
+    plt.show()
+
+
 def main():
     args = process_args()
 
@@ -86,6 +148,7 @@ def main():
         return 1
 
     if args.stackinfo is None:
+        print("Stack info file not specified, trying default filename stack.json ...")
         stackinfo_path = pathlib.Path("stack.json")
     else:
         stackinfo_path = args.stackinfo
@@ -130,7 +193,6 @@ def main():
         dust_redness=dust_redness,
     )
 
-    print("\nCalculating total number of OH molecules based on flux ...")
     fluorescence_data = read_gfactor_1au(swift_config["oh_fluorescence_path"])
     img = stacked_images[(SwiftFilter.uw1, SwiftStackingMethod.summation)]
     num_OH_1 = flux_OH_to_num_OH(
@@ -140,7 +202,6 @@ def main():
         delta_au=img.delta_au,
         fluorescence_data=fluorescence_data,
     )
-    print(num_OH_1)
     num_OH_2 = flux_OH_to_num_OH(
         flux_OH=flux_OH_2,
         helio_r_au=img.helio_r_au,
@@ -148,7 +209,35 @@ def main():
         delta_au=img.delta_au,
         fluorescence_data=fluorescence_data,
     )
-    print(num_OH_2)
+    print("")
+    print(f"Total number of OH, beta from solar spectrum method: {num_OH_1}")
+    print(f"Total number of OH, fixed beta method: {num_OH_2}")
+
+    Q1 = num_OH_to_Q(
+        helio_r=img.helio_r_au,
+        num_OH=num_OH_1,
+        vectorial_model_path=swift_config["vectorial_model_path"],
+    )
+    Q2 = num_OH_to_Q(
+        helio_r=img.helio_r_au,
+        num_OH=num_OH_2,
+        vectorial_model_path=swift_config["vectorial_model_path"],
+    )
+    print("")
+    print(f"Heliocentric comet distance: {img.helio_r_au}")
+    print(f"Q(H2O) from N(OH), first method: {Q1} mol/s")
+    print(f"Q(H2O) from N(OH), second method: {Q2} mol/s")
+
+    show_fits_subtracted(
+        stacked_images[(SwiftFilter.uw1, SwiftStackingMethod.summation)],
+        stacked_images[(SwiftFilter.uvv, SwiftStackingMethod.summation)],
+        beta=0.101483,
+    )
+    show_fits_subtracted(
+        stacked_images[(SwiftFilter.uw1, SwiftStackingMethod.median)],
+        stacked_images[(SwiftFilter.uvv, SwiftStackingMethod.median)],
+        beta=0.101483,
+    )
 
 
 if __name__ == "__main__":

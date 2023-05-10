@@ -4,8 +4,6 @@ import pathlib
 import json
 import itertools
 
-
-from dataclasses import dataclass
 from typing import Dict
 
 from swift_types import (

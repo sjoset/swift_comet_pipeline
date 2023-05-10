@@ -7,9 +7,6 @@ import itertools
 import logging as log
 import matplotlib.pyplot as plt
 
-# import astropy.units as u
-# from astropy.time import Time
-
 from astropy.visualization import (
     ZScaleInterval,
 )
@@ -30,7 +27,6 @@ from stacking import (
     stack_image_by_selection,
     write_stacked_image,
     includes_uvv_and_uw1_filters,
-    # get_stacked_image_base_str,
 )
 from swift_observation_log import read_observation_log
 from stack_info import stackinfo_from_stacked_images
@@ -77,6 +73,9 @@ def process_args():
     )
     parser.add_argument(
         "observation_log_file", nargs=1, help="Filename of observation log input"
+    )
+    parser.add_argument(
+        "stacked_image_dir", nargs=1, help="directory to store stacked images and info"
     )
     parser.add_argument("orbit_start", nargs=1, help="first orbit id to stack")
     parser.add_argument("orbit_end", nargs=1, help="last orbit id to stack")
@@ -133,7 +132,7 @@ def do_stack(
         )
 
         if stacked_image is None:
-            print("Stacking image failed :( ")
+            print("Stacking image failed, skipping... ")
             continue
 
         stacked_path, stacked_info_path = write_stacked_image(
@@ -157,17 +156,18 @@ def main():
         print("Error reading config file {args.config}, exiting.")
         return 1
 
+    stacked_image_dir = pathlib.Path(args.stacked_image_dir[0])
+
     if args.stackinfo is None:
-        stackinfo_output_path = pathlib.Path("stack.json")
+        stackinfo_output_path = stacked_image_dir / pathlib.Path("stack.json")
     else:
-        stackinfo_output_path = args.stackinfo
+        stackinfo_output_path = stacked_image_dir / pathlib.Path(args.stackinfo)
 
     swift_data = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
-    # obs_log = pd.read_csv(args.observation_log_file[0])
+
     obs_log = read_observation_log(args.observation_log_file[0])
-    stacked_image_dir = pathlib.Path(swift_config["stacked_image_dir"])
 
     # orbit_id = SwiftOrbitID(args.orbit[0])
     # orbit_match = obs_log[obs_log["ORBIT_ID"] == orbit_id]

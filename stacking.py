@@ -281,7 +281,7 @@ def includes_uvv_and_uw1_filters(
     has_uw1_filter = obs_log[obs_log["FILTER"] == SwiftFilter.uw1]
     has_uw1_set = set(has_uw1_filter["ORBIT_ID"])
 
-    has_both = len(has_uvv_set & has_uw1_set) > 0
+    has_both = len(has_uvv_set) > 0 and len(has_uw1_set) > 0
 
     contributing_orbits = has_uvv_set
     contributing_orbits.update(has_uw1_set)
