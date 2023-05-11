@@ -101,10 +101,15 @@ def do_stack(
     do_coincidence_correction: bool,
     detector_scale: SwiftPixelResolution,
 ) -> None:
+    # create the directory if it doesn't exist
+    stacked_image_dir.mkdir(parents=True, exist_ok=True)
+
     # test if there are uvv and uw1 images in the data set
     (stackable, _) = includes_uvv_and_uw1_filters(obs_log=obs_log)
     if not stackable:
-        print("The data does not have data in both filters!")
+        print(
+            "The data does not have data in both filters! If this was not intentional, choose a larger time window."
+        )
 
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
@@ -169,16 +174,6 @@ def main():
 
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    # orbit_id = SwiftOrbitID(args.orbit[0])
-    # orbit_match = obs_log[obs_log["ORBIT_ID"] == orbit_id]
-    # do_stack(
-    #     swift_data=swift_data,
-    #     obs_log=orbit_match,
-    #     stacked_image_dir=stacked_image_dir,
-    #     do_coincidence_correction=False,
-    #     detector_scale=SwiftPixelResolution.data_mode,
-    # )
-
     # start_time = Time("2016-03-14T00:00:00.000")
     # # end_time = start_time + (52 * u.week)
     # end_time = start_time + (8 * u.week)
@@ -194,9 +189,6 @@ def main():
     mask_start = obs_log["orbit_ints"] >= orbit_start
     mask_end = obs_log["orbit_ints"] <= orbit_end
 
-    # orbit_match = obs_log[
-    #     obs_log["orbit_ints"] >= orbit_start & obs_log["orbit_ints"] <= orbit_end
-    # ]
     orbit_match = obs_log[mask_start & mask_end]
 
     do_stack(
@@ -205,7 +197,7 @@ def main():
         stacked_image_dir=stacked_image_dir,
         stackinfo_output_path=stackinfo_output_path,
         do_coincidence_correction=True,
-        detector_scale=SwiftPixelResolution.event_mode,
+        detector_scale=SwiftPixelResolution.data_mode,
     )
 
 

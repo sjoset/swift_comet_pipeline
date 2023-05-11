@@ -68,7 +68,9 @@ def build_observation_log(
     processed_filname_list = []
 
     for k, obsid in enumerate(obsids):
-        print(f"Processing images for observation ID {obsid} ({k+1}/{len(obsids)}) ...")
+        print(
+            f"Building FITS image list for observation ID {obsid} ({k+1}/{len(obsids)}) ..."
+        )
         # get list of image file names from all filters that match the selected image type (sk, ex, ..)
         image_path_list = [
             swift_data.get_swift_uvot_image_paths(obsid=obsid, filter_type=filter_type)
@@ -138,10 +140,10 @@ def build_observation_log(
         print(
             f"Querying JPL Horizons for {obs_log['OBS_ID'][k]} extension {obs_log['EXTENSION'][k]} ({k+1}/{obs_log.shape[0]})"
         )
-        horizon_response = Horizons(
+        horizons_response = Horizons(
             id=horizon_id, location="@swift", epochs=mid_time.jd, id_type="smallbody"
         )
-        eph = horizon_response.ephemerides()  # type: ignore
+        eph = horizons_response.ephemerides()  # type: ignore
         # append this row of information to our horizon dataframe
         horizon_dataframe.loc[len(horizon_dataframe.index)] = [
             eph[x][0] for x in ephemeris_info.keys()

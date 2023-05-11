@@ -21,7 +21,7 @@ from swift_types import (
     SwiftData,
     SwiftObservationLog,
     SwiftFilter,
-    filter_to_string,
+    filter_to_file_string,
 )
 from swift_observation_log import (
     # match_by_orbit_ids_and_filters,
@@ -64,19 +64,42 @@ def process_args():
     return args
 
 
-def mark_comet_centers(swift_data: SwiftData, obs_log: SwiftObservationLog) -> None:
+def mark_comet_centers(
+    swift_data: SwiftData, obs_log: SwiftObservationLog, image_save_dir: pathlib.Path
+) -> None:
     plt.rcParams["figure.figsize"] = (15, 15)
+
+    # directories to store the uw1 and uvv images: image_save_dir/[filter]/
+    dir_by_filter = {
+        SwiftFilter.uw1: image_save_dir
+        / pathlib.Path(filter_to_file_string(SwiftFilter.uw1)),
+        SwiftFilter.uvv: image_save_dir
+        / pathlib.Path(filter_to_file_string(SwiftFilter.uvv)),
+    }
+    # create directories we will need if they don't exist
+    for fdir in dir_by_filter.values():
+        fdir.mkdir(parents=True, exist_ok=True)
+
+    num_to_process = len(obs_log.index)
+    num_processed = 0
+
+    # for every entry in the observation log,
     for _, row in obs_log.iterrows():
+        print(
+            f"Processing image {num_processed}/{num_to_process} ({num_processed*100.0/num_to_process:03.1f}%) ...\r"
+        )
         obsid = row["OBS_ID"]
         extension = row["EXTENSION"]
         px = round(float(row["PX"]))
         py = round(float(row["PY"]))
-        filter_str = filter_to_string(row["FILTER"])
+        filter_str = filter_to_file_string(row["FILTER"])  # type: ignore
 
+        # ask where the raw swift data FITS file is and read it
         image_path = swift_data.get_uvot_image_directory(obsid=obsid) / row["FITS_FILENAME"]  # type: ignore
         image_data = fits.getdata(image_path, ext=row["EXTENSION"])
 
-        output_image_path = pathlib.Path(f"{obsid}_{extension}_{filter_str}.png")
+        output_image_name = pathlib.Path(f"{obsid}_{extension}_{filter_str}.png")
+        output_image_path = dir_by_filter[row["FILTER"]] / output_image_name  # type: ignore
 
         fig = plt.figure()
         ax1 = fig.add_subplot(1, 1, 1)
@@ -90,12 +113,15 @@ def mark_comet_centers(swift_data: SwiftData, obs_log: SwiftObservationLog) -> N
         plt.axvline(px, color="w", alpha=0.3)
         plt.axhline(py, color="w", alpha=0.3)
 
-        ax1.set_title("Catalina")
+        ax1.set_title("C/2013US10")
         ax1.set_xlabel(f"{row['MID_TIME']}")
         ax1.set_ylabel(f"{row['FITS_FILENAME']}")
 
         plt.savefig(output_image_path)
         plt.close()
+        num_processed += 1
+
+    print("")
 
 
 def main():
@@ -112,18 +138,24 @@ def main():
 
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    start_time = Time("2016-03-14T00:00:00.000")
-    end_time = start_time + (52 * u.week)
+    image_save_dir = pathlib.Path("centers")
+    # start_time = Time("2016-03-14T00:00:00.000")
+    # end_time = start_time + (4 * u.week)  # type: ignore
 
+    # we only care about uw1 and uvv
     for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
-        print(f"Marking centers for filter {filter_to_string(filter_type)} ...")
-        ml = match_within_timeframe(
-            obs_log=obs_log, start_time=start_time, end_time=end_time
-        )
-        filter_mask = ml["FILTER"] == filter_type
-        ml = ml[filter_mask]
+        print(f"Marking centers for filter {filter_to_file_string(filter_type)} ...")
+        # ml = match_within_timeframe(
+        #     obs_log=obs_log, start_time=start_time, end_time=end_time
+        # )
+        filter_mask = obs_log["FILTER"] == filter_type
+        ml = obs_log[filter_mask]
+        # filter_mask = ml["FILTER"] == filter_type
+        # ml = ml[filter_mask]
 
-        mark_comet_centers(swift_data, ml)
+        mark_comet_centers(
+            swift_data=swift_data, obs_log=ml, image_save_dir=image_save_dir
+        )
 
 
 if __name__ == "__main__":

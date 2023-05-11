@@ -9,7 +9,7 @@ import logging as log
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-from swift_data import SwiftData
+from swift_types import SwiftData
 from read_swift_config import read_swift_config
 from swift_observation_log import build_observation_log
 
@@ -66,18 +66,6 @@ def main():
     sdd = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
-
-    # # TODO: remove this small dataset after testing
-    # small_dataset = False
-    #
-    # if small_dataset:
-    #     obsid_strings = ["00020405001", "00020405002", "00020405003", "00034318005"]
-    #     obsids = list(map(lambda x: SwiftObservationID(x), obsid_strings))
-    #     df = observation_log(swift_data=sdd, obsids=obsids, horizon_id=horizon_id)
-    # else:
-    #     df = observation_log(
-    #         swift_data=sdd, obsids=sdd.get_all_observation_ids(), horizon_id=horizon_id
-    #     )
 
     df = build_observation_log(
         swift_data=sdd, obsids=sdd.get_all_observation_ids(), horizon_id=horizon_id

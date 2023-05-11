@@ -225,8 +225,8 @@ def main():
     )
     print("")
     print(f"Heliocentric comet distance: {img.helio_r_au}")
-    print(f"Q(H2O) from N(OH), first method: {Q1} mol/s")
-    print(f"Q(H2O) from N(OH), second method: {Q2} mol/s")
+    print(f"Q(H2O) from N(OH), first method: {Q1} mol/s at {img.observation_mid_time}")
+    print(f"Q(H2O) from N(OH), second method: {Q2} mol/s at {img.observation_mid_time}")
 
     show_fits_subtracted(
         stacked_images[(SwiftFilter.uw1, SwiftStackingMethod.summation)],

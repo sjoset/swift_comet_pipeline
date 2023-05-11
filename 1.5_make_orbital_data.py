@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 
+import sys
 import os
 import pathlib
-import sys
+import numpy as np
 import logging as log
-import astropy.units as u
 
-from astropy.time import Time
 from argparse import ArgumentParser
+from astroquery.jplhorizons import Horizons
 
-from swift_types import SwiftObservationLog
 from read_swift_config import read_swift_config
-from swift_observation_log import (
-    read_observation_log,
-    match_within_timeframe,
-)
-from stacking import includes_uvv_and_uw1_filters
+from swift_observation_log import read_observation_log
 
 
 __version__ = "0.0.1"
@@ -52,28 +47,6 @@ def process_args():
     return args
 
 
-def test_timeframe_matching(obs_log: SwiftObservationLog) -> None:
-    start_time = Time("2014-12-19T00:27:21.000")
-    # end_time = Time("2015-01-01T00:00:00.000")
-    end_time = start_time + (8 * u.week)
-
-    print(f"Matching observations between {start_time} through {end_time}:")
-    ml = match_within_timeframe(
-        obs_log=obs_log, start_time=start_time, end_time=end_time
-    )
-
-    ts = ml["MID_TIME"].values
-    ts.sort()
-
-    (stackable, which_orbit_ids) = includes_uvv_and_uw1_filters(obs_log=ml)
-    if stackable:
-        print("In the given time frame, these orbit ids have relevant data:")
-        for orbit_id in sorted(which_orbit_ids):
-            print(f"\t{orbit_id}")
-    else:
-        print("The time frame given does not have data in both filters!")
-
-
 def main():
     args = process_args()
 
@@ -82,9 +55,22 @@ def main():
         print("Error reading config file {args.config}, exiting.")
         return 1
 
+    horizon_id = swift_config["jpl_horizons_id"]
+
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    test_timeframe_matching(obs_log=obs_log)
+    time_start = np.min(obs_log["MID_TIME"])
+    time_stop = np.max(obs_log["MID_TIME"])
+
+    epochs = {"start": time_start.iso, "stop": time_stop.iso, "step": "10d"}
+
+    horizons_response = Horizons(
+        id="C/2013 US10", location="@Geocenter", id_type="smallbody", epochs=epochs
+    )
+    vectors = horizons_response.vectors()
+
+    df = vectors.to_pandas()
+    df.to_csv("horizons_orbital_data.csv")
 
 
 if __name__ == "__main__":
