@@ -125,7 +125,7 @@ def main():
         map(lambda x: x.to_datetime(), obs_log["MID_TIME"].values)
     )
     obs_log.index = obs_log["obs_datetime_mid"]
-    obs_log.groupby(pd.Grouper(freq="1M"))
+    # obs_log.groupby(pd.Grouper(freq="1M"))
 
     total_orbits = []
     total_times = []

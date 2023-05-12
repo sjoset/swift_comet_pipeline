@@ -5,6 +5,7 @@ import os
 import pathlib
 import numpy as np
 import logging as log
+import astropy.units as u
 
 from argparse import ArgumentParser
 from astroquery.jplhorizons import Horizons
@@ -59,15 +60,21 @@ def main():
 
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    time_start = np.min(obs_log["MID_TIME"])
-    time_stop = np.max(obs_log["MID_TIME"])
+    # take a time range of a year before the first observation to a year after the last
+    time_start = np.min(obs_log["MID_TIME"]) - 1 * u.year  # type: ignore
+    time_stop = np.max(obs_log["MID_TIME"]) + 1 * u.year  # type: ignore
 
-    epochs = {"start": time_start.iso, "stop": time_stop.iso, "step": "10d"}
+    epochs = {"start": time_start.iso, "stop": time_stop.iso, "step": "1d"}
 
+    # location=None defaults to solar system barycenter
     horizons_response = Horizons(
-        id="C/2013 US10", location="@Geocenter", id_type="smallbody", epochs=epochs
+        id=horizon_id, location=None, id_type="smallbody", epochs=epochs
     )
-    vectors = horizons_response.vectors()
+
+    # Earth
+    # horizons_response = Horizons(id=399, location=None, epochs=epochs)
+
+    vectors = horizons_response.vectors()  # type: ignore
 
     df = vectors.to_pandas()
     df.to_csv("horizons_orbital_data.csv")
