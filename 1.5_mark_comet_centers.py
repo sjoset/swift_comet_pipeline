@@ -4,7 +4,8 @@ import os
 import pathlib
 import sys
 import logging as log
-import astropy.units as u
+
+# import astropy.units as u
 
 # import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,7 +14,8 @@ from astropy.visualization import (
     ZScaleInterval,
 )
 from astropy.io import fits
-from astropy.time import Time
+
+# from astropy.time import Time
 from argparse import ArgumentParser
 
 from read_swift_config import read_swift_config
@@ -23,10 +25,10 @@ from swift_types import (
     SwiftFilter,
     filter_to_file_string,
 )
-from swift_observation_log import (
+from observation_log import (
     # match_by_orbit_ids_and_filters,
     read_observation_log,
-    match_within_timeframe,
+    # match_within_timeframe,
 )
 
 
@@ -67,6 +69,11 @@ def process_args():
 def mark_comet_centers(
     swift_data: SwiftData, obs_log: SwiftObservationLog, image_save_dir: pathlib.Path
 ) -> None:
+    """
+    Takes an observation log, finds images in uvv and uw1 filters, and outputs pngs images of each
+    observation annotated with the center of the comet marked.
+    Output images are placed in image_save_dir/[filter]/
+    """
     plt.rcParams["figure.figsize"] = (15, 15)
 
     # directories to store the uw1 and uvv images: image_save_dir/[filter]/

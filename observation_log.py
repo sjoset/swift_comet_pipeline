@@ -16,11 +16,9 @@ from swift_types import (
     SwiftOrbitID,
     SwiftFilter,
     SwiftObservationLog,
-    # filter_to_obs_string,
     swift_observation_id_from_int,
     obs_string_to_filter,
     swift_orbit_id_from_obsid,
-    # file_string_to_filter,
 )
 
 
@@ -34,7 +32,7 @@ __all__ = [
 
 
 def build_observation_log(
-    swift_data: SwiftData, obsids: List[SwiftObservationID], horizon_id: str
+    swift_data: SwiftData, obsids: List[SwiftObservationID], horizons_id: str
 ) -> Optional[SwiftObservationLog]:
     """
     Takes a list of observation ids and looks through all images that:
@@ -141,7 +139,7 @@ def build_observation_log(
             f"Querying JPL Horizons for {obs_log['OBS_ID'][k]} extension {obs_log['EXTENSION'][k]} ({k+1}/{obs_log.shape[0]})"
         )
         horizons_response = Horizons(
-            id=horizon_id, location="@swift", epochs=mid_time.jd, id_type="smallbody"
+            id=horizons_id, location="@swift", epochs=mid_time.jd, id_type="smallbody"
         )
         eph = horizons_response.ephemerides()  # type: ignore
         # append this row of information to our horizon dataframe

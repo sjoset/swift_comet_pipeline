@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 from astroquery.jplhorizons import Horizons
 
 from read_swift_config import read_swift_config
-from swift_observation_log import read_observation_log
+from observation_log import read_observation_log
 
 
 __version__ = "0.0.1"
@@ -34,6 +34,12 @@ def process_args():
     parser.add_argument(
         "observation_log_file", nargs=1, help="Filename of observation log input"
     )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="horizons_orbital_data.csv",
+        help="Filename to store data (csv format)",
+    )
 
     args = parser.parse_args()
 
@@ -49,6 +55,10 @@ def process_args():
 
 
 def main():
+    """
+    Takes an observation log and outputs the orbital data vectors for the object by querying jplhorizons, covering
+    a year before the first observation and a year after the last observation
+    """
     args = process_args()
 
     swift_config = read_swift_config(pathlib.Path(args.config))
@@ -77,7 +87,7 @@ def main():
     vectors = horizons_response.vectors()  # type: ignore
 
     df = vectors.to_pandas()
-    df.to_csv("horizons_orbital_data.csv")
+    df.to_csv(args.output)
 
 
 if __name__ == "__main__":

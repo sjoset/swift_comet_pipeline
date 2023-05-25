@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import glob
 
-from astropy.time import Time
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional, TypeAlias, List, Tuple
@@ -15,11 +14,11 @@ __all__ = [
     "SwiftObservationLog",
     "SwiftUVOTImage",
     "SwiftStackedUVOTImage",
-    "SwiftStackingMethod",
     "SwiftFilter",
     "SwiftUVOTImageType",
     "SwiftOrbitID",
     "SwiftObservationID",
+    "StackingMethod",
     "swift_orbit_id_from_obsid",
     "swift_observation_id_from_int",
     "PixelCoord",
@@ -37,7 +36,7 @@ SwiftObservationID: TypeAlias = str
 SwiftOrbitID: TypeAlias = str
 
 
-class SwiftStackingMethod(str, Enum):
+class StackingMethod(str, Enum):
     summation = "sum"
     median = "median"
 
@@ -180,7 +179,7 @@ class SwiftStackedUVOTImage:
     coincidence_corrected: bool
     # TODO: The detector scale might be in the FITS source file headers
     detector_scale: SwiftPixelResolution
-    stacking_method: SwiftStackingMethod
+    stacking_method: StackingMethod
     observation_mid_time: str
     helio_r_au: float
     helio_v_kms: float

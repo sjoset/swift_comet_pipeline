@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 
 from swift_types import SwiftData
 from read_swift_config import read_swift_config
-from swift_observation_log import build_observation_log
+from observation_log import build_observation_log
 
 __version__ = "0.0.1"
 
@@ -19,7 +19,7 @@ __version__ = "0.0.1"
 def process_args():
     # Parse command-line arguments
     parser = ArgumentParser(
-        usage="%(prog)s [options] [inputfile] [outputfile]",
+        usage="%(prog)s [options]",
         description=__doc__,
         prog=os.path.basename(sys.argv[0]),
     )
@@ -51,6 +51,7 @@ def process_args():
 
 
 def main():
+    # we don't care about these particular warnings
     warnings.resetwarnings()
     warnings.filterwarnings("ignore", category=FITSFixedWarning, append=True)
 
@@ -61,14 +62,14 @@ def main():
         print("Error reading config file {args.config}, exiting.")
         return 1
 
-    horizon_id = swift_config["jpl_horizons_id"]
+    horizons_id = swift_config["jpl_horizons_id"]
 
     sdd = SwiftData(
         data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
     )
 
     df = build_observation_log(
-        swift_data=sdd, obsids=sdd.get_all_observation_ids(), horizon_id=horizon_id
+        swift_data=sdd, obsids=sdd.get_all_observation_ids(), horizons_id=horizons_id
     )
 
     if df is None:

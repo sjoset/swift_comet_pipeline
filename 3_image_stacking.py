@@ -18,8 +18,8 @@ from swift_types import (
     SwiftFilter,
     SwiftOrbitID,
     SwiftObservationLog,
-    SwiftStackingMethod,
     SwiftPixelResolution,
+    StackingMethod,
     filter_to_string,
 )
 from read_swift_config import read_swift_config
@@ -28,7 +28,7 @@ from stacking import (
     write_stacked_image,
     includes_uvv_and_uw1_filters,
 )
-from swift_observation_log import read_observation_log
+from observation_log import read_observation_log
 from stack_info import stackinfo_from_stacked_images
 
 
@@ -108,12 +108,12 @@ def do_stack(
     (stackable, _) = includes_uvv_and_uw1_filters(obs_log=obs_log)
     if not stackable:
         print(
-            "The data does not have data in both filters! If this was not intentional, choose a larger time window."
+            "The selection does not have data in both filters! If this was not intentional, choose a larger time window."
         )
 
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
-    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
 
     stacking_outputs = {}
 
@@ -174,14 +174,6 @@ def main():
 
     obs_log = read_observation_log(args.observation_log_file[0])
 
-    # start_time = Time("2016-03-14T00:00:00.000")
-    # # end_time = start_time + (52 * u.week)
-    # end_time = start_time + (8 * u.week)
-
-    # time_match = match_within_timeframe(
-    #     obs_log=obs_log, start_time=start_time, end_time=end_time
-    # )
-
     orbit_start = int(SwiftOrbitID(args.orbit_start[0]))
     orbit_end = int(SwiftOrbitID(args.orbit_end[0]))
     obs_log["orbit_ints"] = obs_log["ORBIT_ID"].map(int)
@@ -197,7 +189,7 @@ def main():
         stacked_image_dir=stacked_image_dir,
         stackinfo_output_path=stackinfo_output_path,
         do_coincidence_correction=True,
-        detector_scale=SwiftPixelResolution.data_mode,
+        detector_scale=SwiftPixelResolution.event_mode,
     )
 
 

@@ -42,6 +42,9 @@ def flux_OH_to_num_OH(
     luminescence = 4 * np.pi * flux_OH * delta**2
 
     g_factor = g1au_interpolation(helio_v_kms) / (helio_r_au**2)
+    # print(
+    #     f"g factor at {helio_r_au} AU, heliocentric velocity {helio_v_kms}: {g_factor}"
+    # )
 
     num_OH = luminescence / g_factor
 

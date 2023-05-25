@@ -9,7 +9,7 @@ from typing import Dict
 from swift_types import (
     SwiftFilter,
     filter_to_string,
-    SwiftStackingMethod,
+    StackingMethod,
 )
 
 from stacking import read_stacked_image
@@ -19,12 +19,12 @@ __version__ = "0.0.1"
 __all__ = ["stackinfo_from_stacked_images", "stacked_images_from_stackinfo"]
 
 
-# TODO: make the stacking_outputs dict a dataclass of its own
+# TODO: make the stacking_outputs dict a dataclass of its own?
 def stackinfo_from_stacked_images(
     stackinfo_output_path: pathlib.Path, stacking_outputs: Dict
 ) -> None:
     filter_types = [SwiftFilter.uw1, SwiftFilter.uvv]
-    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
 
     # build a record of all files created in this stacking run for use later
     stack_dict = {}
@@ -46,7 +46,7 @@ def stacked_images_from_stackinfo(stackinfo_path: pathlib.Path) -> Dict:
 
     image_dict = {}
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
-    stacking_methods = [SwiftStackingMethod.summation, SwiftStackingMethod.median]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
 
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods

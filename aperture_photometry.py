@@ -38,8 +38,8 @@ class AperturePhotometryResult:
 
 
 # TODO: cite these from the swift documentation
-# TODO: figure out what 'cf' stands for
-# TODO: Make SwiftFilterParameters a dataclass?  Use tying.Final to attempt to make these constants?
+# TODO: look up what 'cf' stands for
+# TODO: Make SwiftFilterParameters a dataclass?  Use typing.Final to make these constants?
 # TODO: these are all technically a function of time, so we should incorporate that
 def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
     filter_params = {
@@ -101,17 +101,27 @@ def magnitude_from_count_rate(count_rate, filter_type) -> float:
     return mag
 
 
-def determine_background(image_data: SwiftUVOTImage) -> float:
-    inner_radius = 14
-    outer_radius = 30
+def determine_background(
+    image_data: SwiftUVOTImage,
+    bg_aperture_x: float,
+    bg_aperture_y: float,
+    bg_aperture_radius: float,
+) -> float:
+    # inner_radius = 67
+    # outer_radius = 123
 
-    image_center_row = np.ceil(image_data.shape[0] / 2)
-    image_center_col = np.ceil(image_data.shape[1] / 2)
+    # image_center_row = np.ceil(image_data.shape[0] / 2)
+    # image_center_col = np.ceil(image_data.shape[1] / 2)
 
-    comet_aperture = CircularAnnulus(
-        (image_center_col, image_center_row),
-        r_in=inner_radius,
-        r_out=outer_radius,
+    # comet_aperture = CircularAnnulus(
+    #     (image_center_col, image_center_row),
+    #     r_in=inner_radius,
+    #     r_out=outer_radius,
+    # )
+
+    comet_aperture = CircularAperture(
+        (bg_aperture_x, bg_aperture_y),
+        r=bg_aperture_radius,
     )
 
     aperture_stats = ApertureStats(image_data, comet_aperture)
@@ -122,7 +132,12 @@ def determine_background(image_data: SwiftUVOTImage) -> float:
 
 
 def do_aperture_photometry(
-    stacked_sum: SwiftStackedUVOTImage, stacked_median: SwiftStackedUVOTImage
+    stacked_sum: SwiftStackedUVOTImage,
+    stacked_median: SwiftStackedUVOTImage,
+    comet_aperture_radius: float,
+    bg_aperture_radius: float,
+    bg_aperture_x: float,
+    bg_aperture_y: float,
 ) -> AperturePhotometryResult:
     image_sum = stacked_sum.stacked_image
     image_median = stacked_median.stacked_image
@@ -136,7 +151,9 @@ def do_aperture_photometry(
     print(f"Aperture center: {image_center_col}, {image_center_row}")
 
     # aperture radius: hard-coded
-    comet_aperture_radius = 14
+    # comet_aperture_radius = 32
+
+    # reminder: x coords are columns, y rows
     comet_aperture = CircularAperture(
         (image_center_col, image_center_row), r=comet_aperture_radius
     )
@@ -144,27 +161,32 @@ def do_aperture_photometry(
     # use the aperture on the image
     aperture_stats = ApertureStats(image_sum, comet_aperture)
     print(f"Centroid of aperture: {aperture_stats.centroid}")
-    # print("mean, median, std, pixel area, total count:")
-    # print(
-    #     aperture_stats.mean,
-    #     aperture_stats.median,
-    #     aperture_stats.std,
-    #     aperture_stats.sum_aper_area.value,
-    #     aperture_stats.sum,
-    # )
 
     # try using median-stacked image for getting the background
-    background_counts_per_pixel = determine_background(image_median)
-    print(f"Background: {background_counts_per_pixel}")
+    background_count_rate_per_pixel = determine_background(
+        image_median,
+        bg_aperture_x=bg_aperture_x,
+        bg_aperture_y=bg_aperture_y,
+        bg_aperture_radius=bg_aperture_radius,
+    )
+    print(f"Background count rate per pixel: {background_count_rate_per_pixel}")
+    print(
+        f"Background counts per pixel: {background_count_rate_per_pixel * stacked_median.exposure_time}"
+    )
 
+    # the median images are in count rates, so multiply by exposure time for counts
     total_background_counts = (
-        aperture_stats.sum_aper_area.value * background_counts_per_pixel
+        aperture_stats.sum_aper_area.value
+        * background_count_rate_per_pixel
+        * stacked_median.exposure_time
     )
     print(f"Background counts in aperture: {total_background_counts}")
 
     net_counts = aperture_stats.sum - total_background_counts
     print(f"Total counts in aperture, background corrected: {net_counts}")
-    print(f"Count rate: {net_counts/stacked_sum.exposure_time} counts per second")
+    print(
+        f"Count rate in aperture: {net_counts/stacked_sum.exposure_time} counts per second"
+    )
 
     comet_magnitude = magnitude_from_count_rate(net_counts, stacked_sum.filter_type)
     print(f"Magnitude: {comet_magnitude}")

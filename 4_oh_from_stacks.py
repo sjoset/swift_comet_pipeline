@@ -16,7 +16,7 @@ from astropy.visualization import (
 from typing import Tuple
 
 from read_swift_config import read_swift_config
-from swift_types import SwiftFilter, StackingMethod, SwiftUVOTImage
+from swift_types import SwiftFilter, StackingMethod, SwiftUVOTImage, filter_to_string
 from reddening_correction import DustReddeningPercent
 from stack_info import stacked_images_from_stackinfo
 from fluorescence_OH import flux_OH_to_num_OH, read_gfactor_1au
@@ -61,18 +61,20 @@ def process_args():
     return args
 
 
-def show_fits_scaled(image_sum, image_median):
+def show_fits_sum_and_median_scaled(image_sum, image_median):
     fig = plt.figure()
     ax1 = fig.add_subplot(1, 2, 1)
     ax2 = fig.add_subplot(1, 2, 2)
 
     zscale = ZScaleInterval()
-    vmin, vmax = zscale.get_limits(image_sum)
+    vmin1, vmax1 = zscale.get_limits(image_sum)
+    vmin2, vmax2 = zscale.get_limits(image_median)
 
-    im1 = ax1.imshow(image_sum, vmin=vmin, vmax=vmax)
-    # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
-    ax2.imshow(image_median, vmin=vmin, vmax=vmax)
+    im1 = ax1.imshow(image_sum, vmin=vmin1, vmax=vmax1)
+    im2 = ax2.imshow(image_median, vmin=vmin2, vmax=vmax2)
+
     fig.colorbar(im1)
+    fig.colorbar(im2)
 
     plt.show()
 
@@ -138,9 +140,54 @@ def show_fits_subtracted(uw1_stack, uvv_stack, beta):
     # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
     fig.colorbar(im1)
 
-    hdu = fits.PrimaryHDU(dust_subtracted)
-    hdu.writeto("subtracted.fits", overwrite=True)
+    # hdu = fits.PrimaryHDU(dust_subtracted)
+    # hdu.writeto("subtracted.fits", overwrite=True)
     plt.show()
+
+
+def get_float(prompt: str) -> float:
+    user_input = None
+
+    while user_input is None:
+        raw_selection = input(prompt)
+        try:
+            selection = float(raw_selection)
+        except ValueError:
+            print("Numbers only, please\r")
+            selection = None
+
+        if selection is not None:
+            user_input = selection
+
+    return user_input
+
+
+def get_aperture_photometry_results(stacked_images) -> dict:
+    # TODO: once the uw1 and uvv images are the same size, we can collect the information once
+    comet_aperture_radius = get_float("Comet aperture radius from DS9: ")
+
+    # collect aperture results for uw1 and uvv filters from the stacked images
+    aperture_results = {}
+    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
+        summed_image = stacked_images[(filter_type, StackingMethod.summation)]
+        median_image = stacked_images[(filter_type, StackingMethod.median)]
+        # show_fits_sum_and_median_scaled(summed_image.stacked_image, median_image.stacked_image)
+
+        print(f"Filter: {filter_to_string(filter_type)}")
+        bg_aperture_x = get_float("Background aperture x from DS9: ")
+        bg_aperture_y = get_float("Background aperture y from DS9: ")
+        bg_aperture_radius = get_float("Background aperture radius from DS9: ")
+
+        aperture_results[filter_type] = do_aperture_photometry(
+            stacked_sum=summed_image,
+            stacked_median=median_image,
+            comet_aperture_radius=comet_aperture_radius,
+            bg_aperture_radius=bg_aperture_radius,
+            bg_aperture_x=bg_aperture_x,
+            bg_aperture_y=bg_aperture_y,
+        )
+
+    return aperture_results
 
 
 def main():
@@ -160,15 +207,7 @@ def main():
     print(f"Loading stacked image information from {stackinfo_path}")
     stacked_images = stacked_images_from_stackinfo(stackinfo_path=stackinfo_path)
 
-    # collect aperture results for uw1 and uvv filters from the stacked images
-    aperture_results = {}
-    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
-        summed_image = stacked_images[(filter_type, StackingMethod.summation)]
-        median_image = stacked_images[(filter_type, StackingMethod.median)]
-        # show_fits_scaled(summed_image.stacked_image, median_image.stacked_image)
-        aperture_results[filter_type] = do_aperture_photometry(
-            summed_image, median_image
-        )
+    aperture_results = get_aperture_photometry_results(stacked_images=stacked_images)
 
     # dust_redness = DustReddeningPercent(10)
     dust_redness_list = list(
@@ -236,15 +275,15 @@ def main():
         print("")
         print(f"Heliocentric comet distance: {img.helio_r_au}")
         print(
-            f"Q(H2O) from N(OH), first method: {Q1} mol/s at {img.observation_mid_time}"
+            f"Q(H2O) from N(OH), solar spectrum method: {Q1} mol/s at {img.observation_mid_time}"
         )
         print(
-            f"Q(H2O) from N(OH), second method: {Q2} mol/s at {img.observation_mid_time}"
+            f"Q(H2O) from N(OH), fixed beta method: {Q2} mol/s at {img.observation_mid_time}"
         )
 
     # show_fits_subtracted(
-    #     stacked_images[(SwiftFilter.uw1, SwiftStackingMethod.summation)],
-    #     stacked_images[(SwiftFilter.uvv, SwiftStackingMethod.summation)],
+    #     stacked_images[(SwiftFilter.uw1, StackingMethod.summation)],
+    #     stacked_images[(SwiftFilter.uvv, StackingMethod.summation)],
     #     beta=0.101483,
     # )
 

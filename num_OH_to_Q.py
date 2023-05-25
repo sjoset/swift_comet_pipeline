@@ -6,10 +6,10 @@ from scipy.interpolate import interp1d
 
 __version__ = "0.0.1"
 
-__all__ = ["num_OH_to_Q"]
+__all__ = ["num_OH_to_Q_vectorial"]
 
 
-def num_OH_to_Q(
+def num_OH_to_Q_vectorial(
     helio_r: float, num_OH: float, vectorial_model_path: pathlib.Path
 ) -> float:
     # TODO: this is incredibly to ugly to hard-code this vm_Q here

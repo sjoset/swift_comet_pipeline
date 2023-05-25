@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import pathlib
 import sys
 import calendar
 import logging as log
@@ -13,13 +12,12 @@ import astropy.units as u
 from astropy.time import Time
 
 from argparse import ArgumentParser
+from typing import List
 
-from swift_types import (
-    SwiftFilter,
-    SwiftObservationLog,
-)
-from read_swift_config import read_swift_config
-from swift_observation_log import read_observation_log
+from swift_types import SwiftFilter, SwiftObservationLog, SwiftObservationID
+
+# from read_swift_config import read_swift_config
+from observation_log import read_observation_log
 
 
 __version__ = "0.0.1"
@@ -53,7 +51,9 @@ def process_args():
     return args
 
 
-def show_observation_timeline(orbit_labels, times_at_observations) -> None:
+def show_observation_timeline(
+    orbit_id_labels: List[SwiftObservationID], times_at_observations: List[Time]
+) -> None:
     ts = list(map(lambda x: x.to_datetime(), times_at_observations))
 
     plt.rcParams["figure.figsize"] = (15, 15)
@@ -89,7 +89,7 @@ def monthly_group_breakdown(group_time, df: SwiftObservationLog):
     tstart, tend = np.min(df["MID_TIME"]), np.max(df["MID_TIME"])
     print(f"[ {tstart.to_datetime()} ] through [ {tend.to_datetime()} ]")
     print(
-        f"\t{(tend - tstart).to_value(u.hr):03.1f} hours between first to last observation"
+        f"\t{(tend - tstart).to_value(u.hr):03.1f} hours between first and last observation"
     )
 
     stackable_orbits = []
@@ -125,11 +125,11 @@ def main():
         map(lambda x: x.to_datetime(), obs_log["MID_TIME"].values)
     )
     obs_log.index = obs_log["obs_datetime_mid"]
-    # obs_log.groupby(pd.Grouper(freq="1M"))
 
     total_orbits = []
     total_times = []
 
+    # group our observation log entries by month and pull out the results
     for gname, group in obs_log.groupby(pd.Grouper(freq="1M")):
         if len(group) == 0:
             continue
@@ -138,10 +138,10 @@ def main():
         total_times.append(ts)
 
     # flatten lists
-    total_orbits = [item for sublist in total_orbits for item in sublist]
+    total_orbit_ids = [item for sublist in total_orbits for item in sublist]
     total_times = [item for sublist in total_times for item in sublist]
 
-    show_observation_timeline(total_orbits, total_times)
+    show_observation_timeline(total_orbit_ids, total_times)
 
 
 if __name__ == "__main__":
