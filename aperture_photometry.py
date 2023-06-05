@@ -2,7 +2,7 @@ import numpy as np
 from photutils.aperture import (
     CircularAperture,
     ApertureStats,
-    CircularAnnulus,
+    # CircularAnnulus,
 )
 
 from dataclasses import dataclass
@@ -29,6 +29,8 @@ __all__ = [
 
 @dataclass
 class AperturePhotometryResult:
+    comet_center_x: float
+    comet_center_y: float
     net_count: float
     net_count_rate: float
     source_count: float
@@ -145,22 +147,34 @@ def do_aperture_photometry(
     # print("\n")
     print(f"\nAperture photometry for {filter_to_string(stacked_sum.filter_type)}")
     print("---------------------------")
-    # assume comet is centered in the stacked image, and that the stacked image has on odd number of pixels (the stacker should ensure this during stacking)
-    image_center_row = np.ceil(image_sum.shape[0] / 2)
-    image_center_col = np.ceil(image_sum.shape[1] / 2)
-    print(f"Aperture center: {image_center_col}, {image_center_row}")
 
-    # aperture radius: hard-coded
-    # comet_aperture_radius = 32
+    image_center_row = int(np.floor(image_sum.shape[0] / 2))
+    image_center_col = int(np.floor(image_sum.shape[1] / 2))
+    print(
+        f"Using test aperture center of image center: {image_center_col}, {image_center_row}"
+    )
 
     # reminder: x coords are columns, y rows
-    comet_aperture = CircularAperture(
+    initial_comet_aperture = CircularAperture(
         (image_center_col, image_center_row), r=comet_aperture_radius
     )
 
-    # use the aperture on the image
+    # use an aperture on the image center of the specified radius and find the centroid of the comet signal
+    initial_aperture_stats = ApertureStats(image_sum, initial_comet_aperture)
+    print(
+        f"Moving analysis aperture to the centroid of the test aperture: {initial_aperture_stats.centroid}"
+    )
+
+    # Move the aperture to the centroid of the test aperture and do our analysis there
+    comet_center_x, comet_center_y = (
+        initial_aperture_stats.centroid[0],
+        initial_aperture_stats.centroid[1],
+    )
+    comet_aperture = CircularAperture(
+        (comet_center_x, comet_center_y), r=comet_aperture_radius
+    )
     aperture_stats = ApertureStats(image_sum, comet_aperture)
-    print(f"Centroid of aperture: {aperture_stats.centroid}")
+    print(f"Centroid of analysis aperture: {aperture_stats.centroid}")
 
     # try using median-stacked image for getting the background
     background_count_rate_per_pixel = determine_background(
@@ -173,6 +187,7 @@ def do_aperture_photometry(
     print(
         f"Background counts per pixel: {background_count_rate_per_pixel * stacked_median.exposure_time}"
     )
+    print(f"Aperture area: {aperture_stats.sum_aper_area} ")
 
     # the median images are in count rates, so multiply by exposure time for counts
     total_background_counts = (
@@ -192,6 +207,8 @@ def do_aperture_photometry(
     print(f"Magnitude: {comet_magnitude}")
 
     return AperturePhotometryResult(
+        comet_center_x=comet_center_x,
+        comet_center_y=comet_center_y,
         net_count=net_counts,
         net_count_rate=net_counts / stacked_sum.exposure_time,
         source_count=aperture_stats.sum,  # type: ignore

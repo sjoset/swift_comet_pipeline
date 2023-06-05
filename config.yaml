@@ -1,5 +1,5 @@
 # top-level directory of our data
-swift_data_dir: "~/Downloads/swift"
+swift_data_dir: "~/Downloads/swift_c2013us10"
 # horizon ID for Catalina C/2013 US10
 jpl_horizons_id: "C/2013 US10"
 perihelion_date: "2015-11-16"
