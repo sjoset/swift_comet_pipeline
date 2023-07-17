@@ -278,8 +278,8 @@ def do_stack(
         print(f"Wrote to {stacked_path}, info at {stacked_info_path}")
 
         stacking_outputs[(filter_type, stacking_method)] = (
-            str(stacked_path),
-            str(stacked_info_path),
+            str(stacked_path.name),
+            str(stacked_info_path.name),
         )
 
     stackinfo_from_stacked_images(stackinfo_output_path, stacking_outputs)

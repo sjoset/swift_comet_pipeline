@@ -20,7 +20,7 @@ from argparse import ArgumentParser
 from swift_types import SwiftFilter, SwiftObservationLog
 
 # from read_swift_config import read_swift_config
-from swift_observation_log import read_observation_log
+from observation_log import read_observation_log
 
 
 __version__ = "0.0.1"

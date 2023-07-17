@@ -333,18 +333,15 @@ def stack_image_by_selection(
     exposure_time = np.sum(exposure_times)
 
     if stacking_method == StackingMethod.summation:
-        stacked_image = np.sum(image_data_to_stack, axis=0)
+        stacked_image = np.sum(image_data_to_stack, axis=0) / exposure_time
     elif stacking_method == StackingMethod.median:
-        # stacked_image = np.median(image_data_to_stack, axis=0)
-        # stacked_image = np.median(image_data_to_stack / exposure_times, axis=0)
         imgs_copy = copy.deepcopy(image_data_to_stack)
         for img, exp_time in zip(imgs_copy, exposure_times):
             img /= exp_time
         stacked_image = np.median(imgs_copy, axis=0)
-
     else:
         log.info("Invalid stacking method specified, defaulting to summation...")
-        stacked_image = np.sum(image_data_to_stack, axis=0)
+        return None
 
     # approximate the time the stack occurred by the middle of the observation periods
     mid_times = sorted(obs_log["MID_TIME"])

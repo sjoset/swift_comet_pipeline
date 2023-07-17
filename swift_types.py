@@ -170,6 +170,7 @@ class PixelCoord:
 
 @dataclass
 class SwiftStackedUVOTImage:
+    # The actual image data
     stacked_image: SwiftUVOTImage
     # Tuple with the obsids, filenames, and extensions of each image that contributed to the stacked image
     sources: List[Tuple[SwiftObservationID, pathlib.Path, int]]

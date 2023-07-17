@@ -77,7 +77,7 @@ def build_observation_log(
         # filter out the ones that were not found
         image_path_list = list(filter(lambda x: x is not None, image_path_list))
         # flatten this list into 1d
-        image_path_list = list(itertools.chain.from_iterable(image_path_list))
+        image_path_list = list(itertools.chain.from_iterable(image_path_list))  # type: ignore
 
         # loop through every fits file found
         for image_path in image_path_list:

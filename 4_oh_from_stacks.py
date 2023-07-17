@@ -18,7 +18,9 @@ from astropy.visualization import (
 # from typing import Tuple
 
 from read_swift_config import read_swift_config
-from swift_types import SwiftFilter, StackingMethod, SwiftUVOTImage
+from swift_types import SwiftFilter, StackingMethod
+
+# from swift_types import SwiftUVOTImage
 from reddening_correction import DustReddeningPercent
 from stack_info import stacked_images_from_stackinfo
 from fluorescence_OH import flux_OH_to_num_OH, read_gfactor_1au
@@ -44,9 +46,8 @@ def process_args():
         "--config", "-c", default="config.yaml", help="YAML configuration file to use"
     )
     parser.add_argument(
-        "stackinfo",
-        default=None,
-        nargs="?",
+        "stackinfo_json",
+        nargs=1,
         help="JSON file containing stacking information",
     )
 
@@ -107,8 +108,6 @@ def show_fits_sum_and_median_scaled(
             fill=False,
         )
     )
-    # plt.axvline(image_center_col, color="w", alpha=0.3)
-    # plt.axhline(image_center_row, color="w", alpha=0.3)
 
     plt.show()
 
@@ -117,8 +116,9 @@ def show_fits_subtracted(uw1_stack, uvv_stack, beta):
     uw1 = uw1_stack.stacked_image / uw1_stack.exposure_time
     uvv = uvv_stack.stacked_image / uvv_stack.exposure_time
 
-    # uw1, uvv = pad_to_match_sizes(uw1, uvv)
-    dust_subtracted = uw1 - beta * uvv
+    uvv_sensitivity = 0.2
+
+    dust_subtracted = uw1 - beta * uvv / uvv_sensitivity
 
     fig = plt.figure()
     ax1 = fig.add_subplot(1, 1, 1)
@@ -177,8 +177,8 @@ def get_aperture_photometry_results(stacked_images) -> dict:
             summed_image.stacked_image,
             median_image.stacked_image,
             comet_aperture_radius=comet_aperture_radius,
-            comet_center_x=aperture_results[filter_type].comet_center_x,
-            comet_center_y=aperture_results[filter_type].comet_center_y,
+            comet_center_x=aperture_results[filter_type].comet_aperture.positions[0],
+            comet_center_y=aperture_results[filter_type].comet_aperture.positions[1],
             bg_aperture_x=bg_aperture_x,
             bg_aperture_y=bg_aperture_y,
             bg_aperture_radius=bg_aperture_radius,
@@ -195,11 +195,8 @@ def main():
         print("Error reading config file {args.config}, exiting.")
         return 1
 
-    if args.stackinfo is None:
-        print("Stack info file not specified, trying default filename stack.json ...")
-        stackinfo_path = pathlib.Path("stack.json")
-    else:
-        stackinfo_path = args.stackinfo
+    stackinfo_path = pathlib.Path(args.stackinfo_json[0])
+    # output_path = stackinfo_path.with_name("stacking_analysis.txt")
 
     print(f"Loading stacked image information from {stackinfo_path}")
     stacked_images = stacked_images_from_stackinfo(stackinfo_path=stackinfo_path)
@@ -215,6 +212,14 @@ def main():
     dust_redness_list = list(
         map(lambda x: DustReddeningPercent(x), [0, 5, 10, 15, 20, 25])
     )
+    solar_beta_list = []
+    fixed_beta_list = []
+    flux_solar_list = []
+    flux_fixed_list = []
+    OH_solar_beta_list = []
+    OH_fixed_beta_list = []
+    Q_solar_beta_list = []
+    Q_fixed_beta_list = []
     for dust_redness in dust_redness_list:
         # calculate OH flux based on the aperture results in uw1 and uvv filters
         print(f"\nCalculating OH flux with dust redness {dust_redness.reddening}% ...")
@@ -241,6 +246,10 @@ def main():
             result_uvv=aperture_results[SwiftFilter.uvv],
             dust_redness=dust_redness,
         )
+        solar_beta_list.append(beta_1)
+        fixed_beta_list.append(beta_2)
+        flux_solar_list.append(flux_OH_1)
+        flux_fixed_list.append(flux_OH_2)
         print("\tSolar spectrum method:")
         print(f"\t\tBeta = {beta_1}, flux of OH = {flux_OH_1}")
         print("\tFixed beta method:")
@@ -262,6 +271,8 @@ def main():
             delta_au=img.delta_au,
             fluorescence_data=fluorescence_data,
         )
+        OH_solar_beta_list.append(num_OH_1)
+        OH_fixed_beta_list.append(num_OH_2)
         print(f"\tTotal number of OH, beta from solar spectrum method: {num_OH_1}")
         print(f"\tTotal number of OH, fixed beta method: {num_OH_2}")
 
@@ -275,6 +286,8 @@ def main():
             num_OH=num_OH_2,
             vectorial_model_path=swift_config["vectorial_model_path"],
         )
+        Q_solar_beta_list.append(Q1)
+        Q_fixed_beta_list.append(Q2)
         print("")
         print(f"\tQ(H2O) from N(OH), solar spectrum method: {Q1} mol/s")
         print(f"\tQ(H2O) from N(OH), fixed beta method: {Q2} mol/s")
@@ -284,6 +297,31 @@ def main():
         stacked_images[(SwiftFilter.uvv, StackingMethod.median)],
         beta=0.101483,
     )
+
+    # print(f"Writing summary to {output_path} ...")
+    # with open(output_path, "w") as f:
+    #     for (
+    #         redness,
+    #         solar_beta,
+    #         fixed_beta,
+    #         solar_flux,
+    #         fixed_flux,
+    #         solar_OH,
+    #         fixed_OH,
+    #         solar_Q,
+    #         fixed_Q,
+    #     ) in zip(
+    #         dust_redness_list,
+    #         solar_beta_list,
+    #         fixed_beta_list,
+    #         flux_solar_list,
+    #         flux_fixed_list,
+    #         OH_solar_beta_list,
+    #         OH_fixed_beta_list,
+    #         Q_solar_beta_list,
+    #         Q_fixed_beta_list,
+    #     ):
+    #         f.write(f"{redness=} {solar_beta=} {fixed_beta=}")
 
 
 if __name__ == "__main__":
