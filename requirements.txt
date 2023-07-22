@@ -5,3 +5,5 @@ pandas
 scipy
 photutils
 matplotlib
+tqdm
+pyarrow

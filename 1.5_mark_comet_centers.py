@@ -5,20 +5,16 @@ import pathlib
 import sys
 import logging as log
 
-# import astropy.units as u
-
-# import pandas as pd
 import matplotlib.pyplot as plt
 
-from astropy.visualization import (
-    ZScaleInterval,
-)
+from tqdm import tqdm
+
+from astropy.visualization import ZScaleInterval
 from astropy.io import fits
 
-# from astropy.time import Time
 from argparse import ArgumentParser
 
-from read_swift_config import read_swift_config
+from configs import read_swift_project_config
 from swift_types import (
     SwiftData,
     SwiftObservationLog,
@@ -47,10 +43,7 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "--config", "-c", default="config.yaml", help="YAML configuration file to use"
-    )
-    parser.add_argument(
-        "observation_log_file", nargs=1, help="Filename of observation log input"
+        "swift_project_config", nargs=1, help="Filename of project config"
     )
 
     args = parser.parse_args()
@@ -87,14 +80,15 @@ def mark_comet_centers(
     for fdir in dir_by_filter.values():
         fdir.mkdir(parents=True, exist_ok=True)
 
-    num_to_process = len(obs_log.index)
-    num_processed = 0
+    # num_to_process = len(obs_log.index)
+    # num_processed = 0
 
+    progress_bar = tqdm(obs_log.iterrows(), total=obs_log.shape[0])
     # for every entry in the observation log,
-    for _, row in obs_log.iterrows():
-        print(
-            f"Processing image {num_processed}/{num_to_process} ({num_processed*100.0/num_to_process:03.1f}%) ...\r"
-        )
+    for _, row in progress_bar:
+        # print(
+        #     f"Processing image {num_processed}/{num_to_process} ({num_processed*100.0/num_to_process:03.1f}%) ...\r"
+        # )
         obsid = row["OBS_ID"]
         extension = row["EXTENSION"]
         px = round(float(row["PX"]))
@@ -126,7 +120,9 @@ def mark_comet_centers(
 
         plt.savefig(output_image_path)
         plt.close()
-        num_processed += 1
+        # num_processed += 1
+
+        progress_bar.set_description(f"Processed {obsid} extension {extension}")
 
     print("")
 
@@ -134,20 +130,24 @@ def mark_comet_centers(
 def main():
     args = process_args()
 
-    swift_config = read_swift_config(pathlib.Path(args.config))
-    if swift_config is None:
-        print("Error reading config file {args.config}, exiting.")
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None or swift_project_config.observation_log is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
     swift_data = SwiftData(
-        data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
+        data_path=pathlib.Path(swift_project_config.swift_data_path)
+        .expanduser()
+        .resolve()
     )
 
-    obs_log = read_observation_log(args.observation_log_file[0])
+    obs_log = read_observation_log(swift_project_config.observation_log)
 
-    image_save_dir = pathlib.Path("centers")
-    # start_time = Time("2016-03-14T00:00:00.000")
-    # end_time = start_time + (4 * u.week)  # type: ignore
+    image_save_dir = (
+        swift_project_config.product_save_path.expanduser().resolve()
+        / pathlib.Path("centers")
+    )
 
     # we only care about uw1 and uvv
     for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:

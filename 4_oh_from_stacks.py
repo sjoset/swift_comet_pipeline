@@ -8,19 +8,15 @@ import logging as log
 
 from astropy.time import Time
 
-# from astropy.io import fits
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 from astropy.visualization import (
     ZScaleInterval,
 )
 
-# from typing import Tuple
-
-from read_swift_config import read_swift_config
+from configs import read_swift_pipeline_config, read_swift_project_config
 from swift_types import SwiftFilter, StackingMethod
 
-# from swift_types import SwiftUVOTImage
 from reddening_correction import DustReddeningPercent
 from stack_info import stacked_images_from_stackinfo
 from fluorescence_OH import flux_OH_to_num_OH, read_gfactor_1au
@@ -43,7 +39,7 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "--config", "-c", default="config.yaml", help="YAML configuration file to use"
+        "swift_project_config", nargs=1, help="Filename of project config"
     )
     parser.add_argument(
         "stackinfo_json",
@@ -190,9 +186,15 @@ def get_aperture_photometry_results(stacked_images) -> dict:
 def main():
     args = process_args()
 
-    swift_config = read_swift_config(pathlib.Path(args.config))
-    if swift_config is None:
+    swift_pipeline_config = read_swift_pipeline_config()
+    if swift_pipeline_config is None:
         print("Error reading config file {args.config}, exiting.")
+        return 1
+
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
     stackinfo_path = pathlib.Path(args.stackinfo_json[0])
@@ -205,7 +207,7 @@ def main():
 
     img = stacked_images[(SwiftFilter.uw1, StackingMethod.summation)]
     print(
-        f"\nHeliocentric comet distance: {img.helio_r_au} at {img.observation_mid_time}"
+        f"\nHeliocentric comet distance: {img.helio_r_au} at {Time(img.observation_mid_time).to_datetime()}"
     )
 
     # dust_redness = DustReddeningPercent(10)
@@ -224,7 +226,7 @@ def main():
         # calculate OH flux based on the aperture results in uw1 and uvv filters
         print(f"\nCalculating OH flux with dust redness {dust_redness.reddening}% ...")
         flux_OH_1, beta_1 = OH_flux_from_count_rate(
-            solar_spectrum_path=swift_config["solar_spectrum_path"],
+            solar_spectrum_path=swift_pipeline_config.solar_spectrum_path,
             # solar_spectrum_time=Time("2457422", format="jd"),
             # solar_spectrum_time=Time("2016-02-01"),
             solar_spectrum_time=Time(
@@ -233,15 +235,15 @@ def main():
                 ].observation_mid_time,
                 format="fits",
             ),
-            effective_area_uw1_path=swift_config["effective_area_uw1_path"],
-            effective_area_uvv_path=swift_config["effective_area_uvv_path"],
+            effective_area_uw1_path=swift_pipeline_config.effective_area_uw1_path,
+            effective_area_uvv_path=swift_pipeline_config.effective_area_uvv_path,
             result_uw1=aperture_results[SwiftFilter.uw1],
             result_uvv=aperture_results[SwiftFilter.uvv],
             dust_redness=dust_redness,
         )
         flux_OH_2, beta_2 = OH_flux_from_count_rate_fixed_beta(
-            effective_area_uw1_path=swift_config["effective_area_uw1_path"],
-            effective_area_uvv_path=swift_config["effective_area_uvv_path"],
+            effective_area_uw1_path=swift_pipeline_config.effective_area_uw1_path,
+            effective_area_uvv_path=swift_pipeline_config.effective_area_uvv_path,
             result_uw1=aperture_results[SwiftFilter.uw1],
             result_uvv=aperture_results[SwiftFilter.uvv],
             dust_redness=dust_redness,
@@ -256,7 +258,7 @@ def main():
         print(f"\t\tBeta = {beta_2}, flux of OH = {flux_OH_2}")
         print("")
 
-        fluorescence_data = read_gfactor_1au(swift_config["oh_fluorescence_path"])
+        fluorescence_data = read_gfactor_1au(swift_pipeline_config.oh_fluorescence_path)
         num_OH_1 = flux_OH_to_num_OH(
             flux_OH=flux_OH_1,
             helio_r_au=img.helio_r_au,
@@ -279,12 +281,12 @@ def main():
         Q1 = num_OH_to_Q_vectorial(
             helio_r=img.helio_r_au,
             num_OH=num_OH_1,
-            vectorial_model_path=swift_config["vectorial_model_path"],
+            vectorial_model_path=swift_pipeline_config.vectorial_model_path,
         )
         Q2 = num_OH_to_Q_vectorial(
             helio_r=img.helio_r_au,
             num_OH=num_OH_2,
-            vectorial_model_path=swift_config["vectorial_model_path"],
+            vectorial_model_path=swift_pipeline_config.vectorial_model_path,
         )
         Q_solar_beta_list.append(Q1)
         Q_fixed_beta_list.append(Q2)

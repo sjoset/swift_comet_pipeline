@@ -10,7 +10,7 @@ from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
 from swift_types import SwiftData
-from read_swift_config import read_swift_config
+from configs import read_swift_project_config, write_swift_project_config
 from observation_log import build_observation_log
 
 __version__ = "0.0.1"
@@ -28,12 +28,18 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "--config", "-c", default="config.yaml", help="YAML configuration file to use"
+        "swift_project_config", nargs=1, help="Filename of project config"
     )
+    # parser.add_argument(
+    #     "--output",
+    #     "-o",
+    #     default="observation_log.csv",
+    #     help="Filename of observation log output",
+    # )
     parser.add_argument(
         "--output",
         "-o",
-        default="observation_log.csv",
+        default="observation_log.parquet",
         help="Filename of observation log output",
     )
 
@@ -57,16 +63,14 @@ def main():
 
     args = process_args()
 
-    swift_config = read_swift_config(pathlib.Path(args.config))
-    if swift_config is None:
-        print("Error reading config file {args.config}, exiting.")
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
-    horizons_id = swift_config["jpl_horizons_id"]
-
-    sdd = SwiftData(
-        data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
-    )
+    horizons_id = swift_project_config.jpl_horizons_id
+    sdd = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
     df = build_observation_log(
         swift_data=sdd, obsids=sdd.get_all_observation_ids(), horizons_id=horizons_id
@@ -79,7 +83,19 @@ def main():
         return 1
 
     # write out our dataframe
-    df.to_csv(args.output)
+    observation_log_output_path = swift_project_config.product_save_path / pathlib.Path(
+        args.output
+    )
+
+    # df.to_csv(observation_log_output_path)
+    df.to_parquet(observation_log_output_path, index=False)
+
+    # update project config with the observation log file name, and save it back to the file
+    swift_project_config.observation_log = observation_log_output_path
+    write_swift_project_config(
+        config_path=pathlib.Path(swift_project_config_path),
+        swift_project_config=swift_project_config,
+    )
 
 
 if __name__ == "__main__":

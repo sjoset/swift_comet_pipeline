@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import os
+import glob
 import pathlib
 import sys
 import itertools
 import copy
 import logging as log
 import numpy as np
+import pandas as pd
 
 import matplotlib.pyplot as plt
 
@@ -26,7 +28,7 @@ from swift_types import (
     StackingMethod,
     filter_to_string,
 )
-from read_swift_config import read_swift_config
+from configs import read_swift_project_config
 from stacking import (
     stack_image_by_selection,
     write_stacked_image,
@@ -34,7 +36,9 @@ from stacking import (
 )
 from observation_log import read_observation_log
 from stack_info import stackinfo_from_stacked_images
-from typing import Tuple, List
+from typing import Tuple, List, Optional
+
+from user_input import get_selection
 
 
 __version__ = "0.0.1"
@@ -52,22 +56,8 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "--config", "-c", default="config.yaml", help="YAML configuration file to use"
+        "swift_project_config", nargs=1, help="Filename of project config"
     )
-    parser.add_argument(
-        "--stackinfo",
-        "-s",
-        default=None,
-        help="filename for saving stacking information",
-    )
-    parser.add_argument(
-        "observation_log_file", nargs=1, help="Filename of observation log input"
-    )
-    parser.add_argument(
-        "stacked_image_dir", nargs=1, help="directory to store stacked images and info"
-    )
-    parser.add_argument("orbit_start", nargs=1, help="first orbit id to stack")
-    parser.add_argument("orbit_end", nargs=1, help="last orbit id to stack")
 
     args = parser.parse_args()
 
@@ -285,39 +275,49 @@ def do_stack(
     stackinfo_from_stacked_images(stackinfo_output_path, stacking_outputs)
 
 
+def select_epoch_to_stack(epoch_dir: pathlib.Path) -> Tuple[SwiftObservationLog, str]:
+    glob_pattern = str(epoch_dir / pathlib.Path("*.parquet"))
+
+    epoch_filename_list = sorted(glob.glob(glob_pattern))
+
+    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
+    obs_log = pd.read_parquet(epoch_path)
+    return obs_log, epoch_path.stem
+
+
 def main():
     args = process_args()
 
-    swift_config = read_swift_config(pathlib.Path(args.config))
-    if swift_config is None:
-        print("Error reading config file {args.config}, exiting.")
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
-    stacked_image_dir = pathlib.Path(args.stacked_image_dir[0])
-
-    if args.stackinfo is None:
-        stackinfo_output_path = stacked_image_dir / pathlib.Path("stack.json")
-    else:
-        stackinfo_output_path = stacked_image_dir / pathlib.Path(args.stackinfo)
-
     swift_data = SwiftData(
-        data_path=pathlib.Path(swift_config["swift_data_dir"]).expanduser().resolve()
+        data_path=pathlib.Path(swift_project_config.swift_data_path)
+        .expanduser()
+        .resolve()
     )
 
-    obs_log = read_observation_log(args.observation_log_file[0])
+    epoch_to_stack, stack_basename = select_epoch_to_stack(
+        swift_project_config.product_save_path.expanduser().resolve()
+        / pathlib.Path("epochs")
+    )
 
-    orbit_start = int(SwiftOrbitID(args.orbit_start[0]))
-    orbit_end = int(SwiftOrbitID(args.orbit_end[0]))
-    obs_log["orbit_ints"] = obs_log["ORBIT_ID"].map(int)
+    stacked_image_dir = (
+        swift_project_config.product_save_path.expanduser().resolve()
+        / pathlib.Path("stacked")
+        / pathlib.Path(stack_basename)
+    )
 
-    mask_start = obs_log["orbit_ints"] >= orbit_start
-    mask_end = obs_log["orbit_ints"] <= orbit_end
+    stackinfo_output_path = stacked_image_dir / pathlib.Path("stack.json")
 
-    orbit_match = obs_log[mask_start & mask_end]
+    print(stackinfo_output_path)
 
     do_stack(
         swift_data=swift_data,
-        obs_log=orbit_match,
+        obs_log=epoch_to_stack,
         stacked_image_dir=stacked_image_dir,
         stackinfo_output_path=stackinfo_output_path,
         do_coincidence_correction=True,

@@ -7,6 +7,7 @@ import numpy as np
 import logging as log
 
 from astropy.io import fits
+from astropy.time import Time
 from typing import Tuple, Optional, List
 from dataclasses import asdict
 
@@ -349,7 +350,7 @@ def stack_image_by_selection(
     dt = end_time - start_time
     mid_time = start_time + dt / 2.0
     # use a FITS string format to represent the date so JSON will play nicely
-    mid_time = mid_time.fits
+    mid_time = Time(mid_time).fits
 
     # take the average heliocentric distance
     helio_r_au = np.mean(obs_log["HELIO"])

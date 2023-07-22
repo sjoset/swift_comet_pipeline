@@ -10,6 +10,8 @@ from typing import Optional, TypeAlias, List, Tuple
 
 
 __all__ = [
+    "SwiftProjectConfig",
+    "SwiftPipelineConfig",
     "SwiftData",
     "SwiftObservationLog",
     "SwiftUVOTImage",
@@ -34,6 +36,25 @@ SwiftObservationLog: TypeAlias = pd.DataFrame
 SwiftUVOTImage: TypeAlias = np.ndarray
 SwiftObservationID: TypeAlias = str
 SwiftOrbitID: TypeAlias = str
+
+
+@dataclass
+class SwiftProjectConfig:
+    swift_data_path: pathlib.Path
+    jpl_horizons_id: str
+    product_save_path: pathlib.Path
+    observation_log: Optional[pathlib.Path]
+    comet_orbital_data_path: Optional[pathlib.Path]
+    earth_orbital_data_path: Optional[pathlib.Path]
+
+
+@dataclass
+class SwiftPipelineConfig:
+    solar_spectrum_path: pathlib.Path
+    effective_area_uw1_path: pathlib.Path
+    effective_area_uvv_path: pathlib.Path
+    oh_fluorescence_path: pathlib.Path
+    vectorial_model_path: pathlib.Path
 
 
 class StackingMethod(str, Enum):
@@ -101,10 +122,10 @@ def file_string_to_filter(filter_str: str) -> SwiftFilter:
 
 # TODO: look these up and finish this
 # TODO: verify each of these
-# how the filter is represented in the FITS file headers and the observation log
+# how the filter is represented as a string in the FITS file headers and the observation log
 filter_to_obs_string_dict = {
     SwiftFilter.uuu: "U",
-    # SwiftFilter.ubb: "ubb",
+    SwiftFilter.ubb: "B",
     SwiftFilter.uvv: "V",
     SwiftFilter.uw1: "UVW1",
     SwiftFilter.uw2: "UVW2",

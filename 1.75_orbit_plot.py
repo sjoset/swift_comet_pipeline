@@ -3,6 +3,7 @@
 import os
 import sys
 import calendar
+import pathlib
 import logging as log
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ from argparse import ArgumentParser
 
 from swift_types import SwiftFilter, SwiftObservationLog
 
-# from read_swift_config import read_swift_config
+from configs import read_swift_project_config
 from observation_log import read_observation_log
 
 
@@ -38,7 +39,7 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "observation_log_file", nargs=1, help="Filename of observation log input"
+        "swift_project_config", nargs=1, help="Filename of project config"
     )
 
     args = parser.parse_args()
@@ -56,10 +57,10 @@ def process_args():
 
 def make_orbit_and_observation_plots(comet_orbit_df, earth_orbit_df, obs_log):
     # add column of observation mid times as datetime objects
-    obs_log["obs_datetime_mid"] = list(
-        map(lambda x: x.to_datetime(), obs_log["MID_TIME"].values)
-    )
-    obs_log.index = obs_log["obs_datetime_mid"]
+    # obs_log["obs_datetime_mid"] = list(
+    #     map(lambda x: x.to_datetime(), obs_log["MID_TIME"].values)
+    # )
+    # obs_log.index = obs_log["obs_datetime_mid"]
 
     # text labels
     label_xs, label_ys, labels = comet_observation_labels_by_month(
@@ -80,42 +81,6 @@ def make_orbit_and_observation_plots(comet_orbit_df, earth_orbit_df, obs_log):
     # earth orbit curve
     earth_rs = np.sqrt(earth_orbit_df["x"] ** 2 + earth_orbit_df["y"] ** 2)
     earth_thetas = np.arctan2(earth_orbit_df["y"], earth_orbit_df["x"])
-
-    # plt.rcParams["figure.figsize"] = (15, 15)
-    #
-    # fig = plt.figure()
-    # ax = fig.add_subplot(1, 1, 1, projection="polar")
-
-    # ax.plot(comet_thetas, comet_rs, lw=1.5, alpha=0.2, color="#688894")
-    # ax.plot(earth_thetas, earth_rs, lw=1.0, alpha=0.2, color="#afac7c")
-    # ax.scatter(observation_thetas, observation_rs, color="#a4b7be", alpha=0.5, zorder=1)
-
-    # for r, theta, label in zip(label_rs, label_thetas, labels):
-    #     text_rot = theta * (180 / np.pi)
-    #     if text_rot > 90 and text_rot < 180:
-    #         text_rot -= 180
-    #     elif text_rot > 180:
-    #         text_rot -= 360
-    #     plt.text(
-    #         theta,
-    #         r,
-    #         label,
-    #         rotation=text_rot,
-    #         color="#688894",
-    #         ha="center",
-    #         va="center",
-    #         alpha=1.0,
-    #     )
-    #
-    # ax.set_title("C/2013US10")
-
-    # ax.set_yticklabels([])
-    # ax.axis("off")
-
-    # fig.savefig("all.pdf")
-
-    # plt.show()
-    # plt.close()
 
     generate_orbits_figure(
         comet_rs,
@@ -180,7 +145,6 @@ def generate_orbits_figure(
 
 
 def generate_labels_figure(
-    # observation_rs, observation_thetas, label_rs, label_thetas, labels, out_file=None
     comet_rs,
     comet_thetas,
     earth_rs,
@@ -366,7 +330,7 @@ def find_observation_coords_from_obs_log(
     ys = []
     # find closest time to MID_TIME in orbit data and take those coords
     for _, row in obs_log.iterrows():
-        t_match = row["MID_TIME"]
+        t_match = Time(row["MID_TIME"])
         df_idx_match = get_closest_index_to_value(comet_orbit_df, t_match, "jd")
 
         xs.append(comet_orbit_df.iloc[df_idx_match]["x"])
@@ -388,7 +352,7 @@ def monthly_group_breakdown(group_time, df: SwiftObservationLog):
     uw1_mask = df["FILTER"] == SwiftFilter.uw1
     uvv_mask = df["FILTER"] == SwiftFilter.uvv
 
-    tstart, tend = np.min(df["MID_TIME"]), np.max(df["MID_TIME"])
+    tstart, tend = Time(np.min(df["MID_TIME"])), Time(np.max(df["MID_TIME"]))
     print(f"[ {tstart.to_datetime()} ] through [ {tend.to_datetime()} ]")
     print(
         f"\t{(tend - tstart).to_value(u.hr):03.1f} hours between first to last observation"
@@ -428,7 +392,7 @@ def comet_observation_labels_by_month(
     for gname, group in obs_log.groupby(pd.Grouper(freq="1M")):
         if len(group) == 0:
             continue
-        t_match = Time(str(np.mean(group["obs_datetime_mid"])), format="iso")
+        t_match = Time(str(np.mean(group["MID_TIME"])), format="iso")
 
         t_idx = get_closest_index_to_value(comet_orbit_df, t_match, "jd")
 
@@ -479,14 +443,31 @@ def comet_observation_labels_by_month(
 def main():
     args = process_args()
 
-    obs_log = read_observation_log(args.observation_log_file[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None or swift_project_config.observation_log is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
+        return 1
 
-    comet_orbit = pd.read_csv("data/comet_orbital_data_horizons.csv")
+    obs_log = read_observation_log(swift_project_config.observation_log)
+
+    if swift_project_config.comet_orbital_data_path is None:
+        print(
+            f"Could not find comet orbital data path in project config {swift_project_config}"
+        )
+        return 1
+
+    comet_orbit = pd.read_csv(swift_project_config.comet_orbital_data_path)
     comet_orbit["jd"] = list(
         map(lambda t: Time(t, format="jd"), comet_orbit["datetime_jd"])
     )
 
-    earth_orbit = pd.read_csv("data/earth_orbital_data_horizons.csv")
+    if swift_project_config.earth_orbital_data_path is None:
+        print(
+            f"Could not find earth orbital data path in project config {swift_project_config}"
+        )
+        return 1
+    earth_orbit = pd.read_csv(swift_project_config.earth_orbital_data_path)
 
     # rs, thetas = find_observation_coords_from_obs_log(obs_log, comet_orbit)
 
@@ -498,6 +479,8 @@ def main():
     # obs_log.index = obs_log["obs_datetime_mid"]
     # xs, ys, labels = orbit_labels(obs_log, comet_orbit)
     # orbit_label_figure(xs, ys, labels)
+
+    obs_log.index = obs_log["MID_TIME"]
 
     make_orbit_and_observation_plots(
         obs_log=obs_log, comet_orbit_df=comet_orbit, earth_orbit_df=earth_orbit
