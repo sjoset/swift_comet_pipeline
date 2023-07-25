@@ -145,9 +145,9 @@ def pad_to_match_sizes(
             constant_values=0.0,
         )
 
-    print(
-        f"For {stacking_method}:\tuw1 transformed from {uw1copy.shape} ==> {uw1.shape}\t\tuvv transformed from {uvvcopy.shape} ==> {uvv.shape}"
-    )
+    # print(
+    #     f"For {stacking_method}:\tuw1 transformed from {uw1copy.shape} ==> {uw1.shape}\t\tuvv transformed from {uvvcopy.shape} ==> {uvv.shape}"
+    # )
 
     uw1_mid_row_original, uw1_mid_col_original = image_mid_row_col(uw1copy)
     uw1_center_pixel_original = uw1copy[uw1_mid_row_original, uw1_mid_col_original]
@@ -178,8 +178,8 @@ def pad_to_match_sizes(
         print(
             f"Pixel coordinates of new uw1 image that match center of old uw1 image: {pixmatch_list_uw1}"
         )
-    else:
-        print("No errors padding uw1 image - center pixels match values")
+    # else:
+    #     print("No errors padding uw1 image - center pixels match values")
 
     pixmatch_list_uvv = list(zip(*np.where(uvv == uvv_center_pixel_original)))
     # the center pixel of the new image should match the center pixel of the original - so it should be in this list!
@@ -188,8 +188,8 @@ def pad_to_match_sizes(
         print(
             f"Pixel coordinates of new uvv image that match center of old uvv image: {pixmatch_list_uvv}"
         )
-    else:
-        print("No errors padding uvv image - center pixels match values")
+    # else:
+    #     print("No errors padding uvv image - center pixels match values")
 
     # show_fits_scaled([uw1, uw1copy, uvv, uvvcopy], stacking_method=stacking_method)
 
@@ -210,9 +210,7 @@ def do_stack(
     # test if there are uvv and uw1 images in the data set
     (stackable, _) = includes_uvv_and_uw1_filters(obs_log=obs_log)
     if not stackable:
-        print(
-            "The selection does not have data in both filters! If this was not intentional, choose a larger time window."
-        )
+        print("The selection does not have data in both uw1 and uvv filters!")
 
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
@@ -221,7 +219,6 @@ def do_stack(
     stacking_outputs = {}
     stacked_images = {}
 
-    # stack the images and store them in stacked_images
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
@@ -256,7 +253,7 @@ def do_stack(
         stacked_images[(SwiftFilter.uw1, stacking_method)].stacked_image = uw1_img
         stacked_images[(SwiftFilter.uvv, stacking_method)].stacked_image = uvv_img
 
-    print("Writing stack results ...")
+    # print("Writing stack results ...")
     # Write the padded images and stacking information
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
@@ -265,7 +262,7 @@ def do_stack(
             stacked_image_dir=stacked_image_dir,
             stacked_image=stacked_images[(filter_type, stacking_method)],
         )
-        print(f"Wrote to {stacked_path}, info at {stacked_info_path}")
+        # print(f"Wrote to {stacked_path}, info at {stacked_info_path}")
 
         stacking_outputs[(filter_type, stacking_method)] = (
             str(stacked_path.name),
@@ -281,7 +278,8 @@ def select_epoch_to_stack(epoch_dir: pathlib.Path) -> Tuple[SwiftObservationLog,
     epoch_filename_list = sorted(glob.glob(glob_pattern))
 
     epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
-    obs_log = pd.read_parquet(epoch_path)
+    # obs_log = pd.read_parquet(epoch_path)
+    obs_log = read_observation_log(epoch_path)
     return obs_log, epoch_path.stem
 
 

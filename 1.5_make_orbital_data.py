@@ -83,11 +83,11 @@ def main():
 
     # location=None defaults to solar system barycenter
     comet_horizons_response = Horizons(
-        id=horizon_id, location=None, id_type="smallbody", epochs=epochs
+        id=horizon_id, location=None, id_type="designation", epochs=epochs
     )
 
     # get comet orbital data in a horizons response and put it in a pandas dataframe
-    comet_vectors = comet_horizons_response.vectors()  # type: ignore
+    comet_vectors = comet_horizons_response.vectors(closest_apparition=True)  # type: ignore
     comet_df = comet_vectors.to_pandas()
 
     comet_vectors_output_path = (
@@ -107,7 +107,7 @@ def main():
         / pathlib.Path(args.earth)
     )
     earth_df.to_csv(earth_vectors_output_path)
-    print(f"Output successfully written to {comet_vectors_output_path}")
+    print(f"Output successfully written to {earth_vectors_output_path}")
 
     # update the project config
     swift_project_config.comet_orbital_data_path = comet_vectors_output_path

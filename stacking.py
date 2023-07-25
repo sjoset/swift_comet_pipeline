@@ -11,6 +11,8 @@ from astropy.time import Time
 from typing import Tuple, Optional, List
 from dataclasses import asdict
 
+from tqdm import tqdm
+
 from swift_types import (
     SwiftData,
     SwiftOrbitID,
@@ -295,18 +297,11 @@ def stack_image_by_selection(
     source_filenames: List[pathlib.Path] = []
     source_extensions: List[int] = []
 
-    for _, row in obs_log.iterrows():
+    stacking_progress_bar = tqdm(obs_log.iterrows(), total=len(obs_log), unit=" images")
+    for _, row in stacking_progress_bar:
         obsid = row["OBS_ID"]
 
         image_path = swift_data.get_uvot_image_directory(obsid=obsid) / row["FITS_FILENAME"]  # type: ignore
-
-        log.info(
-            "Processing %s, extension %s: Comet center at %s, %s",
-            image_path.name,
-            row["EXTENSION"],
-            row["PX"],
-            row["PY"],
-        )
 
         source_filenames.append(pathlib.Path(image_path.name))
         source_extensions.append(int(row["EXTENSION"]))
@@ -330,6 +325,10 @@ def stack_image_by_selection(
 
         image_data_to_stack.append(image_data)
         exposure_times.append(exp_time)
+
+        stacking_progress_bar.set_description(
+            f"{image_path.name} extension {row.EXTENSION}"
+        )
 
     exposure_time = np.sum(exposure_times)
 
