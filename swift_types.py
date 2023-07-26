@@ -6,16 +6,14 @@ import glob
 
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Optional, TypeAlias, List, Tuple
+from typing import Optional, TypeAlias, List
 
 
 __all__ = [
-    "SwiftProjectConfig",
-    "SwiftPipelineConfig",
     "SwiftData",
     "SwiftObservationLog",
     "SwiftUVOTImage",
-    "SwiftStackedUVOTImage",
+    # "SwiftStackedUVOTImage",
     "SwiftFilter",
     "SwiftUVOTImageType",
     "SwiftOrbitID",
@@ -36,25 +34,6 @@ SwiftObservationLog: TypeAlias = pd.DataFrame
 SwiftUVOTImage: TypeAlias = np.ndarray
 SwiftObservationID: TypeAlias = str
 SwiftOrbitID: TypeAlias = str
-
-
-@dataclass
-class SwiftProjectConfig:
-    swift_data_path: pathlib.Path
-    jpl_horizons_id: str
-    product_save_path: pathlib.Path
-    observation_log: Optional[pathlib.Path]
-    comet_orbital_data_path: Optional[pathlib.Path]
-    earth_orbital_data_path: Optional[pathlib.Path]
-
-
-@dataclass
-class SwiftPipelineConfig:
-    solar_spectrum_path: pathlib.Path
-    effective_area_uw1_path: pathlib.Path
-    effective_area_uvv_path: pathlib.Path
-    oh_fluorescence_path: pathlib.Path
-    vectorial_model_path: pathlib.Path
 
 
 class StackingMethod(str, Enum):
@@ -189,23 +168,23 @@ class PixelCoord:
     y: float
 
 
-@dataclass
-class SwiftStackedUVOTImage:
-    # The actual image data
-    stacked_image: SwiftUVOTImage
-    # Tuple with the obsids, filenames, and extensions of each image that contributed to the stacked image
-    sources: List[Tuple[SwiftObservationID, pathlib.Path, int]]
-    # sum of exposure times of the stacked images
-    exposure_time: float
-    filter_type: SwiftFilter
-    coincidence_corrected: bool
-    # TODO: The detector scale might be in the FITS source file headers
-    detector_scale: SwiftPixelResolution
-    stacking_method: StackingMethod
-    observation_mid_time: str
-    helio_r_au: float
-    helio_v_kms: float
-    delta_au: float
+# @dataclass
+# class SwiftStackedUVOTImage:
+#     # The actual image data
+#     stacked_image: SwiftUVOTImage
+#     # Tuple with the obsids, filenames, and extensions of each image that contributed to the stacked image
+#     sources: List[Tuple[SwiftObservationID, pathlib.Path, int]]
+#     # sum of exposure times of the stacked images
+#     exposure_time: float
+#     filter_type: SwiftFilter
+#     coincidence_corrected: bool
+#     # TODO: The detector scale might be in the FITS source file headers
+#     detector_scale: SwiftPixelResolution
+#     stacking_method: StackingMethod
+#     observation_mid_time: str
+#     helio_r_au: float
+#     helio_v_kms: float
+#     delta_au: float
 
 
 class SwiftData:

@@ -3,12 +3,38 @@ import yaml
 import pathlib
 import logging as log
 from typing import Optional
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 
-from swift_types import SwiftProjectConfig, SwiftPipelineConfig
+# from swift_types import SwiftProjectConfig, SwiftPipelineConfig
 
 
-__all__ = ["read_swift_project_config", "read_swift_pipeline_config"]
+__all__ = [
+    "SwiftProjectConfig",
+    "SwiftPipelineConfig",
+    "read_swift_project_config",
+    "read_swift_pipeline_config",
+]
+
+
+@dataclass
+class SwiftProjectConfig:
+    swift_data_path: pathlib.Path
+    jpl_horizons_id: str
+    product_save_path: pathlib.Path
+    observation_log: Optional[pathlib.Path]
+    comet_orbital_data_path: Optional[pathlib.Path]
+    earth_orbital_data_path: Optional[pathlib.Path]
+    epoch_dir_path: Optional[pathlib.Path]
+    stack_dir_path: Optional[pathlib.Path]
+
+
+@dataclass
+class SwiftPipelineConfig:
+    solar_spectrum_path: pathlib.Path
+    effective_area_uw1_path: pathlib.Path
+    effective_area_uvv_path: pathlib.Path
+    oh_fluorescence_path: pathlib.Path
+    vectorial_model_path: pathlib.Path
 
 
 def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
@@ -60,6 +86,8 @@ def read_swift_project_config(
     observation_log = _path_from_yaml(config_yaml, "observation_log")
     comet_orbital_data_path = _path_from_yaml(config_yaml, "comet_orbital_data_path")
     earth_orbital_data_path = _path_from_yaml(config_yaml, "earth_orbital_data_path")
+    epoch_dir_path = _path_from_yaml(config_yaml, "epoch_dir_path")
+    stack_dir_path = _path_from_yaml(config_yaml, "stack_dir_path")
 
     project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
@@ -68,6 +96,8 @@ def read_swift_project_config(
         observation_log=observation_log,
         comet_orbital_data_path=comet_orbital_data_path,
         earth_orbital_data_path=earth_orbital_data_path,
+        epoch_dir_path=epoch_dir_path,
+        stack_dir_path=stack_dir_path,
     )
     return project_config
 
@@ -110,6 +140,8 @@ def write_swift_project_config(
     dict_to_write["earth_orbital_data_path"] = str(
         dict_to_write["earth_orbital_data_path"]
     )
+    dict_to_write["epoch_dir_path"] = str(dict_to_write["epoch_dir_path"])
+    dict_to_write["stack_dir_path"] = str(dict_to_write["stack_dir_path"])
 
     with open(config_path, "w") as stream:
         try:

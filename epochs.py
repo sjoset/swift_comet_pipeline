@@ -52,7 +52,13 @@ def read_epoch(epoch_path: pathlib.Path) -> Epoch:
     return epoch
 
 
-def write_epoch(epoch: Epoch, epoch_path: pathlib.Path) -> None:
+def write_epoch(
+    epoch: Epoch, epoch_path: pathlib.Path, additional_schema: pa.lib.Schema = None
+) -> None:
+    schema = epoch_schema()
+    if additional_schema is not None:
+        schema = pa.unify_schemas([schema, additional_schema])
+
     # do any column processing of our own here
 
     write_observation_log(epoch, epoch_path, additional_schema=epoch_schema())

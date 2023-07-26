@@ -86,14 +86,17 @@ def main():
         id=horizon_id, location=None, id_type="designation", epochs=epochs
     )
 
+    orbit_output_path = (
+        swift_project_config.product_save_path.expanduser().resolve()
+        / pathlib.Path("orbit")
+    )
+    orbit_output_path.mkdir(parents=True, exist_ok=True)
+
     # get comet orbital data in a horizons response and put it in a pandas dataframe
     comet_vectors = comet_horizons_response.vectors(closest_apparition=True)  # type: ignore
     comet_df = comet_vectors.to_pandas()
 
-    comet_vectors_output_path = (
-        swift_project_config.product_save_path.expanduser().resolve()
-        / pathlib.Path(args.comet)
-    )
+    comet_vectors_output_path = orbit_output_path / pathlib.Path(args.comet)
 
     comet_df.to_csv(comet_vectors_output_path)
     print(f"Output successfully written to {comet_vectors_output_path}")
@@ -102,10 +105,7 @@ def main():
     earth_horizons_response = Horizons(id=399, location=None, epochs=epochs)
     earth_vectors = earth_horizons_response.vectors()  # type: ignore
     earth_df = earth_vectors.to_pandas()
-    earth_vectors_output_path = (
-        swift_project_config.product_save_path.expanduser().resolve()
-        / pathlib.Path(args.earth)
-    )
+    earth_vectors_output_path = orbit_output_path / pathlib.Path(args.earth)
     earth_df.to_csv(earth_vectors_output_path)
     print(f"Output successfully written to {earth_vectors_output_path}")
 

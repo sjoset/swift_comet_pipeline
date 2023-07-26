@@ -6,7 +6,7 @@ import sys
 import warnings
 import logging as log
 
-import pyarrow as pa
+# import pyarrow as pa
 
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser

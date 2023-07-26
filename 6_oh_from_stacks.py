@@ -18,7 +18,8 @@ from configs import read_swift_pipeline_config, read_swift_project_config
 from swift_types import SwiftFilter, StackingMethod
 
 from reddening_correction import DustReddeningPercent
-from stack_info import stacked_images_from_stackinfo
+
+# from stack_info import stacked_images_from_stackinfo
 from fluorescence_OH import flux_OH_to_num_OH, read_gfactor_1au
 from flux_OH import OH_flux_from_count_rate, OH_flux_from_count_rate_fixed_beta
 from aperture_photometry import do_aperture_photometry
