@@ -12,7 +12,8 @@ from typing import Dict
 from swift_types import (
     SwiftFilter,
     filter_to_string,
-    SwiftStackedUVOTImage,
+    SwiftUVOTImage,
+    # SwiftStackedUVOTImage,
 )
 
 __version__ = "0.0.1"
@@ -108,8 +109,8 @@ def magnitude_from_count_rate(count_rate, filter_type) -> float:
 # TODO: this should also take a time of observation, because the magnitude calculation uses
 # filter data that is time dependent
 def do_aperture_photometry(
-    stacked_sum: SwiftStackedUVOTImage,
-    stacked_median: SwiftStackedUVOTImage,
+    stacked_sum: SwiftUVOTImage,
+    stacked_median: SwiftUVOTImage,
     comet_aperture_radius: float,
     bg_aperture_radius: float,
     bg_aperture_x: float,

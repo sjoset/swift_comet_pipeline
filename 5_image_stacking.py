@@ -28,7 +28,7 @@ from swift_types import (
     filter_to_file_string,
     filter_to_string,
 )
-from configs import read_swift_project_config
+from configs import read_swift_project_config, write_swift_project_config
 from stacking import stack_epoch
 from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
@@ -300,6 +300,7 @@ def do_stack(
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
+        # TODO: make this available as a function because other parts of the pipeline need to be able to find these files
         fits_filename = (
             f"{epoch_name}_{filter_to_file_string(filter_type)}_{stacking_method}.fits"
         )
@@ -349,6 +350,14 @@ def main():
         do_coincidence_correction=True,
         detector_scale=SwiftPixelResolution.event_mode,
     )
+
+    if swift_project_config.stack_dir_path is None:
+        # update project config with the epoch directory, and save it back to the file
+        swift_project_config.stack_dir_path = stack_dir_path
+        write_swift_project_config(
+            config_path=pathlib.Path(swift_project_config_path),
+            swift_project_config=swift_project_config,
+        )
 
 
 if __name__ == "__main__":
