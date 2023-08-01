@@ -5,6 +5,9 @@ import astropy.units as u
 
 from scipy.interpolate import interp1d
 from dataclasses import dataclass
+from typing import Optional
+
+from configs import read_swift_pipeline_config
 
 
 __all__ = ["FluorescenceGFactor1AU", "read_gfactor_1au", "flux_OH_to_num_OH"]
@@ -31,8 +34,14 @@ def flux_OH_to_num_OH(
     helio_r_au: float,
     helio_v_kms: float,
     delta_au: float,
-    fluorescence_data: FluorescenceGFactor1AU,
-):
+    fluorescence_data: Optional[FluorescenceGFactor1AU] = None,
+) -> float:
+    if fluorescence_data is None:
+        spc = read_swift_pipeline_config()
+        if spc is None:
+            return 0
+        fluorescence_data = read_gfactor_1au(fluorescence_file=spc.oh_fluorescence_path)
+
     g1au_interpolation = interp1d(
         fluorescence_data.helio_vs, fluorescence_data.gfactors, kind="cubic"
     )

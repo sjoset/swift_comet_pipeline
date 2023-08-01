@@ -30,6 +30,7 @@ __all__ = [
     "build_observation_log",
     "read_observation_log",
     "write_observation_log",
+    "includes_uvv_and_uw1_filters",
 ]
 
 
@@ -252,6 +253,32 @@ def write_observation_log(
         schema = pa.unify_schemas([schema, additional_schema])
 
     oc.to_parquet(obs_log_path, schema=schema)
+
+
+def includes_uvv_and_uw1_filters(
+    obs_log: SwiftObservationLog,
+) -> bool:
+    """
+    To find OH and perform dust subtraction we need data from the UV and UW1 filter from somewhere across the given data set in orbit_ids.
+    Returns a list of orbits that have UV or UW1 images, after removing orbits that have no data in the UV or UW1 filters
+    """
+
+    has_uvv_filter = obs_log[obs_log["FILTER"] == SwiftFilter.uvv]
+    has_uvv_set = set(has_uvv_filter["ORBIT_ID"])
+
+    has_uw1_filter = obs_log[obs_log["FILTER"] == SwiftFilter.uw1]
+    has_uw1_set = set(has_uw1_filter["ORBIT_ID"])
+
+    has_both = len(has_uvv_set) > 0 and len(has_uw1_set) > 0
+
+    # print(
+    #     f"Found {len(has_uw1_filter)} uw1 observations and {len(has_uvv_filter)} uvv observations"
+    # )
+    # contributing_orbits = has_uvv_set
+    # contributing_orbits.update(has_uw1_set)
+
+    # return (has_both, list(contributing_orbits))
+    return has_both
 
 
 # def print_parquet_metadata():

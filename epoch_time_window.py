@@ -24,17 +24,23 @@ def epochs_from_time_delta(
     # sort by observations by time, oldest first
     obs_log = obs_log.sort_values(by="MID_TIME", ascending=True).reset_index(drop=True)
 
+    num_observations = len(obs_log)
     epoch_list = []
     epoch_count = 0
 
     while True:
         max_index = len(obs_log) - 1
+
         t_start = Time(obs_log.iloc[0].MID_TIME) - 1 * u.s
 
         # keep checking if next observation is within max_time_delta
         prev_index = 0
         while True:
             prev_time = Time(obs_log.iloc[prev_index].MID_TIME)
+            if max_index == 0:
+                # this is the only row left, so set t_end and break
+                t_end = prev_time + 1 * u.s
+                break
 
             cur_index = prev_index + 1
 
@@ -61,6 +67,7 @@ def epochs_from_time_delta(
         epoch = epoch_from_obs_log(epoch)
         epoch_list.append(epoch.reset_index(drop=True))
         epoch_count += 1
+        print(f"Epoch {epoch_count} --> {len(epoch)} observations")
 
         cutoff_mask = obs_log.MID_TIME > t_end
         obs_log = obs_log[cutoff_mask]
@@ -69,6 +76,9 @@ def epochs_from_time_delta(
         if obs_log.empty:
             break
 
+    print(f"Total observations in observation log before slicing: {num_observations}")
+    obs_sum = sum([len(x) for x in epoch_list])
+    print(f"Total observations in all epochs after slicing: {obs_sum}")
     return epoch_list
 
 

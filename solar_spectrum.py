@@ -60,6 +60,7 @@ def read_solar_spectrum_sorce(
     return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
 
 
+# TODO: this is probably broken: make it use the base directory of the code instead of relative path in spectrum_path
 def get_sorce_spectrum(t: Time) -> SolarSpectrum:
     """
     Looks in the directory data/solar_spectra/[year] for the file sorce_ssi_l3.csv, which should contain columns
@@ -125,6 +126,7 @@ def solar_count_rate_in_filter(
         np.c_[lambdas, solar_irradiances_on_filter_lambdas.T], ea_responses_on_lambdas.T
     ]
 
+    # TODO: magic numbers
     cr = (
         np.sum(spec[:, 0] * spec[:, 1] * spec[:, 2]) * dlambda * 1e7 * 5.034116651114543
     )

@@ -2,9 +2,7 @@
 
 import numpy as np
 from astropy.io import fits
-from astropy.visualization import (
-    ZScaleInterval,
-)
+from astropy.visualization import ZScaleInterval
 
 from epochs import Epoch
 from swift_types import SwiftData
@@ -117,7 +115,7 @@ class EpochImagePlot(object):
         self.num_images = len(epoch)
         self.epoch_title = epoch_title
 
-        self.fig, self.ax = plt.subplots(1, 1, figsize=(20, 20))
+        self.fig, self.ax = plt.subplots(1, 1, figsize=(10, 10))
         self.fig.subplots_adjust(bottom=0.18)
         self.fig.canvas.mpl_connect("key_press_event", self.on_key_press)  # type: ignore
 

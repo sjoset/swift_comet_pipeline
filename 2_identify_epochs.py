@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 from configs import read_swift_project_config, write_swift_project_config
 from swift_types import SwiftFilter
 
-from observation_log import read_observation_log
+from observation_log import read_observation_log, includes_uvv_and_uw1_filters
 from epochs import file_name_from_epoch, write_epoch
 from user_input import get_yes_no
 from epoch_time_window import (
@@ -59,6 +59,10 @@ def main():
         return 1
 
     obs_log = read_observation_log(swift_project_config.observation_log)
+
+    if not includes_uvv_and_uw1_filters(obs_log=obs_log):
+        print("The selection does not have data in both uw1 and uvv filters!")
+
     # only uw1 and uvv filters
     filter_mask = (obs_log["FILTER"] == SwiftFilter.uw1) | (
         obs_log["FILTER"] == SwiftFilter.uvv

@@ -29,6 +29,8 @@ from swift_types import (
     filter_to_string,
 )
 from configs import read_swift_project_config, write_swift_project_config
+
+# from observation_log import includes_uvv_and_uw1_filters
 from stacking import stack_epoch
 from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
@@ -63,29 +65,6 @@ def process_args():
         log.basicConfig(format="%(levelname)s: %(message)s")
 
     return args
-
-
-def includes_uvv_and_uw1_filters(
-    epoch: Epoch,
-) -> bool:
-    """
-    To find OH and perform dust subtraction we need data from the UV and UW1 filter from somewhere across the given data set in orbit_ids.
-    Returns a list of orbits that have UV or UW1 images, after removing orbits that have no data in the UV or UW1 filters
-    """
-
-    has_uvv_filter = epoch[epoch["FILTER"] == SwiftFilter.uvv]
-    has_uvv_set = set(has_uvv_filter["ORBIT_ID"])
-
-    has_uw1_filter = epoch[epoch["FILTER"] == SwiftFilter.uw1]
-    has_uw1_set = set(has_uw1_filter["ORBIT_ID"])
-
-    has_both = len(has_uvv_set) > 0 and len(has_uw1_set) > 0
-
-    # contributing_orbits = has_uvv_set
-    # contributing_orbits.update(has_uw1_set)
-
-    # return (has_both, list(contributing_orbits))
-    return has_both
 
 
 def image_mid_row_col(img: SwiftUVOTImage) -> Tuple[int, int]:
@@ -218,8 +197,8 @@ def do_stack(
     detector_scale: SwiftPixelResolution,
 ) -> None:
     # test if there are uvv and uw1 images in the data set
-    if not includes_uvv_and_uw1_filters(epoch=epoch):
-        print("The selection does not have data in both uw1 and uvv filters!")
+    # if not includes_uvv_and_uw1_filters(epoch=epoch):
+    #     print("The selection does not have data in both uw1 and uvv filters!")
 
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]

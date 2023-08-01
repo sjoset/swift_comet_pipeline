@@ -22,88 +22,89 @@ __version__ = "0.0.1"
 __all__ = [
     "get_filter_parameters",
     "magnitude_from_count_rate",
-    # "determine_background",
     "do_aperture_photometry",
 ]
 
 
-@dataclass
-class AperturePhotometryResult:
-    net_counts: float
-    net_count_rate: float
-    comet_counts: float
-    comet_count_rate: float
-    background_counts_in_comet_aperture: float
-    background_count_rate_in_comet_aperture: float
-    background_counts: float
-    background_count_rate: float
-    comet_aperture: CircularAperture
-    background_aperture: CircularAperture
-    comet_magnitude: float
+# @dataclass
+# class AperturePhotometryResult:
+#     net_counts: float
+#     net_count_rate: float
+#     comet_counts: float
+#     comet_count_rate: float
+#     background_counts_in_comet_aperture: float
+#     background_count_rate_in_comet_aperture: float
+#     background_counts: float
+#     background_count_rate: float
+#     comet_aperture: CircularAperture
+#     background_aperture: CircularAperture
+#     comet_magnitude: float
 
 
-# TODO: cite these from the swift documentation
-# TODO: look up what 'cf' stands for
-# TODO: Make SwiftFilterParameters a dataclass?  Use typing.Final to make these constants?
-# TODO: these are all technically a function of time, so we should incorporate that
-def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
-    filter_params = {
-        SwiftFilter.uvv: {
-            "fwhm": 769,
-            "zero_point": 17.89,
-            "zero_point_err": 0.013,
-            "cf": 2.61e-16,
-            "cf_err": 2.4e-18,
-        },
-        SwiftFilter.ubb: {
-            "fwhm": 975,
-            "zero_point": 19.11,
-            "zero_point_err": 0.016,
-            "cf": 1.32e-16,
-            "cf_err": 9.2e-18,
-        },
-        SwiftFilter.uuu: {
-            "fwhm": 785,
-            "zero_point": 18.34,
-            "zero_point_err": 0.020,
-            "cf": 1.5e-16,
-            "cf_err": 1.4e-17,
-        },
-        SwiftFilter.uw1: {
-            "fwhm": 693,
-            "zero_point": 17.49,
-            "zero_point_err": 0.03,
-            "cf": 4.3e-16,
-            "cf_err": 2.1e-17,
-            "rf": 0.1375,
-        },
-        SwiftFilter.um2: {
-            "fwhm": 498,
-            "zero_point": 16.82,
-            "zero_point_err": 0.03,
-            "cf": 7.5e-16,
-            "cf_err": 1.1e-17,
-        },
-        SwiftFilter.uw2: {
-            "fwhm": 657,
-            "zero_point": 17.35,
-            "zero_point_err": 0.04,
-            "cf": 6.0e-16,
-            "cf_err": 6.4e-17,
-        },
-    }
-    return filter_params[filter_type]
-
-
-# TODO: error propogation
-def magnitude_from_count_rate(count_rate, filter_type) -> float:
-    filter_params = get_filter_parameters(filter_type)
-    mag = filter_params["zero_point"] - 2.5 * np.log10(count_rate)
-    # mag_err_1 = 2.5*cr_err/(np.log(10)*cr)
-    # mag_err_2 = filt_para(filt)['zero_point_err']
-    # mag_err = np.sqrt(mag_err_1**2 + mag_err_2**2)
-    # return mag, mag_err
-    return mag
+# # TODO: move to another file
+# # TODO: cite these from the swift documentation
+# # TODO: look up what 'cf' stands for
+# # TODO: Make SwiftFilterParameters a dataclass?  Use typing.Final to make these constants?
+# # TODO: these are all technically a function of time, so we should incorporate that
+# def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
+#     filter_params = {
+#         SwiftFilter.uvv: {
+#             "fwhm": 769,
+#             "zero_point": 17.89,
+#             "zero_point_err": 0.013,
+#             "cf": 2.61e-16,
+#             "cf_err": 2.4e-18,
+#         },
+#         SwiftFilter.ubb: {
+#             "fwhm": 975,
+#             "zero_point": 19.11,
+#             "zero_point_err": 0.016,
+#             "cf": 1.32e-16,
+#             "cf_err": 9.2e-18,
+#         },
+#         SwiftFilter.uuu: {
+#             "fwhm": 785,
+#             "zero_point": 18.34,
+#             "zero_point_err": 0.020,
+#             "cf": 1.5e-16,
+#             "cf_err": 1.4e-17,
+#         },
+#         SwiftFilter.uw1: {
+#             "fwhm": 693,
+#             "zero_point": 17.49,
+#             "zero_point_err": 0.03,
+#             "cf": 4.3e-16,
+#             "cf_err": 2.1e-17,
+#             "rf": 0.1375,
+#         },
+#         SwiftFilter.um2: {
+#             "fwhm": 498,
+#             "zero_point": 16.82,
+#             "zero_point_err": 0.03,
+#             "cf": 7.5e-16,
+#             "cf_err": 1.1e-17,
+#         },
+#         SwiftFilter.uw2: {
+#             "fwhm": 657,
+#             "zero_point": 17.35,
+#             "zero_point_err": 0.04,
+#             "cf": 6.0e-16,
+#             "cf_err": 6.4e-17,
+#         },
+#     }
+#     return filter_params[filter_type]
+#
+#
+# # TODO: move to another file
+# # TODO: error propogation
+# def magnitude_from_count_rate(count_rate, filter_type) -> float:
+#     filter_params = get_filter_parameters(filter_type)
+#     mag = filter_params["zero_point"] - 2.5 * np.log10(count_rate)
+#     # mag_err_1 = 2.5*cr_err/(np.log(10)*cr)
+#     # mag_err_2 = filt_para(filt)['zero_point_err']
+#     # mag_err = np.sqrt(mag_err_1**2 + mag_err_2**2)
+#     # return mag, mag_err
+#     return mag
 
 
 # TODO: this should also take a time of observation, because the magnitude calculation uses
