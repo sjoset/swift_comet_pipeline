@@ -162,12 +162,14 @@ def stack_epoch(
     epoch: Epoch,
     stacking_method: StackingMethod = StackingMethod.summation,
     do_coincidence_correction: bool = True,
-    detector_scale: SwiftPixelResolution = SwiftPixelResolution.data_mode,
+    pixel_resolution: SwiftPixelResolution = SwiftPixelResolution.data_mode,
 ) -> Optional[SwiftUVOTImage]:
     """
     Blindly takes every entry in the given Epoch and attempts to stack it - epoch should be pre-filtered because
     no checks are made here
     """
+
+    # TODO: detector_scale should be read during the observation log step and stored in the database instead of being an argument to this function
 
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(
@@ -200,7 +202,9 @@ def stack_epoch(
 
         # do any processing before stacking
         if do_coincidence_correction:
-            coi_map = coincidence_correction(image_data, detector_scale)
+            coi_map = coincidence_correction(
+                img_data=image_data, scale=pixel_resolution
+            )
             image_data = image_data * coi_map
 
         exp_time = float(row["EXPOSURE"])

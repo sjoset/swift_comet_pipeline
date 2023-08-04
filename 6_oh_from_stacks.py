@@ -7,8 +7,12 @@ import glob
 import numpy as np
 import pandas as pd
 import logging as log
-from itertools import product
+from typing import Tuple, List
+from itertools import product, groupby
 
+from photutils.aperture import ApertureStats, CircularAperture
+
+# from scipy.ndimage import uniform_filter1d
 from astropy.io import fits
 
 from argparse import ArgumentParser
@@ -25,6 +29,7 @@ from swift_types import (
     StackingMethod,
     filter_to_file_string,
     SwiftUVOTImage,
+    get_uvot_image_center_x_y,
 )
 
 from fluorescence_OH import flux_OH_to_num_OH
@@ -38,7 +43,8 @@ from determine_background import (
     BackgroundResult,
     determine_background,
 )
-from comet_signal import CometPhotometryMethod, comet_photometry
+from comet_signal import CometCenterFindingMethod, find_comet_center
+from plateau_detect import plateau_detect
 
 __version__ = "0.0.1"
 
@@ -148,6 +154,38 @@ def show_fits_subtracted(uw1, uvv, beta):
     plt.show()
 
 
+def show_centers(img, cs: List[Tuple[float, float]]):
+    # img_scaled = np.log10(img)
+    img_scaled = img
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 1, 1)
+
+    ax1.add_patch(
+        plt.Circle(
+            (get_uvot_image_center_x_y(img)),
+            radius=30,
+            fill=False,
+        )
+    )
+
+    zscale = ZScaleInterval()
+    vmin, vmax = zscale.get_limits(img_scaled)
+
+    im1 = ax1.imshow(img_scaled, vmin=vmin, vmax=vmax)
+    # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
+    fig.colorbar(im1)
+
+    for cx, cy in cs:
+        line_color = next(ax1._get_lines.prop_cycler)["color"]
+        ax1.axvline(cx, alpha=0.7, color=line_color)
+        ax1.axhline(cy, alpha=0.9, color=line_color)
+    # ax1.axvline(px, color="b", alpha=0.2)
+    # ax1.axhline(py, color="b", alpha=0.2)
+
+    plt.show()
+
+
 def show_background_subtraction(
     before,
     after,
@@ -254,7 +292,7 @@ def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
 
 
 def get_background(img: SwiftUVOTImage) -> BackgroundResult:
-    # TODO: menu here for type of BG
+    # TODO: menu here for type of BG method
     bg_cr = determine_background(
         img=img,
         background_method=BackgroundDeterminationMethod.gui_manual_aperture,
@@ -297,18 +335,12 @@ def do_comet_photometry(
     img: SwiftUVOTImage,
     aperture_radius: float,
 ):
-    img_center_row = int(np.floor(img.shape[0] / 2))
-    img_center_col = int(np.floor(img.shape[1] / 2))
+    ap_x, ap_y = get_uvot_image_center_x_y(img=img)
+    comet_aperture = CircularAperture((ap_x, ap_y), r=aperture_radius)
 
-    cr = comet_photometry(
-        img=img,
-        photometry_method=CometPhotometryMethod.manual_aperture,
-        aperture_x=img_center_col,
-        aperture_y=img_center_row,
-        aperture_radius=aperture_radius,
-    )
+    comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
 
-    return cr
+    return comet_count_rate
 
 
 def main():
@@ -341,26 +373,27 @@ def main():
         filter_type=SwiftFilter.uw1,
         stacking_method=StackingMethod.summation,
     )
-    # uw1_median = stacked_image_from_epoch_path(
-    #     epoch_path=epoch_path,
-    #     filter_type=SwiftFilter.uw1,
-    #     stacking_method=StackingMethod.median,
-    # )
+    uw1_median = stacked_image_from_epoch_path(
+        epoch_path=epoch_path,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=StackingMethod.median,
+    )
     uvv_sum = stacked_image_from_epoch_path(
         epoch_path=epoch_path,
         filter_type=SwiftFilter.uvv,
         stacking_method=StackingMethod.summation,
     )
-    # uvv_median = stacked_image_from_epoch_path(
-    #     epoch_path=epoch_path,
-    #     filter_type=SwiftFilter.uvv,
-    #     stacking_method=StackingMethod.median,
-    # )
+    uvv_median = stacked_image_from_epoch_path(
+        epoch_path=epoch_path,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=StackingMethod.median,
+    )
 
-    # bguw1 = get_background(uw1_median, SwiftFilter.uw1)
     bguw1 = get_background(uw1_sum)
-    # bguvv = get_background(uvv_median, SwiftFilter.uvv)
     bguvv = get_background(uvv_sum)
+    # bguw1 = get_background(uw1_median)
+    # bguvv = get_background(uvv_median)
+    print("")
     print(f"Background count rate for uw1: {bguw1}")
     print(f"Background count rate for uvv: {bguvv}")
 
@@ -369,15 +402,39 @@ def main():
     # uvv = np.clip(uvv_sum - bguvv.count_rate_per_pixel, 0, None)
     uvv = uvv_sum - bguvv.count_rate_per_pixel
 
-    aperture_radii = np.linspace(1, 100, num=1000)
-    rednesses = [10]
+    print("Determining center of comet:")
+    search_ap = CircularAperture(get_uvot_image_center_x_y(img=uw1), r=30)
+    pixel_center = find_comet_center(
+        img=uw1,
+        method=CometCenterFindingMethod.pixel_center,
+        search_aperture=search_ap,
+    )
+    centroid = find_comet_center(
+        img=uw1,
+        method=CometCenterFindingMethod.aperture_centroid,
+        search_aperture=search_ap,
+    )
+    peak = find_comet_center(
+        img=uw1,
+        method=CometCenterFindingMethod.aperture_peak,
+        search_aperture=search_ap,
+    )
+    print("\tBy image center: ", pixel_center)
+    print(
+        "\tBy centroid (center of mass) in aperture radius 30 at image center: ",
+        centroid,
+    )
+    print("\tBy peak value in aperture radius 30 at image center: ", peak)
+
+    # show_centers(uw1, [pixel_center, centroid, peak])
+
+    aperture_radii, r_step = np.linspace(1, 60, num=300, retstep=True)
+    rednesses = [20]
     dust_redness_list = list(
         # map(lambda x: DustReddeningPercent(x), [0, 5, 10, 15, 20, 25])
         map(lambda x: DustReddeningPercent(x), rednesses)
     )
     redness_to_beta = {x.reddening: beta_parameter(x) for x in dust_redness_list}
-    print(dust_redness_list)
-    print(redness_to_beta)
 
     count_uw1 = []
     count_uvv = []
@@ -416,7 +473,7 @@ def main():
     df = pd.DataFrame(
         {
             "aperture_radius": rs,
-            "dust_redness": reds,
+            "dust_redness": list(map(lambda x: int(x.reddening), reds)),
             "counts_uw1": count_uw1,
             "counts_uvv": count_uvv,
             "flux_OH": flux,
@@ -427,87 +484,78 @@ def main():
 
     qmask = df["Q_H2O"] > 0
     print(df[qmask])
-    # print(np.diff(df[qmask]["Q_H2O"]))
 
-    # fig, axs = plt.subplots(nrows=1, ncols=2)
-    # axs[0].set_yscale("log")
-    # df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[0])
-    # df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[1])
-    # plt.show()
+    print("")
+    print("Plateau search in uw1 counts:")
+    uw1_plateau_list = plateau_detect(
+        ys=df.counts_uw1.values,
+        xstep=float(r_step),
+        smoothing=3,
+        threshold=1e-2,
+        min_length=5,
+    )
+    if len(uw1_plateau_list) > 0:
+        for p in uw1_plateau_list:
+            i = p.begin_index
+            j = p.end_index
+            print(
+                f"Plateau between r = {df.loc[i].aperture_radius} to r = {df.loc[j].aperture_radius}"
+            )
+            plateau_slice = df[i:j]
+            positive_Qs = plateau_slice[plateau_slice.Q_H2O > 0]
+            if len(positive_Qs > 0):
+                # print(positive_Qs)
+                print(f"\tAverage Q_H2O: {np.mean(positive_Qs.Q_H2O)}")
+            else:
+                print("\tNo positive Q_H2O values found in this plateau")
+    else:
+        print("No plateaus in uw1 counts detected")
 
-    fig, axs = plt.subplots(nrows=1, ncols=2)
-    # axs[0].set_yscale("log")
+    print("")
+    print("Plateau search in uvv counts:")
+    uvv_plateau_list = plateau_detect(
+        ys=df.counts_uvv.values,
+        xstep=float(r_step),
+        smoothing=5,
+        threshold=5e-3,
+        min_length=5,
+    )
+    if len(uvv_plateau_list) > 0:
+        for p in uvv_plateau_list:
+            i = p.begin_index
+            j = p.end_index
+            print(
+                f"Plateau between r = {df.loc[i].aperture_radius} to r = {df.loc[j].aperture_radius}"
+            )
+            plateau_slice = df[i:j]
+            positive_Qs = plateau_slice[plateau_slice.Q_H2O > 0]
+            if len(positive_Qs > 0):
+                # print(positive_Qs)
+                print(f"\tAverage Q_H2O: {np.mean(positive_Qs.Q_H2O)}")
+            else:
+                print("\tNo positive Q_H2O values found in this plateau")
+    else:
+        print("No plateaus in uvv counts detected")
+
+    fig, axs = plt.subplots(nrows=1, ncols=3)
+    axs[2].set_yscale("log")
     df.plot.line(x="aperture_radius", y="counts_uw1", subplots=True, ax=axs[0])
     df.plot.line(x="aperture_radius", y="counts_uvv", subplots=True, ax=axs[1])
+    df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[2])
+
+    for p in uw1_plateau_list:
+        i = p.begin_index
+        j = p.end_index
+        axs[0].axvspan(df.loc[i].aperture_radius, df.loc[j].aperture_radius, color="blue", alpha=0.1)  # type: ignore
+
+    for p in uvv_plateau_list:
+        i = p.begin_index
+        j = p.end_index
+        axs[1].axvspan(df.loc[i].aperture_radius, df.loc[j].aperture_radius, color="orange", alpha=0.1)  # type: ignore
+
     plt.show()
 
     # show_fits_subtracted(uw1=uw1_sum, uvv=uvv_sum, beta=beta)
-
-    # img_center_row = int(np.floor(uw1_sum.shape[0] / 2))
-    # img_center_col = int(np.floor(uw1_sum.shape[1] / 2))
-    # c_r = 30.0
-    # cuw1 = comet_photometry(
-    #     img=uw1_sum,
-    #     filter_type=SwiftFilter.uw1,
-    #     stacking_method=StackingMethod.summation,
-    #     photometry_method=CometPhotometryMethod.manual_aperture,
-    #     aperture_x=img_center_col,
-    #     aperture_y=img_center_row,
-    #     aperture_radius=c_r,
-    # )
-    # cuvv = comet_photometry(
-    #     img=uvv_sum,
-    #     filter_type=SwiftFilter.uvv,
-    #     stacking_method=StackingMethod.summation,
-    #     photometry_method=CometPhotometryMethod.manual_aperture,
-    #     aperture_x=img_center_col,
-    #     aperture_y=img_center_row,
-    #     aperture_radius=c_r,
-    # )
-    # print(f"Count rate in uw1 aperture without background subtraction: {cuw1}")
-    # print(f"Count rate in uvv aperture without background subtraction: {cuvv}")
-    #
-    # uw1cr = comet_photometry(
-    #     img=uw1_sum - bguw1.count_rate_per_pixel,
-    #     filter_type=SwiftFilter.uw1,
-    #     stacking_method=StackingMethod.summation,
-    #     photometry_method=CometPhotometryMethod.manual_aperture,
-    #     aperture_x=img_center_col,
-    #     aperture_y=img_center_row,
-    #     aperture_radius=c_r,
-    # )
-    # uvvcr = comet_photometry(
-    #     img=uvv_sum - bguvv.count_rate_per_pixel,
-    #     filter_type=SwiftFilter.uvv,
-    #     stacking_method=StackingMethod.summation,
-    #     photometry_method=CometPhotometryMethod.manual_aperture,
-    #     aperture_x=img_center_col,
-    #     aperture_y=img_center_row,
-    #     aperture_radius=c_r,
-    # )
-    # print(f"Count rate in uw1 aperture with background subtraction: {uw1cr}")
-    # print(f"Count rate in uvv aperture with background subtraction: {uvvcr}")
-
-    # show_background_subtraction(
-    #     before=uw1_sum,
-    #     after=uw1_sum - bguw1.count_rate_per_pixel,
-    #     comet_aperture_radius=c_r,
-    #     comet_center_x=img_center_col,
-    #     comet_center_y=img_center_row,
-    #     bg_aperture_x=bg_ap_x,
-    #     bg_aperture_y=bg_ap_y,
-    #     bg_aperture_radius=bg_r,
-    # )
-    # show_background_subtraction(
-    #     before=uvv_sum,
-    #     after=uvv_sum - bguvv.count_rate_per_pixel,
-    #     comet_aperture_radius=c_r,
-    #     comet_center_x=img_center_col,
-    #     comet_center_y=img_center_row,
-    #     bg_aperture_x=bg_ap_x,
-    #     bg_aperture_y=bg_ap_y,
-    #     bg_aperture_radius=bg_r,
-    # )
 
 
 if __name__ == "__main__":

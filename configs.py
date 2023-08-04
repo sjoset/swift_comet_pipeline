@@ -2,7 +2,7 @@ import os
 import yaml
 import pathlib
 import logging as log
-from typing import Optional
+from typing import Callable, Optional
 from dataclasses import asdict, dataclass
 
 # from swift_types import SwiftProjectConfig, SwiftPipelineConfig
@@ -61,6 +61,29 @@ def _path_from_yaml(yaml_dict: dict, key: str) -> Optional[pathlib.Path]:
     return val
 
 
+def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
+    script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
+    config_yaml = _read_yaml(script_path / pathlib.Path("pipeline_config.yaml"))
+
+    if config_yaml is None:
+        return None
+
+    pipeline_config = SwiftPipelineConfig(
+        solar_spectrum_path=script_path
+        / pathlib.Path(config_yaml["solar_spectrum_path"]),
+        effective_area_uw1_path=script_path
+        / pathlib.Path(config_yaml["effective_area_uw1_path"]),
+        effective_area_uvv_path=script_path
+        / pathlib.Path(config_yaml["effective_area_uvv_path"]),
+        oh_fluorescence_path=script_path
+        / pathlib.Path(config_yaml["oh_fluorescence_path"]),
+        vectorial_model_path=script_path
+        / pathlib.Path(config_yaml["vectorial_model_path"]),
+    )
+
+    return pipeline_config
+
+
 def read_swift_project_config(
     config_path: pathlib.Path,
 ) -> Optional[SwiftProjectConfig]:
@@ -99,30 +122,9 @@ def read_swift_project_config(
         epoch_dir_path=epoch_dir_path,
         stack_dir_path=stack_dir_path,
     )
+    # print("Read swift project config:")
+    # print(project_config)
     return project_config
-
-
-def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
-    script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
-    config_yaml = _read_yaml(script_path / pathlib.Path("pipeline_config.yaml"))
-
-    if config_yaml is None:
-        return None
-
-    pipeline_config = SwiftPipelineConfig(
-        solar_spectrum_path=script_path
-        / pathlib.Path(config_yaml["solar_spectrum_path"]),
-        effective_area_uw1_path=script_path
-        / pathlib.Path(config_yaml["effective_area_uw1_path"]),
-        effective_area_uvv_path=script_path
-        / pathlib.Path(config_yaml["effective_area_uvv_path"]),
-        oh_fluorescence_path=script_path
-        / pathlib.Path(config_yaml["oh_fluorescence_path"]),
-        vectorial_model_path=script_path
-        / pathlib.Path(config_yaml["vectorial_model_path"]),
-    )
-
-    return pipeline_config
 
 
 def write_swift_project_config(
@@ -130,21 +132,29 @@ def write_swift_project_config(
 ) -> None:
     dict_to_write = asdict(swift_project_config)
 
-    # convert paths to str for writing - this is apparently not done automatically
-    dict_to_write["swift_data_path"] = str(dict_to_write["swift_data_path"])
-    dict_to_write["product_save_path"] = str(dict_to_write["product_save_path"])
-    dict_to_write["observation_log"] = str(dict_to_write["observation_log"])
-    dict_to_write["comet_orbital_data_path"] = str(
-        dict_to_write["comet_orbital_data_path"]
-    )
-    dict_to_write["earth_orbital_data_path"] = str(
-        dict_to_write["earth_orbital_data_path"]
-    )
-    dict_to_write["epoch_dir_path"] = str(dict_to_write["epoch_dir_path"])
-    dict_to_write["stack_dir_path"] = str(dict_to_write["stack_dir_path"])
+    path_keys_to_convert = [
+        "swift_data_path",
+        "product_save_path",
+        "observation_log",
+        "comet_orbital_data_path",
+        "earth_orbital_data_path",
+        "epoch_dir_path",
+        "stack_dir_path",
+    ]
+    for k in path_keys_to_convert:
+        convert_or_delete(dict_to_write, k, os.fspath)
 
+    # print("Writing swift project config:")
+    # print(dict_to_write)
     with open(config_path, "w") as stream:
         try:
             yaml.safe_dump(dict_to_write, stream)
         except yaml.YAMLError as exc:
             print(exc)
+
+
+def convert_or_delete(d: dict, k, conversion_function: Callable):
+    if d[k] is None:
+        del d[k]
+    else:
+        d[k] = conversion_function(d[k])

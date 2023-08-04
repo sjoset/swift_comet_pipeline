@@ -6,13 +6,17 @@ import glob
 
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Optional, TypeAlias, List
+from typing import Optional, TypeAlias, List, Tuple
 
 
+# TODO: break this into swift_uvot, swift_filter, swift_data source files
+# Move types like observation log to their respective places
 __all__ = [
     "SwiftData",
     "SwiftObservationLog",
     "SwiftUVOTImage",
+    "get_uvot_image_center_row_col",
+    "get_uvot_image_center_x_y",
     # "SwiftStackedUVOTImage",
     "SwiftFilter",
     "SwiftUVOTImageType",
@@ -36,6 +40,16 @@ SwiftObservationID: TypeAlias = str
 SwiftOrbitID: TypeAlias = str
 
 
+def get_uvot_image_center_row_col(img: SwiftUVOTImage) -> Tuple[int, int]:
+    center_row = int(np.floor(img.shape[0] / 2))
+    center_col = int(np.floor(img.shape[1] / 2))
+    return (center_row, center_col)
+
+
+def get_uvot_image_center_x_y(img: SwiftUVOTImage) -> Tuple[int, int]:
+    return tuple(reversed(get_uvot_image_center_row_col(img=img)))
+
+
 class StackingMethod(str, Enum):
     summation = "sum"
     median = "median"
@@ -48,6 +62,23 @@ class StackingMethod(str, Enum):
 class SwiftPixelResolution(str, Enum):
     event_mode = 0.502
     data_mode = 1.0
+
+
+def datamode_to_pixel_resolution(datamode: str) -> SwiftPixelResolution:
+    if datamode == "IMAGE":
+        return SwiftPixelResolution.data_mode
+    elif datamode == "EVENT":
+        return SwiftPixelResolution.event_mode
+    else:
+        print(f"Unknown data mode {datamode}!")
+        return SwiftPixelResolution.data_mode
+
+
+def pixel_resolution_to_datamode(spr: SwiftPixelResolution) -> str:
+    if spr == SwiftPixelResolution.event_mode:
+        return "EVENT"
+    elif spr == SwiftPixelResolution.data_mode:
+        return "IMAGE"
 
 
 class SwiftFilter(str, Enum):

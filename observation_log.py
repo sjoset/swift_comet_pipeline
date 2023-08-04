@@ -18,7 +18,9 @@ from swift_types import (
     SwiftObservationID,
     SwiftFilter,
     SwiftObservationLog,
+    datamode_to_pixel_resolution,
     filter_to_obs_string,
+    pixel_resolution_to_datamode,
     swift_observation_id_from_int,
     obs_string_to_filter,
     swift_orbit_id_from_obsid,
@@ -56,6 +58,7 @@ def observation_log_schema() -> pa.lib.Schema:
             pa.field("DEC", pa.float64()),
             pa.field("PX", pa.float64()),
             pa.field("PY", pa.float64()),
+            pa.field("DATAMODE", pa.string()),
         ]
     )
 
@@ -77,6 +80,8 @@ def build_observation_log(
 
     all_filters = SwiftFilter.all_filters()
 
+    # TODO: the entry DATAMODE is 'IMAGE' - figure out if this is data mode or event mode (probably data mode)
+
     fits_header_entries_to_read = [
         "OBS_ID",
         "DATE-OBS",
@@ -86,6 +91,7 @@ def build_observation_log(
         "RA_OBJ",
         "DEC_OBJ",
         "EXPOSURE",
+        "DATAMODE",
     ]
     obs_log = pd.DataFrame(columns=fits_header_entries_to_read)
 
@@ -204,6 +210,8 @@ def build_observation_log(
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
+    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+
     return obs_log
 
 
@@ -228,6 +236,8 @@ def read_observation_log(
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
+    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+
     return obs_log
 
 
@@ -247,6 +257,8 @@ def write_observation_log(
 
     oc["OBS_ID"] = oc["OBS_ID"].astype(int)
     oc["FILTER"] = oc["FILTER"].map(filter_to_obs_string)
+
+    oc.DATAMODE = oc.DATAMODE.map(pixel_resolution_to_datamode)
 
     schema = observation_log_schema()
     if additional_schema is not None:

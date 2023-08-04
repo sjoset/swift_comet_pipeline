@@ -1,41 +1,41 @@
-# import numpy as np
-from photutils.aperture import (
-    CircularAperture,
-    ApertureStats,
-    # CircularAnnulus,
-)
+import numpy as np
+from photutils.aperture import CircularAperture, ApertureStats
 
-# from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Tuple, Optional
 from enum import Enum, auto
 
-
-from swift_types import (
-    # StackingMethod,
-    # SwiftFilter,
-    # filter_to_string,
-    SwiftUVOTImage,
-    # SwiftStackedUVOTImage,
-)
-
-__version__ = "0.0.1"
+from swift_types import SwiftUVOTImage, get_uvot_image_center_row_col
 
 
-CometCountRate: TypeAlias = float
+__all__ = ["CometCenterFindingMethod", "comet_manual_aperture", "find_comet_center"]
 
 
-class CometPhotometryMethod(str, Enum):
-    manual_aperture = auto()
-    # auto_aperture = auto()
+# class CometPhotometryMethod(str, Enum):
+#     manual_aperture = auto()
+#     # auto_aperture = auto()
+#
+#     @classmethod
+#     def all_methods(cls):
+#         return [x for x in cls]
 
 
-def comet_photometry(
-    img: SwiftUVOTImage,
-    photometry_method: CometPhotometryMethod,
-    **kwargs,
-) -> CometCountRate:
-    if photometry_method == CometPhotometryMethod.manual_aperture:
-        return comet_manual_aperture(img=img, **kwargs)
+class CometCenterFindingMethod(str, Enum):
+    pixel_center = auto()
+    aperture_centroid = auto()
+    aperture_peak = auto()
+
+    @classmethod
+    def all_methods(cls):
+        return [x for x in cls]
+
+
+# def comet_photometry(
+#     img: SwiftUVOTImage,
+#     photometry_method: CometPhotometryMethod,
+#     **kwargs,
+# ) -> float:
+#     if photometry_method == CometPhotometryMethod.manual_aperture:
+#         return comet_manual_aperture(img=img, **kwargs)
 
 
 def comet_manual_aperture(
@@ -43,35 +43,59 @@ def comet_manual_aperture(
     aperture_x: float,
     aperture_y: float,
     aperture_radius: float,
-) -> CometCountRate:
-    # center_row = int(np.floor(img.shape[0] / 2))
-    # center_col = int(np.floor(img.shape[1] / 2))
-    # print(
-    #     f"Using test aperture at image center: {center_col}, {center_row}"
-    # )
-
-    # # reminder: x coords are columns, y rows
-    # initial_comet_aperture = CircularAperture(
-    #     (center_col, center_row), r=comet_aperture_radius
-    # )
-    #
-    # # use an aperture on the image center of the specified radius and find the centroid of the comet signal
-    # initial_aperture_stats = ApertureStats(image_sum, initial_comet_aperture)
-    # print(
-    #     f"Moving analysis aperture to the centroid of the test aperture: {initial_aperture_stats.centroid}"
-    # )
-
-    # # Move the aperture to the centroid of the test aperture and do our analysis there
-    # comet_center_x, comet_center_y = (
-    #     initial_aperture_stats.centroid[0],
-    #     initial_aperture_stats.centroid[1],
-    # )
+) -> float:
     comet_aperture = CircularAperture((aperture_x, aperture_y), r=aperture_radius)
     comet_aperture_stats = ApertureStats(img, comet_aperture)
-    # print(f"Centroid of analysis aperture: {comet_aperture_stats.centroid}")
-
     comet_count_rate = float(comet_aperture_stats.sum)
-    # # the sum images are in count rates, so multiply by exposure time for counts
-    # comet_counts = comet_count_rate * exposure_time
 
     return comet_count_rate
+
+
+def find_comet_center(
+    img: SwiftUVOTImage,
+    method: CometCenterFindingMethod,
+    search_aperture: Optional[CircularAperture] = None,
+) -> Tuple[float, float]:
+    """
+    Coordinates returned are x, y values
+    """
+    if method == CometCenterFindingMethod.pixel_center:
+        center_row_int, center_col_int = get_uvot_image_center_row_col(img)
+        return (float(center_col_int), float(center_row_int))
+    elif method == CometCenterFindingMethod.aperture_centroid:
+        return comet_center_by_centroid(img=img, search_aperture=search_aperture)
+    elif method == CometCenterFindingMethod.aperture_peak:
+        return comet_center_by_peak(img=img, search_aperture=search_aperture)
+
+
+def comet_center_by_centroid(
+    img: SwiftUVOTImage, search_aperture: Optional[CircularAperture]
+) -> Tuple[float, float]:
+    if search_aperture is None:
+        print("No aperture provided for center finding by centroid!")
+        return (0.0, 0.0)
+
+    stats = ApertureStats(img, search_aperture)
+
+    return tuple(stats.centroid)
+
+
+def comet_center_by_peak(
+    img: SwiftUVOTImage, search_aperture: Optional[CircularAperture]
+) -> Tuple[float, float]:
+    if search_aperture is None:
+        print("No aperture provided for center finding by peak!")
+        return (0.0, 0.0)
+
+    # cut out the pixels in the aperture
+    ap_mask = search_aperture.to_mask(method="center")
+    img_cutout = ap_mask.cutout(data=img)  # type: ignore
+
+    # index of peak value for img represented as 1d list
+    peak_pos_raveled = np.argmax(img_cutout)
+    # unravel turns this 1d index into (row, col) indices
+    peak_pos = np.unravel_index(peak_pos_raveled, img_cutout.shape)
+
+    ap_min_x, ap_min_y = search_aperture.bbox.ixmin, search_aperture.bbox.iymin  # type: ignore
+
+    return (float(ap_min_x + peak_pos[1]), float(ap_min_y + peak_pos[0]))

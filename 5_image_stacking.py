@@ -18,6 +18,8 @@ from astropy.visualization import (
     ZScaleInterval,
 )
 from astropy.io import fits
+from astropy.time import Time
+import astropy.units as u
 
 from swift_types import (
     SwiftData,
@@ -34,6 +36,7 @@ from configs import read_swift_project_config, write_swift_project_config
 from stacking import stack_epoch
 from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
+from swift_types import get_uvot_image_center_x_y
 
 
 __version__ = "0.0.1"
@@ -188,13 +191,55 @@ def pad_to_match_sizes(
     return (uw1, uvv)
 
 
+def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.ImageHDU:
+    hdu = fits.ImageHDU(data=img)
+
+    # TODO: include data mode or event mode here
+
+    hdr = hdu.header
+    hdr["distunit"] = "AU"
+    hdr["v_unit"] = "km/s"
+    hdr["delta"] = np.mean(epoch.OBS_DIS)
+    hdr["rh"] = np.mean(epoch.HELIO)
+    hdr["ra_obj"] = np.mean(epoch.RA_OBJ)
+    hdr["dec_obj"] = np.mean(epoch.DEC_OBJ)
+
+    hdr["pos_x"], hdr["pos_y"] = get_uvot_image_center_x_y(img=img)
+    hdr["phase"] = np.mean(epoch.PHASE)
+
+    dt = Time(np.max(epoch.MID_TIME)) - Time(np.min(epoch.MID_TIME))
+    first_obs_row = epoch.loc[epoch.MID_TIME.idxmin()]
+    last_obs_row = epoch.loc[epoch.MID_TIME.idxmax()]
+
+    first_obs_time = Time(first_obs_row.MID_TIME)
+    first_obs_time.format = "fits"
+    hdr["firstobs"] = first_obs_time.value
+    last_obs_time = Time(last_obs_row.MID_TIME)
+    last_obs_time.format = "fits"
+    hdr["lastobs"] = last_obs_time.value
+    mid_obs = Time(np.mean(epoch.MID_TIME))
+    mid_obs.format = "fits"
+    hdr["mid_obs"] = mid_obs.value
+
+    rh_start = first_obs_row.HELIO * u.AU
+    rh_end = last_obs_row.HELIO * u.AU
+    dr_dt = (rh_end - rh_start) / dt
+
+    ddelta_dt = (last_obs_row.OBS_DIS * u.AU - first_obs_row.OBS_DIS * u.AU) / dt
+
+    hdr["drh_dt"] = dr_dt.to_value(u.km / u.s)
+    hdr["ddeltadt"] = ddelta_dt.to_value(u.km / u.s)
+
+    return hdu
+
+
 def do_stack(
     swift_data: SwiftData,
     epoch: Epoch,
     epoch_name: str,
     stack_dir_path: pathlib.Path,
     do_coincidence_correction: bool,
-    detector_scale: SwiftPixelResolution,
+    # detector_scale: SwiftPixelResolution,
 ) -> None:
     # test if there are uvv and uw1 images in the data set
     # if not includes_uvv_and_uw1_filters(epoch=epoch):
@@ -203,6 +248,12 @@ def do_stack(
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
+
+    if epoch.DATAMODE.nunique() != 1:
+        print("Images in the requested stack have mixed data modes!  Exiting.")
+        exit(1)
+
+    epoch_pixel_resolution = epoch.DATAMODE[0]
 
     stacked_images = {}
 
@@ -229,7 +280,7 @@ def do_stack(
             epoch=ml,
             stacking_method=stacking_method,
             do_coincidence_correction=do_coincidence_correction,
-            detector_scale=detector_scale,
+            pixel_resolution=epoch_pixel_resolution,
         )
 
         if stacked_images[(filter_type, stacking_method)] is None:
@@ -265,7 +316,7 @@ def do_stack(
         [],
         metadata={
             "coincidence_correction": str(do_coincidence_correction),
-            "detector_scale": str(detector_scale),
+            "pixel_resolution": str(epoch_pixel_resolution),
         },
     )
     epoch_write_path = stack_dir_path / pathlib.Path(epoch_name + ".parquet")
@@ -284,8 +335,11 @@ def do_stack(
             f"{epoch_name}_{filter_to_file_string(filter_type)}_{stacking_method}.fits"
         )
         fits_path = stack_dir_path / pathlib.Path(fits_filename)
-        print(fits_path)
-        hdu = fits.PrimaryHDU(stacked_images[(filter_type, stacking_method)])
+        print(f"Writing to {fits_path} ...")
+        # hdu = fits.PrimaryHDU(stacked_images[(filter_type, stacking_method)])
+        hdu = epoch_stacked_image_to_fits(
+            epoch=epoch, img=stacked_images[(filter_type, stacking_method)]
+        )
         hdu.writeto(fits_path, overwrite=True)
 
 
@@ -319,15 +373,14 @@ def main():
     stack_dir_path = swift_project_config.product_save_path / pathlib.Path("stacked")
     stack_dir_path.mkdir(parents=True, exist_ok=True)
 
-    non_veto_epoch = epoch[epoch.manual_veto == np.False_]
+    non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
 
     do_stack(
         swift_data=swift_data,
-        epoch=non_veto_epoch,
+        epoch=non_vetoed_epoch,
         epoch_name=epoch_path.stem,
         stack_dir_path=stack_dir_path,
         do_coincidence_correction=True,
-        detector_scale=SwiftPixelResolution.event_mode,
     )
 
     if swift_project_config.stack_dir_path is None:

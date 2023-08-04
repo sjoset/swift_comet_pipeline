@@ -82,11 +82,10 @@ def bg_walking_aperture_ensemble(
 
 class BackgroundAperturePlacementPlot(object):
     def __init__(self, img, title="aoeu"):
-        # TODO: subtract background and update the image for feedback
-        # self.original_img = copy.deepcopy(img)
-        # self.bg_subtracted_img = copy.deepcopy(img)
+        self.original_img = copy.deepcopy(img)
+        self.bg_count_rate = 0
 
-        self.img = copy.deepcopy(img)
+        self.img = img
         self.title = title
 
         self.image_center_x = int(np.floor(img.shape[1] / 2))
@@ -104,7 +103,10 @@ class BackgroundAperturePlacementPlot(object):
         self.radius_slider.on_changed(self.onslider)
 
         self.aperture = plt.Circle(
-            (self.image_center_x, self.image_center_y), edgecolor="black", fill=False
+            (self.image_center_x, self.image_center_y),
+            edgecolor="white",
+            fill=False,
+            alpha=0.3,
         )
         self.ax.add_patch(self.aperture)  # type: ignore
 
@@ -121,16 +123,25 @@ class BackgroundAperturePlacementPlot(object):
         plt.draw()
 
     def onclick(self, event):
-        print(f"{event.inaxes=}")
         # only move the aperture if they click on the image
         if event.inaxes != self.ax:
             return
         self.aperture.center = event.xdata, event.ydata
-        print(self.aperture.center)
+        self.recalc_background()
         self.fig.canvas.draw_idle()  # type: ignore
+
+    def recalc_background(self):
+        self.bg_count_rate = bg_manual_aperture(
+            img=self.original_img,
+            aperture_x=self.aperture.get_center()[0],
+            aperture_y=self.aperture.get_center()[1],
+            aperture_radius=self.aperture.radius,
+        ).count_rate_per_pixel
+        self.img_plot.set_data(self.original_img - self.bg_count_rate)
 
     def onslider(self, new_value):
         self.aperture.set_radius(new_value)
+        self.recalc_background()
         self.fig.canvas.draw_idle()  # type: ignore
 
     def show(self):
@@ -140,7 +151,6 @@ class BackgroundAperturePlacementPlot(object):
 def bg_gui_manual_aperture(img: SwiftUVOTImage):
     bg = BackgroundAperturePlacementPlot(img)
     bg.show()
-    # print(bg.aperture.get_center(), bg.aperture.radius)
 
     return bg_manual_aperture(
         img=img,

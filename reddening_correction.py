@@ -8,7 +8,6 @@ from effective_areas import read_effective_area
 
 @dataclass
 class DustReddeningPercent:
-    # percentages from 0 to 100
     reddening: float
 
 
