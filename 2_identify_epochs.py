@@ -8,7 +8,7 @@ import logging as log
 from argparse import ArgumentParser
 
 from configs import read_swift_project_config, write_swift_project_config
-from swift_types import SwiftFilter
+from swift_filter import SwiftFilter
 
 from observation_log import read_observation_log, includes_uvv_and_uw1_filters
 from epochs import file_name_from_epoch, write_epoch

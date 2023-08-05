@@ -18,7 +18,8 @@ from astropy.time import Time
 
 from argparse import ArgumentParser
 
-from swift_types import SwiftFilter, SwiftObservationLog
+from swift_filter import SwiftFilter
+from observation_log import SwiftObservationLog
 
 from configs import read_swift_project_config
 from observation_log import read_observation_log

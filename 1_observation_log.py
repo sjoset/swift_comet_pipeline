@@ -11,7 +11,7 @@ import logging as log
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-from swift_types import SwiftData
+from swift_data import SwiftData
 from configs import read_swift_project_config, write_swift_project_config
 from observation_log import (
     build_observation_log,

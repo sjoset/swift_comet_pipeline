@@ -8,36 +8,26 @@ import numpy as np
 import pandas as pd
 import logging as log
 from typing import Tuple, List
-from itertools import product, groupby
+from itertools import product
 
 from photutils.aperture import ApertureStats, CircularAperture
 
-# from scipy.ndimage import uniform_filter1d
 from astropy.io import fits
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
-from astropy.visualization import (
-    ZScaleInterval,
-)
+from astropy.visualization import ZScaleInterval
 
 from configs import read_swift_pipeline_config, read_swift_project_config
 from epochs import read_epoch
 from reddening_correction import DustReddeningPercent
-from swift_types import (
-    SwiftFilter,
-    StackingMethod,
-    filter_to_file_string,
-    SwiftUVOTImage,
-    get_uvot_image_center_x_y,
-)
-
+from swift_filter import SwiftFilter, filter_to_file_string
+from stacking import StackingMethod
+from uvot_image import SwiftUVOTImage, get_uvot_image_center
 from fluorescence_OH import flux_OH_to_num_OH
 from flux_OH import OH_flux_from_count_rate, beta_parameter
-
 from num_OH_to_Q import num_OH_to_Q_vectorial
-from user_input import get_selection, get_float
-
+from user_input import get_selection
 from determine_background import (
     BackgroundDeterminationMethod,
     BackgroundResult,
@@ -161,9 +151,10 @@ def show_centers(img, cs: List[Tuple[float, float]]):
     fig = plt.figure()
     ax1 = fig.add_subplot(1, 1, 1)
 
+    pix_center = get_uvot_image_center(img)
     ax1.add_patch(
         plt.Circle(
-            (get_uvot_image_center_x_y(img)),
+            (pix_center.x, pix_center.y),
             radius=30,
             fill=False,
         )
@@ -189,9 +180,6 @@ def show_centers(img, cs: List[Tuple[float, float]]):
 def show_background_subtraction(
     before,
     after,
-    # comet_aperture_radius,
-    # comet_center_x,
-    # comet_center_y,
     bg_aperture_x,
     bg_aperture_y,
     bg_aperture_radius,
@@ -202,7 +190,6 @@ def show_background_subtraction(
 
     zscale = ZScaleInterval()
     vmin1, vmax1 = zscale.get_limits(before)
-    # vmin2, vmax2 = zscale.get_limits(img2)
 
     im1 = ax1.imshow(before, vmin=vmin1, vmax=vmax1)
     im2 = ax2.imshow(after, vmin=vmin1, vmax=vmax1)
@@ -213,13 +200,6 @@ def show_background_subtraction(
     image_center_row = int(np.floor(before.shape[0] / 2))
     image_center_col = int(np.floor(before.shape[1] / 2))
     print(f"Image center: {image_center_col}, {image_center_row}")
-    # ax1.add_patch(
-    #     plt.Circle(
-    #         (comet_center_x, comet_center_y),
-    #         radius=comet_aperture_radius,
-    #         fill=False,
-    #     )
-    # )
     ax1.axvline(image_center_col, color="w", alpha=0.3)
     ax1.axhline(image_center_row, color="w", alpha=0.3)
 
@@ -232,41 +212,6 @@ def show_background_subtraction(
     )
 
     plt.show()
-
-
-# def get_aperture_photometry_results(stacked_images) -> dict:
-#     comet_aperture_radius = get_float("Comet aperture radius: ")
-#     bg_aperture_x = get_float("Background aperture x: ")
-#     bg_aperture_y = get_float("Background aperture y: ")
-#     bg_aperture_radius = get_float("Background aperture radius: ")
-#
-#     # collect aperture results for uw1 and uvv filters from the stacked images
-#     aperture_results = {}
-#     for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
-#         summed_image = stacked_images[(filter_type, StackingMethod.summation)]
-#         median_image = stacked_images[(filter_type, StackingMethod.median)]
-#
-#         aperture_results[filter_type] = do_aperture_photometry(
-#             stacked_sum=summed_image,
-#             stacked_median=median_image,
-#             comet_aperture_radius=comet_aperture_radius,
-#             bg_aperture_radius=bg_aperture_radius,
-#             bg_aperture_x=bg_aperture_x,
-#             bg_aperture_y=bg_aperture_y,
-#         )
-#
-#         show_fits_sum_and_median_scaled(
-#             summed_image.stacked_image,
-#             median_image.stacked_image,
-#             comet_aperture_radius=comet_aperture_radius,
-#             comet_center_x=aperture_results[filter_type].comet_aperture.positions[0],
-#             comet_center_y=aperture_results[filter_type].comet_aperture.positions[1],
-#             bg_aperture_x=bg_aperture_x,
-#             bg_aperture_y=bg_aperture_y,
-#             bg_aperture_radius=bg_aperture_radius,
-#         )
-#
-#     return aperture_results
 
 
 def stacked_image_from_epoch_path(
@@ -335,7 +280,8 @@ def do_comet_photometry(
     img: SwiftUVOTImage,
     aperture_radius: float,
 ):
-    ap_x, ap_y = get_uvot_image_center_x_y(img=img)
+    pix_center = get_uvot_image_center(img=img)
+    ap_x, ap_y = pix_center.x, pix_center.y
     comet_aperture = CircularAperture((ap_x, ap_y), r=aperture_radius)
 
     comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
@@ -373,21 +319,21 @@ def main():
         filter_type=SwiftFilter.uw1,
         stacking_method=StackingMethod.summation,
     )
-    uw1_median = stacked_image_from_epoch_path(
-        epoch_path=epoch_path,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=StackingMethod.median,
-    )
+    # uw1_median = stacked_image_from_epoch_path(
+    #     epoch_path=epoch_path,
+    #     filter_type=SwiftFilter.uw1,
+    #     stacking_method=StackingMethod.median,
+    # )
     uvv_sum = stacked_image_from_epoch_path(
         epoch_path=epoch_path,
         filter_type=SwiftFilter.uvv,
         stacking_method=StackingMethod.summation,
     )
-    uvv_median = stacked_image_from_epoch_path(
-        epoch_path=epoch_path,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=StackingMethod.median,
-    )
+    # uvv_median = stacked_image_from_epoch_path(
+    #     epoch_path=epoch_path,
+    #     filter_type=SwiftFilter.uvv,
+    #     stacking_method=StackingMethod.median,
+    # )
 
     bguw1 = get_background(uw1_sum)
     bguvv = get_background(uvv_sum)
@@ -403,7 +349,8 @@ def main():
     uvv = uvv_sum - bguvv.count_rate_per_pixel
 
     print("Determining center of comet:")
-    search_ap = CircularAperture(get_uvot_image_center_x_y(img=uw1), r=30)
+    pix_center = get_uvot_image_center(img=uw1)
+    search_ap = CircularAperture((pix_center.x, pix_center.y), r=30)
     pixel_center = find_comet_center(
         img=uw1,
         method=CometCenterFindingMethod.pixel_center,
@@ -537,7 +484,7 @@ def main():
     else:
         print("No plateaus in uvv counts detected")
 
-    fig, axs = plt.subplots(nrows=1, ncols=3)
+    _, axs = plt.subplots(nrows=1, ncols=3)
     axs[2].set_yscale("log")
     df.plot.line(x="aperture_radius", y="counts_uw1", subplots=True, ax=axs[0])
     df.plot.line(x="aperture_radius", y="counts_uvv", subplots=True, ax=axs[1])

@@ -10,7 +10,8 @@ from matplotlib.pyplot import cm
 
 from typing import List
 
-from swift_types import SwiftObservationLog, SwiftFilter
+from swift_filter import SwiftFilter
+from observation_log import SwiftObservationLog
 from user_input import get_float, get_selection, get_yes_no
 from epochs import epoch_from_obs_log
 

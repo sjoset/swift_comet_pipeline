@@ -4,19 +4,10 @@ from photutils.aperture import CircularAperture, ApertureStats
 from typing import Tuple, Optional
 from enum import Enum, auto
 
-from swift_types import SwiftUVOTImage, get_uvot_image_center_row_col
+from uvot_image import SwiftUVOTImage, get_uvot_image_center
 
 
 __all__ = ["CometCenterFindingMethod", "comet_manual_aperture", "find_comet_center"]
-
-
-# class CometPhotometryMethod(str, Enum):
-#     manual_aperture = auto()
-#     # auto_aperture = auto()
-#
-#     @classmethod
-#     def all_methods(cls):
-#         return [x for x in cls]
 
 
 class CometCenterFindingMethod(str, Enum):
@@ -27,15 +18,6 @@ class CometCenterFindingMethod(str, Enum):
     @classmethod
     def all_methods(cls):
         return [x for x in cls]
-
-
-# def comet_photometry(
-#     img: SwiftUVOTImage,
-#     photometry_method: CometPhotometryMethod,
-#     **kwargs,
-# ) -> float:
-#     if photometry_method == CometPhotometryMethod.manual_aperture:
-#         return comet_manual_aperture(img=img, **kwargs)
 
 
 def comet_manual_aperture(
@@ -51,6 +33,7 @@ def comet_manual_aperture(
     return comet_count_rate
 
 
+# TODO: this should return PixelCoord
 def find_comet_center(
     img: SwiftUVOTImage,
     method: CometCenterFindingMethod,
@@ -60,8 +43,9 @@ def find_comet_center(
     Coordinates returned are x, y values
     """
     if method == CometCenterFindingMethod.pixel_center:
-        center_row_int, center_col_int = get_uvot_image_center_row_col(img)
-        return (float(center_col_int), float(center_row_int))
+        # center_row_int, center_col_int = get_uvot_image_center_row_col(img)
+        pix_center = get_uvot_image_center(img=img)
+        return (pix_center.x, pix_center.y)
     elif method == CometCenterFindingMethod.aperture_centroid:
         return comet_center_by_centroid(img=img, search_aperture=search_aperture)
     elif method == CometCenterFindingMethod.aperture_peak:

@@ -7,8 +7,11 @@ from astropy.time import Time
 
 from typing import TypeAlias
 
-from swift_types import SwiftObservationLog
-from observation_log import read_observation_log, write_observation_log
+from observation_log import (
+    read_observation_log,
+    write_observation_log,
+    SwiftObservationLog,
+)
 
 __all__ = [
     "Epoch",

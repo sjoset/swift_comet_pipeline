@@ -5,7 +5,7 @@ from astropy.io import fits
 from astropy.visualization import ZScaleInterval
 
 from epochs import Epoch
-from swift_types import SwiftData
+from swift_data import SwiftData
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider

@@ -15,17 +15,9 @@ from astropy.io import fits
 from argparse import ArgumentParser
 
 from configs import read_swift_project_config
-from swift_types import (
-    SwiftData,
-    SwiftObservationLog,
-    SwiftFilter,
-    filter_to_file_string,
-)
-from observation_log import (
-    # match_by_orbit_ids_and_filters,
-    read_observation_log,
-    # match_within_timeframe,
-)
+from swift_data import SwiftData
+from swift_filter import SwiftFilter, filter_to_file_string
+from observation_log import SwiftObservationLog, read_observation_log
 
 
 __version__ = "0.0.1"

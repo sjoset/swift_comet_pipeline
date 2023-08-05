@@ -2,48 +2,37 @@
 
 import copy
 import pathlib
+from typing import Tuple, Optional, List
+from enum import Enum
 
-# import json
 import numpy as np
 import logging as log
 
 from astropy.io import fits
-
-# from astropy.time import Time
-from typing import Tuple, Optional, List
-
-# from dataclasses import asdict
-
 from tqdm import tqdm
 
-from swift_types import (
-    SwiftData,
-    # SwiftOrbitID,
-    # SwiftObservationLog,
-    # SwiftFilter,
-    SwiftUVOTImage,
-    # SwiftStackedUVOTImage,
-    PixelCoord,
-    # filter_to_file_string,
-    SwiftPixelResolution,
-    StackingMethod,
-)
+from swift_data import SwiftData
+from uvot_image import SwiftUVOTImage, PixelCoord, SwiftPixelResolution
 from epochs import Epoch
 from coincidence_correction import coincidence_correction
 
 
 __all__ = [
+    "StackingMethod",
     "get_image_dimensions_to_center_comet",
     "determine_stacking_image_size",
     "center_image_on_coords",
-    # "includes_uvv_and_uw1_filters",
     "stack_epoch",
-    # "write_stacked_image",
-    # "read_stacked_image",
 ]
 
 
-__version__ = "0.0.1"
+class StackingMethod(str, Enum):
+    summation = "sum"
+    median = "median"
+
+    @classmethod
+    def all_stacking_methods(cls):
+        return [x for x in cls]
 
 
 def get_image_dimensions_to_center_comet(

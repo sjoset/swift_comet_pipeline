@@ -9,7 +9,7 @@ import logging as log
 from argparse import ArgumentParser
 
 from configs import read_swift_project_config
-from swift_types import SwiftData
+from swift_data import SwiftData
 
 from epochs import read_epoch, write_epoch
 from manual_veto import manual_veto

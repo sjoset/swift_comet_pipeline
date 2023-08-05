@@ -1,10 +1,7 @@
 import math
 import numpy as np
 
-from swift_types import (
-    SwiftUVOTImage,
-    SwiftPixelResolution,
-)
+from uvot_image import SwiftUVOTImage, SwiftPixelResolution
 
 
 __all__ = ["coincidence_correction"]

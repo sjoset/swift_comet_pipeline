@@ -8,32 +8,31 @@ from astropy.time import Time
 from astropy.wcs import WCS
 from astroquery.jplhorizons import Horizons
 
-from typing import List, Optional
-
+from typing import List, Optional, TypeAlias
 
 from tqdm import tqdm
 
-from swift_types import (
+from swift_data import (
     SwiftData,
     SwiftObservationID,
-    SwiftFilter,
-    SwiftObservationLog,
-    datamode_to_pixel_resolution,
-    filter_to_obs_string,
-    pixel_resolution_to_datamode,
     swift_observation_id_from_int,
-    obs_string_to_filter,
     swift_orbit_id_from_obsid,
 )
+from swift_filter import SwiftFilter, obs_string_to_filter, filter_to_obs_string
+from uvot_image import datamode_to_pixel_resolution, pixel_resolution_to_datamode
 
 
 __all__ = [
+    "SwiftObservationLog",
     "observation_log_schema",
     "build_observation_log",
     "read_observation_log",
     "write_observation_log",
     "includes_uvv_and_uw1_filters",
 ]
+
+
+SwiftObservationLog: TypeAlias = pd.DataFrame
 
 
 def observation_log_schema() -> pa.lib.Schema:

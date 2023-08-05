@@ -14,7 +14,8 @@ from photutils.aperture import (
     ApertureStats,
 )
 
-from swift_types import SwiftUVOTImage
+from uvot_image import SwiftUVOTImage
+from swift_filter import SwiftFilter
 
 
 __all__ = ["BackgroundDeterminationMethod", "BackgroundResult", "determine_background"]
@@ -39,7 +40,7 @@ def determine_background(
     **kwargs,
 ) -> BackgroundResult:
     if background_method == BackgroundDeterminationMethod.swift_constant:
-        return bg_swift_constant(img=img)
+        return bg_swift_constant(img=img, **kwargs)
     elif background_method == BackgroundDeterminationMethod.manual_aperture:
         return bg_manual_aperture(img=img, **kwargs)
     elif background_method == BackgroundDeterminationMethod.walking_aperture_ensemble:
@@ -49,8 +50,15 @@ def determine_background(
 
 
 # TODO: come up with some decent values here
-def bg_swift_constant(img: SwiftUVOTImage) -> BackgroundResult:  # pyright: ignore
-    return BackgroundResult(count_rate_per_pixel=1.0, sigma=1.0)
+def bg_swift_constant(
+    img: SwiftUVOTImage, filter_type: SwiftFilter  # pyright: ignore
+) -> BackgroundResult:
+    if filter_type == SwiftFilter.uvv:
+        return BackgroundResult(count_rate_per_pixel=1.0, sigma=1.0)
+    elif filter_type == SwiftFilter.uvv:
+        return BackgroundResult(count_rate_per_pixel=1.0, sigma=1.0)
+    else:
+        return BackgroundResult(count_rate_per_pixel=1.0, sigma=1.0)
 
 
 # TODO: sigma clipping?

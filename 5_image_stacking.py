@@ -21,23 +21,17 @@ from astropy.io import fits
 from astropy.time import Time
 import astropy.units as u
 
-from swift_types import (
-    SwiftData,
+from swift_data import SwiftData
+from swift_filter import (
     SwiftFilter,
-    SwiftPixelResolution,
-    SwiftUVOTImage,
-    StackingMethod,
     filter_to_file_string,
     filter_to_string,
 )
 from configs import read_swift_project_config, write_swift_project_config
-
-# from observation_log import includes_uvv_and_uw1_filters
-from stacking import stack_epoch
+from stacking import StackingMethod, stack_epoch
 from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
-from swift_types import get_uvot_image_center_x_y
-
+from uvot_image import SwiftUVOTImage, get_uvot_image_center
 
 __version__ = "0.0.1"
 
@@ -204,7 +198,8 @@ def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.Image
     hdr["ra_obj"] = np.mean(epoch.RA_OBJ)
     hdr["dec_obj"] = np.mean(epoch.DEC_OBJ)
 
-    hdr["pos_x"], hdr["pos_y"] = get_uvot_image_center_x_y(img=img)
+    pix_center = get_uvot_image_center(img=img)
+    hdr["pos_x"], hdr["pos_y"] = pix_center.x, pix_center.y
     hdr["phase"] = np.mean(epoch.PHASE)
 
     dt = Time(np.max(epoch.MID_TIME)) - Time(np.min(epoch.MID_TIME))
@@ -239,7 +234,6 @@ def do_stack(
     epoch_name: str,
     stack_dir_path: pathlib.Path,
     do_coincidence_correction: bool,
-    # detector_scale: SwiftPixelResolution,
 ) -> None:
     # test if there are uvv and uw1 images in the data set
     # if not includes_uvv_and_uw1_filters(epoch=epoch):
