@@ -15,8 +15,6 @@ class SolarSpectrum:
     irradiances: np.ndarray
 
 
-__version__ = "0.0.1"
-
 __all__ = [
     "read_solar_spectrum",
     "read_solar_spectrum_sorce",

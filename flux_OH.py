@@ -1,16 +1,10 @@
-import pathlib
-
 from astropy.time import Time
 
 from configs import read_swift_pipeline_config
 from solar_spectrum import solar_count_rate_in_filter
 from reddening_correction import reddening_correction, DustReddeningPercent
 
-# from aperture_photometry import AperturePhotometryResult
-
-from typing import Tuple, Optional
-
-__version__ = "0.0.1"
+from typing import Optional
 
 
 __all__ = [
@@ -30,6 +24,7 @@ def beta_parameter(
     spc = read_swift_pipeline_config()
     if spc is None:
         # TODO: do something better with the error handling
+        # TODO: just change this function to return an Optional
         return 0
 
     solar_count_rate_in_uw1 = solar_count_rate_in_filter(

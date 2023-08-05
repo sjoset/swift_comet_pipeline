@@ -5,14 +5,12 @@ from dataclasses import dataclass
 
 from effective_areas import read_effective_area
 
+__all__ = ["reddening_correction", "DustReddeningPercent"]
+
 
 @dataclass
 class DustReddeningPercent:
     reddening: float
-
-
-__version__ = "0.0.1"
-__all__ = ["reddening_correction", "DustReddeningPercent"]
 
 
 def reddening_correction(

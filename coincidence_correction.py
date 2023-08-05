@@ -7,9 +7,6 @@ from uvot_image import SwiftUVOTImage, SwiftPixelResolution
 __all__ = ["coincidence_correction"]
 
 
-__version__ = "0.0.1"
-
-
 def coi_factor(rate):
     # correction coefficients
     a1 = -0.0663428

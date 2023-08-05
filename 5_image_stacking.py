@@ -33,8 +33,6 @@ from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
 from uvot_image import SwiftUVOTImage, get_uvot_image_center
 
-__version__ = "0.0.1"
-
 
 def process_args():
     # Parse command-line arguments
@@ -43,7 +41,7 @@ def process_args():
         description=__doc__,
         prog=os.path.basename(sys.argv[0]),
     )
-    parser.add_argument("--version", action="version", version=__version__)
+    # parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
