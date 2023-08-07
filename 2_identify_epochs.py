@@ -11,7 +11,8 @@ from configs import read_swift_project_config, write_swift_project_config
 from swift_filter import SwiftFilter
 
 from observation_log import read_observation_log, includes_uvv_and_uw1_filters
-from epochs import file_name_from_epoch, write_epoch
+from epochs import write_epoch
+from pipeline_files import epoch_filenames_from_epoch_list, get_default_epoch_dir
 from user_input import get_yes_no
 from epoch_time_window import (
     epochs_from_time_delta,
@@ -68,25 +69,20 @@ def main():
     obs_log = obs_log[filter_mask]
 
     dt = select_epoch_time_window(obs_log=obs_log)
-    epoch_list_pre_veto = epochs_from_time_delta(
-        obs_log=obs_log, max_time_between_obs=dt
-    )
-
-    path_list = [pathlib.Path(file_name_from_epoch(x)) for x in epoch_list_pre_veto]
+    epoch_list = epochs_from_time_delta(obs_log=obs_log, max_time_between_obs=dt)
 
     print("Save epochs?")
     save_epochs = get_yes_no()
     if not save_epochs:
         return
 
-    epoch_dir = (
-        swift_project_config.product_save_path.expanduser().resolve()
-        / pathlib.Path("epochs")
+    epoch_dir = get_default_epoch_dir(
+        product_save_path=swift_project_config.product_save_path
     )
     epoch_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Saving to {epoch_dir} ...")
-    for i, (epoch, file_name) in enumerate(zip(epoch_list_pre_veto, path_list)):
-        filename = f"{i:03d}_{file_name}.parquet"
+    # construct full paths for each epoch and write them out
+    epoch_names = epoch_filenames_from_epoch_list(epoch_list)
+    for filename, epoch in zip(epoch_names, epoch_list):
         full_path = epoch_dir / filename
         print(f"Writing file: {full_path}")
         write_epoch(epoch=epoch, epoch_path=full_path)

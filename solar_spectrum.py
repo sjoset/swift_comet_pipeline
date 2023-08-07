@@ -11,6 +11,7 @@ from effective_areas import read_effective_area
 
 @dataclass
 class SolarSpectrum:
+    # TODO: tag with astropy units or rename to lambdas_nm, irradiances_{unit}
     lambdas: np.ndarray
     irradiances: np.ndarray
 
@@ -31,7 +32,6 @@ def read_solar_spectrum(solar_spectrum_path: pathlib.Path) -> SolarSpectrum:
     # load the solar spectrum
     solar_spectrum_df = pd.read_csv(solar_spectrum_path)
 
-    # TODO: change these to .values()?
     # convert lambda to nanometers
     solar_lambdas = solar_spectrum_df["wavelength (angstroms)"] / 10
     solar_irradiances = solar_spectrum_df["irradiance"]

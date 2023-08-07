@@ -28,15 +28,8 @@ def plateau_detect(
     ds = np.gradient(smoothed, xstep)
     dds = np.gradient(ds, xstep)
 
-    # this formula for flatness is somewhat arbitrary - it is small when the relative change is small
-    flatness = dds
-    # flatness = ds * dds
-    # flatness = ds * dds / smoothed
-    # for y, f in zip(ys, flatness):
-    #     print(f"{y=} {f=}")
-
-    mask = np.abs(ds / smoothed) < threshold
-    # mask = np.logical_and(np.abs(flatness) < threshold, np.abs(ds) < threshold)
+    # mask = np.abs(ds / smoothed) < threshold
+    mask = np.logical_and(np.abs(dds) < threshold, np.abs(ds) < threshold)
 
     # run-length encoding for whether this data point is considered to be locally "flat"
     # consists of the keys k (true/false), and the number of consecutive values of this k

@@ -1,9 +1,6 @@
 import pathlib
-import calendar
-import numpy as np
 import pandas as pd
 import pyarrow as pa
-from astropy.time import Time
 
 from typing import TypeAlias
 
@@ -15,7 +12,7 @@ from observation_log import (
 
 __all__ = [
     "Epoch",
-    "file_name_from_epoch",
+    # "file_name_from_epoch",
     "epoch_schema",
     "read_epoch",
     "write_epoch",
@@ -24,15 +21,6 @@ __all__ = [
 
 
 Epoch: TypeAlias = pd.DataFrame
-
-
-def file_name_from_epoch(epoch: Epoch) -> str:
-    epoch_start = Time(np.min(epoch.MID_TIME)).ymdhms
-    day = epoch_start.day
-    month = calendar.month_abbr[epoch_start.month]
-    year = epoch_start.year
-
-    return f"{year}_{day:02d}_{month}"
 
 
 # TODO: merge this schema into observation log and just initialize all these possible error values in build_observation_log

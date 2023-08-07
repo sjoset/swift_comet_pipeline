@@ -158,8 +158,6 @@ def stack_epoch(
     no checks are made here
     """
 
-    # TODO: detector_scale should be read during the observation log step and stored in the database instead of being an argument to this function
-
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(
         swift_data=swift_data,

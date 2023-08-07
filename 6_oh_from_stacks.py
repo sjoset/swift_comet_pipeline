@@ -22,8 +22,9 @@ from astropy.visualization import ZScaleInterval
 
 from configs import read_swift_pipeline_config, read_swift_project_config
 from epochs import read_epoch
+from pipeline_files import stacked_fits_path
 from reddening_correction import DustReddeningPercent
-from swift_filter import SwiftFilter, filter_to_file_string
+from swift_filter import SwiftFilter
 from stacking import StackingMethod
 from uvot_image import SwiftUVOTImage, get_uvot_image_center
 from fluorescence_OH import flux_OH_to_num_OH
@@ -66,54 +67,6 @@ def process_args():
         log.basicConfig(format="%(levelname)s: %(message)s")
 
     return args
-
-
-def show_fits_sum_and_median_scaled(
-    image_sum,
-    image_median,
-    comet_aperture_radius,
-    comet_center_x,
-    comet_center_y,
-    bg_aperture_x,
-    bg_aperture_y,
-    bg_aperture_radius,
-):
-    fig = plt.figure()
-    ax1 = fig.add_subplot(1, 2, 1)
-    ax2 = fig.add_subplot(1, 2, 2)
-
-    zscale = ZScaleInterval()
-    vmin1, vmax1 = zscale.get_limits(image_sum)
-    vmin2, vmax2 = zscale.get_limits(image_median)
-
-    im1 = ax1.imshow(image_sum, vmin=vmin1, vmax=vmax1)
-    im2 = ax2.imshow(image_median, vmin=vmin2, vmax=vmax2)
-
-    fig.colorbar(im1)
-    fig.colorbar(im2)
-
-    # TODO: this is now a function
-    image_center_row = int(np.floor(image_sum.shape[0] / 2))
-    image_center_col = int(np.floor(image_sum.shape[1] / 2))
-    ax1.add_patch(
-        plt.Circle(
-            (comet_center_x, comet_center_y),
-            radius=comet_aperture_radius,
-            fill=False,
-        )
-    )
-    ax1.axvline(image_center_col, color="w", alpha=0.3)
-    ax1.axhline(image_center_row, color="w", alpha=0.3)
-
-    ax2.add_patch(
-        plt.Circle(
-            (bg_aperture_x, bg_aperture_y),
-            radius=bg_aperture_radius,
-            fill=False,
-        )
-    )
-
-    plt.show()
 
 
 def show_fits_subtracted(uw1, uvv, beta):
@@ -216,14 +169,17 @@ def show_background_subtraction(
 
 
 def stacked_image_from_epoch_path(
-    epoch_path: pathlib.Path, filter_type: SwiftFilter, stacking_method: StackingMethod
+    stack_dir_path: pathlib.Path,
+    epoch_path: pathlib.Path,
+    filter_type: SwiftFilter,
+    stacking_method: StackingMethod,
 ) -> SwiftUVOTImage:
-    epoch_name = epoch_path.stem
-    # TODO: update this once we make building this string a function
-    fits_filename = (
-        f"{epoch_name}_{filter_to_file_string(filter_type)}_{stacking_method}.fits"
+    fits_path = stacked_fits_path(
+        stack_dir_path=stack_dir_path,
+        epoch_path=epoch_path,
+        filter_type=filter_type,
+        stacking_method=stacking_method,
     )
-    fits_path = epoch_path.parent / pathlib.Path(fits_filename)
     print(f"Loading fits file {fits_path} ...")
     image_data = fits.getdata(fits_path)
     return image_data  # type: ignore
@@ -517,6 +473,7 @@ def main():
     epoch = read_epoch(epoch_path=epoch_path)
 
     uw1_sum = stacked_image_from_epoch_path(
+        stack_dir_path=stack_dir_path,
         epoch_path=epoch_path,
         filter_type=SwiftFilter.uw1,
         stacking_method=StackingMethod.summation,
@@ -527,6 +484,7 @@ def main():
     #     stacking_method=StackingMethod.median,
     # )
     uvv_sum = stacked_image_from_epoch_path(
+        stack_dir_path=stack_dir_path,
         epoch_path=epoch_path,
         filter_type=SwiftFilter.uvv,
         stacking_method=StackingMethod.summation,
@@ -600,7 +558,7 @@ def main():
     ax1.plot_surface(mx, my, mz, cmap="magma")
 
     # ax.plot_trisurf(xs_list, ys_list, zs_list, cmap="magma")
-    ax2.contour(mx, my, mz, cmap="magma")
+    ax2.contourf(mx, my, mz, cmap="magma")
 
     plt.show()
 
