@@ -74,7 +74,8 @@ def bg_manual_aperture(
     )
 
     aperture_stats = ApertureStats(img, background_aperture)
-    count_rate_per_pixel = aperture_stats.median[0]
+    # TODO: we should be able to choose median or mean here
+    count_rate_per_pixel = aperture_stats.mean[0]
 
     return BackgroundResult(
         count_rate_per_pixel=count_rate_per_pixel, sigma=aperture_stats.std[0]

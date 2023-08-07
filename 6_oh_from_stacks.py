@@ -10,6 +10,8 @@ import logging as log
 from typing import Tuple, List
 from itertools import product
 
+import scipy.interpolate as interp
+
 from photutils.aperture import ApertureStats, CircularAperture
 
 from astropy.io import fits
@@ -35,6 +37,7 @@ from determine_background import (
 )
 from comet_signal import CometCenterFindingMethod, find_comet_center
 from plateau_detect import plateau_detect
+from epochs import Epoch
 
 
 def process_args():
@@ -89,9 +92,9 @@ def show_fits_sum_and_median_scaled(
     fig.colorbar(im1)
     fig.colorbar(im2)
 
+    # TODO: this is now a function
     image_center_row = int(np.floor(image_sum.shape[0] / 2))
     image_center_col = int(np.floor(image_sum.shape[1] / 2))
-    # print(f"Image center: {image_center_col}, {image_center_row}")
     ax1.add_patch(
         plt.Circle(
             (comet_center_x, comet_center_y),
@@ -274,78 +277,10 @@ def get_background(img: SwiftUVOTImage) -> BackgroundResult:
 #     return bg_cr
 
 
-def do_comet_photometry(
-    img: SwiftUVOTImage,
-    aperture_radius: float,
-):
-    pix_center = get_uvot_image_center(img=img)
-    ap_x, ap_y = pix_center.x, pix_center.y
-    comet_aperture = CircularAperture((ap_x, ap_y), r=aperture_radius)
-
-    comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
-
-    return comet_count_rate
-
-
-def main():
-    args = process_args()
-
-    swift_pipeline_config = read_swift_pipeline_config()
-    if swift_pipeline_config is None:
-        print("Error reading config file {args.config}, exiting.")
-        return 1
-
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
-    swift_project_config = read_swift_project_config(swift_project_config_path)
-    if swift_project_config is None:
-        print("Error reading config file {swift_project_config_path}, exiting.")
-        return 1
-
-    stack_dir_path = swift_project_config.stack_dir_path
-    if stack_dir_path is None:
-        print(f"Could not find stack_dir_path in {swift_project_config_path}, exiting.")
-        return
-
-    epoch_path = select_stacked_epoch(stack_dir_path)
-    epoch = read_epoch(epoch_path=epoch_path)
-    helio_r_au = np.mean(epoch.HELIO)
-    helio_v_kms = np.mean(epoch.HELIO_V)
-    delta = np.mean(epoch.OBS_DIS)
-
-    uw1_sum = stacked_image_from_epoch_path(
-        epoch_path=epoch_path,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=StackingMethod.summation,
-    )
-    # uw1_median = stacked_image_from_epoch_path(
-    #     epoch_path=epoch_path,
-    #     filter_type=SwiftFilter.uw1,
-    #     stacking_method=StackingMethod.median,
-    # )
-    uvv_sum = stacked_image_from_epoch_path(
-        epoch_path=epoch_path,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=StackingMethod.summation,
-    )
-    # uvv_median = stacked_image_from_epoch_path(
-    #     epoch_path=epoch_path,
-    #     filter_type=SwiftFilter.uvv,
-    #     stacking_method=StackingMethod.median,
-    # )
-
-    bguw1 = get_background(uw1_sum)
-    bguvv = get_background(uvv_sum)
-    # bguw1 = get_background(uw1_median)
-    # bguvv = get_background(uvv_median)
-    print("")
-    print(f"Background count rate for uw1: {bguw1}")
-    print(f"Background count rate for uvv: {bguvv}")
-
-    # uw1 = np.clip(uw1_sum - bguw1.count_rate_per_pixel, 0, None)
-    uw1 = uw1_sum - bguw1.count_rate_per_pixel
-    # uvv = np.clip(uvv_sum - bguvv.count_rate_per_pixel, 0, None)
-    uvv = uvv_sum - bguvv.count_rate_per_pixel
-
+def determine_comet_center(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
+    # TODO: compare the results between uw1 and uvv and make sure they're the same
+    # TODO: uvv tends to pick up the dust tail so we might expect some difference depending on the method of center detection,
+    # so maybe we just use the uw1 and assume it's less likely to have a tail to scramble the center-finding
     print("Determining center of comet:")
     pix_center = get_uvot_image_center(img=uw1)
     search_ap = CircularAperture((pix_center.x, pix_center.y), r=30)
@@ -372,9 +307,16 @@ def main():
     print("\tBy peak value in aperture radius 30 at image center: ", peak)
 
     # show_centers(uw1, [pixel_center, centroid, peak])
+    # TODO: return center_uw1, center_uvv
+
+
+def q_vs_aperture_radius(epoch: Epoch, uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
+    helio_r_au = np.mean(epoch.HELIO)
+    helio_v_kms = np.mean(epoch.HELIO_V)
+    delta = np.mean(epoch.OBS_DIS)
 
     aperture_radii, r_step = np.linspace(1, 60, num=300, retstep=True)
-    rednesses = [20]
+    rednesses = [10]
     dust_redness_list = list(
         # map(lambda x: DustReddeningPercent(x), [0, 5, 10, 15, 20, 25])
         map(lambda x: DustReddeningPercent(x), rednesses)
@@ -500,7 +442,167 @@ def main():
 
     plt.show()
 
+    return df
+
+
+def do_comet_photometry(
+    img: SwiftUVOTImage,
+    aperture_radius: float,
+):
+    pix_center = get_uvot_image_center(img=img)
+    ap_x, ap_y = pix_center.x, pix_center.y
+    comet_aperture = CircularAperture((ap_x, ap_y), r=aperture_radius)
+
+    comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
+
+    return comet_count_rate
+
+
+def extract_profile(img: SwiftUVOTImage, r: int, theta: float, plot_profile: bool):
+    pix_center = get_uvot_image_center(img=img)
+    search_aperture = CircularAperture((pix_center.x, pix_center.y), r=r)
+    # comet_center = get_uvot_image_center(img)
+
+    comet_center = find_comet_center(
+        img=img,
+        method=CometCenterFindingMethod.aperture_peak,
+        search_aperture=search_aperture,
+    )
+    x0 = comet_center[0] - r * np.cos(theta)
+    y0 = comet_center[1] - r * np.sin(theta)
+    x1 = comet_center[0] + r * np.cos(theta)
+    y1 = comet_center[1] + r * np.sin(theta)
+
+    num_samples = 2 * r + 1
+
+    xs = np.linspace(np.round(x0), np.round(x1), num_samples)
+    ys = np.linspace(np.round(y0), np.round(y1), num_samples)
+
+    profile = img[ys.astype(np.int32), xs.astype(np.int32)]
+
+    distances_from_center = np.array(range(-r, r + 1))
+
+    if plot_profile is True:
+        fig = plt.figure()
+        ax1 = fig.add_subplot(1, 1, 1)
+
+        ax1.scatter(distances_from_center, profile)
+
+        plt.show()
+        plt.close()
+
+    return xs, ys, profile
+
+
+def main():
+    args = process_args()
+
+    swift_pipeline_config = read_swift_pipeline_config()
+    if swift_pipeline_config is None:
+        print("Error reading config file {args.config}, exiting.")
+        return 1
+
+    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print("Error reading config file {swift_project_config_path}, exiting.")
+        return 1
+
+    stack_dir_path = swift_project_config.stack_dir_path
+    if stack_dir_path is None:
+        print(f"Could not find stack_dir_path in {swift_project_config_path}, exiting.")
+        return
+
+    epoch_path = select_stacked_epoch(stack_dir_path)
+    epoch = read_epoch(epoch_path=epoch_path)
+
+    uw1_sum = stacked_image_from_epoch_path(
+        epoch_path=epoch_path,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=StackingMethod.summation,
+    )
+    # uw1_median = stacked_image_from_epoch_path(
+    #     epoch_path=epoch_path,
+    #     filter_type=SwiftFilter.uw1,
+    #     stacking_method=StackingMethod.median,
+    # )
+    uvv_sum = stacked_image_from_epoch_path(
+        epoch_path=epoch_path,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=StackingMethod.summation,
+    )
+    # uvv_median = stacked_image_from_epoch_path(
+    #     epoch_path=epoch_path,
+    #     filter_type=SwiftFilter.uvv,
+    #     stacking_method=StackingMethod.median,
+    # )
+
+    bguw1 = get_background(uw1_sum)
+    bguvv = get_background(uvv_sum)
+    # bguw1 = get_background(uw1_median)
+    # bguvv = get_background(uvv_median)
+    print("")
+    print(f"Background count rate for uw1: {bguw1}")
+    print(f"Background count rate for uvv: {bguvv}")
+
+    # uw1 = np.clip(uw1_sum - bguw1.count_rate_per_pixel, 0, None)
+    # uvv = np.clip(uvv_sum - bguvv.count_rate_per_pixel, 0, None)
+    uw1 = uw1_sum - bguw1.count_rate_per_pixel
+    uvv = uvv_sum - bguvv.count_rate_per_pixel
+    # uw1 = uw1_median - bguw1.count_rate_per_pixel
+    # uvv = uvv_median - bguvv.count_rate_per_pixel
+
+    determine_comet_center(uw1, uvv)
+
+    df = q_vs_aperture_radius(epoch=epoch, uw1=uw1, uvv=uvv)
+
     # show_fits_subtracted(uw1=uw1_sum, uvv=uvv_sum, beta=beta)
+
+    xs_list = []
+    ys_list = []
+    zs_list = []
+
+    profile_radius = 30
+    # angles = [3 * np.pi / 2, np.pi / 2, np.pi / 4]
+    angles = np.linspace(0, np.pi, 50)
+    angles = angles[:-1]
+    for theta in angles:
+        xs, ys, prof = extract_profile(
+            img=uvv, r=profile_radius, theta=theta, plot_profile=False
+        )
+        xs_list.extend(xs)
+        ys_list.extend(ys)
+        zs_list.extend(prof)
+
+    pix_center = get_uvot_image_center(img=uvv)
+    search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+    ax2 = fig.add_subplot(1, 2, 2, projection="3d")
+
+    comet_center = find_comet_center(
+        img=uvv,
+        method=CometCenterFindingMethod.aperture_peak,
+        search_aperture=search_aperture,
+    )
+
+    mx, my = np.meshgrid(
+        np.linspace(
+            comet_center[0] - profile_radius / 2, comet_center[0] + profile_radius / 2
+        ),
+        np.linspace(
+            comet_center[1] - profile_radius / 2, comet_center[1] + profile_radius / 2
+        ),
+    )
+    mz = interp.griddata((xs_list, ys_list), zs_list, (mx, my), method="linear")
+
+    ax1.plot_surface(mx, my, mz, cmap="magma")
+
+    # ax.plot_trisurf(xs_list, ys_list, zs_list, cmap="magma")
+    ax2.contour(mx, my, mz, cmap="magma")
+
+    plt.show()
 
 
 if __name__ == "__main__":
