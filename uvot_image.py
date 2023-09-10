@@ -1,6 +1,6 @@
 import numpy as np
 
-from enum import Enum
+from enum import Enum, StrEnum
 from dataclasses import dataclass
 from typing import TypeAlias, Tuple
 
@@ -18,12 +18,13 @@ __all__ = [
 SwiftUVOTImage: TypeAlias = np.ndarray
 
 
-class SwiftPixelResolution(str, Enum):
+class SwiftPixelResolution(float, Enum):
+    # units of arcseconds per pixel
     event_mode = 0.502
     data_mode = 1.0
 
 
-class SwiftUVOTImageType(str, Enum):
+class SwiftUVOTImageType(StrEnum):
     raw = "rw"
     detector = "dt"
     sky_units = "sk"

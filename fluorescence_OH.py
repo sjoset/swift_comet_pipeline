@@ -5,12 +5,17 @@ import astropy.units as u
 
 from scipy.interpolate import interp1d
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TypeAlias
 
 from configs import read_swift_pipeline_config
+from error_propogation import ValueAndStandardDev
+from flux_OH import Flux
 
 
-__all__ = ["FluorescenceGFactor1AU", "read_gfactor_1au", "flux_OH_to_num_OH"]
+__all__ = ["FluorescenceGFactor1AU", "NumOH", "read_gfactor_1au", "flux_OH_to_num_OH"]
+
+
+NumOH: TypeAlias = ValueAndStandardDev
 
 
 @dataclass
@@ -30,16 +35,17 @@ def read_gfactor_1au(fluorescence_file: pathlib.Path) -> FluorescenceGFactor1AU:
 
 
 def flux_OH_to_num_OH(
-    flux_OH: float,
+    flux_OH: Flux,
     helio_r_au: float,
     helio_v_kms: float,
     delta_au: float,
     fluorescence_data: Optional[FluorescenceGFactor1AU] = None,
-) -> float:
+) -> NumOH:
     if fluorescence_data is None:
         spc = read_swift_pipeline_config()
         if spc is None:
-            return 0
+            print("Could not read swift pipeline config!")
+            return NumOH(value=0, sigma=0)
         fluorescence_data = read_gfactor_1au(fluorescence_file=spc.oh_fluorescence_path)
 
     g1au_interpolation = interp1d(
@@ -48,13 +54,12 @@ def flux_OH_to_num_OH(
 
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
     delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore
-    luminescence = 4 * np.pi * flux_OH * delta**2
+    luminescence = 4 * np.pi * flux_OH.value * delta**2
+    luminescence_err = flux_OH.sigma * 4 * np.pi * delta**2
 
     g_factor = g1au_interpolation(helio_v_kms) / (helio_r_au**2)
-    # print(
-    #     f"g factor at {helio_r_au} AU, heliocentric velocity {helio_v_kms}: {g_factor}"
-    # )
 
     num_OH = luminescence / g_factor
+    num_err = luminescence_err / g_factor
 
-    return num_OH
+    return NumOH(value=num_OH, sigma=num_err)

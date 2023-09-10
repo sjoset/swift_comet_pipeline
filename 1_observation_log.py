@@ -7,9 +7,12 @@ import warnings
 import logging as log
 
 # import pyarrow as pa
+# import numpy as np
+# import astropy.units as u
 
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
+from pipeline_files import PipelineFiles
 
 from swift_data import SwiftData
 from configs import read_swift_project_config, write_swift_project_config
@@ -67,6 +70,10 @@ def main():
         print(f"Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
+    pipeline_files = PipelineFiles(
+        swift_project_config.product_save_path, expect_epochs=False
+    )
+
     horizons_id = swift_project_config.jpl_horizons_id
     sdd = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
@@ -82,18 +89,7 @@ def main():
         )
         return 1
 
-    observation_log_output_path = swift_project_config.product_save_path / pathlib.Path(
-        args.output
-    )
-
-    write_observation_log(df, observation_log_output_path)
-
-    # update project config with the observation log file name, and save it back to the file
-    swift_project_config.observation_log = observation_log_output_path
-    write_swift_project_config(
-        config_path=pathlib.Path(swift_project_config_path),
-        swift_project_config=swift_project_config,
-    )
+    write_observation_log(df, pipeline_files.get_observation_log_path())
 
 
 if __name__ == "__main__":

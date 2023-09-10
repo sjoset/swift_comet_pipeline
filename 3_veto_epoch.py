@@ -9,6 +9,7 @@ import logging as log
 from argparse import ArgumentParser
 
 from configs import read_swift_project_config
+from pipeline_files import PipelineFiles
 from swift_data import SwiftData
 
 from epochs import read_epoch, write_epoch
@@ -44,7 +45,7 @@ def process_args():
     return args
 
 
-def select_epoch(epoch_dir: pathlib.Path) -> pathlib.Path:
+def epoch_menu(epoch_dir: pathlib.Path) -> pathlib.Path:
     glob_pattern = str(epoch_dir / pathlib.Path("*.parquet"))
 
     epoch_filename_list = sorted(glob.glob(glob_pattern))
@@ -59,18 +60,16 @@ def main():
 
     swift_project_config_path = pathlib.Path(args.swift_project_config[0])
     swift_project_config = read_swift_project_config(swift_project_config_path)
-    if swift_project_config is None or swift_project_config.observation_log is None:
+    if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
+    pipeline_files = PipelineFiles(
+        swift_project_config.product_save_path, expect_epochs=True
+    )
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_dir_path = swift_project_config.epoch_dir_path
-    if epoch_dir_path is None:
-        print(f"Could not find epoch_path in {swift_project_config_path}, exiting.")
-        return
-
-    epoch_path = select_epoch(epoch_dir_path)
+    epoch_path = epoch_menu(pipeline_files.epoch_dir_path)
     epoch_pre_veto = read_epoch(epoch_path)
 
     epoch_post_veto = manual_veto(

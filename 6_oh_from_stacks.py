@@ -33,9 +33,9 @@ from num_OH_to_Q import num_OH_to_Q_vectorial
 from user_input import get_selection
 from determine_background import (
     BackgroundDeterminationMethod,
-    BackgroundResult,
     determine_background,
 )
+from count_rate import CountRate
 from comet_signal import CometCenterFindingMethod, find_comet_center
 from plateau_detect import plateau_detect
 from epochs import Epoch
@@ -193,7 +193,7 @@ def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
     return epoch_path
 
 
-def get_background(img: SwiftUVOTImage) -> BackgroundResult:
+def get_background(img: SwiftUVOTImage) -> CountRate:
     # TODO: menu here for type of BG method
     bg_cr = determine_background(
         img=img,
@@ -203,7 +203,7 @@ def get_background(img: SwiftUVOTImage) -> BackgroundResult:
     return bg_cr
 
 
-# def get_background(img: SwiftUVOTImage) -> BackgroundResult:
+# def get_background(img: SwiftUVOTImage) -> CountRate:
 #     # bg_ap_x = 1399.0
 #     # bg_ap_y = 1203.0
 #     # bg_r = 90.0
@@ -407,10 +407,16 @@ def do_comet_photometry(
 ):
     pix_center = get_uvot_image_center(img=img)
     ap_x, ap_y = pix_center.x, pix_center.y
-    comet_aperture = CircularAperture((ap_x, ap_y), r=aperture_radius)
+    comet_aperture = CircularAperture([(ap_x, ap_y)], r=aperture_radius)
 
-    comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
+    aperture_stats = ApertureStats(img, comet_aperture)
+    comet_count_rate = float(aperture_stats.sum[0])
+    # comet_count_rate = float(ApertureStats(img, comet_aperture).sum)
 
+    # TODO: calculate error over aperture sum: shouldn't it be proportional to the aperture size * (error per pixel)?
+    # comet_count_err = aperture_stats.std[0]
+
+    # return comet_count_rate, comet_count_err
     return comet_count_rate
 
 
@@ -424,10 +430,10 @@ def extract_profile(img: SwiftUVOTImage, r: int, theta: float, plot_profile: boo
         method=CometCenterFindingMethod.aperture_peak,
         search_aperture=search_aperture,
     )
-    x0 = comet_center[0] - r * np.cos(theta)
-    y0 = comet_center[1] - r * np.sin(theta)
-    x1 = comet_center[0] + r * np.cos(theta)
-    y1 = comet_center[1] + r * np.sin(theta)
+    x0 = comet_center.x - r * np.cos(theta)
+    y0 = comet_center.y - r * np.sin(theta)
+    x1 = comet_center.x + r * np.cos(theta)
+    y1 = comet_center.y + r * np.sin(theta)
 
     num_samples = 2 * r + 1
 
@@ -505,8 +511,8 @@ def main():
 
     # uw1 = np.clip(uw1_sum - bguw1.count_rate_per_pixel, 0, None)
     # uvv = np.clip(uvv_sum - bguvv.count_rate_per_pixel, 0, None)
-    uw1 = uw1_sum - bguw1.count_rate_per_pixel
-    uvv = uvv_sum - bguvv.count_rate_per_pixel
+    uw1 = uw1_sum - bguw1.count_rate
+    uvv = uvv_sum - bguvv.count_rate
     # uw1 = uw1_median - bguw1.count_rate_per_pixel
     # uvv = uvv_median - bguvv.count_rate_per_pixel
 
@@ -547,10 +553,10 @@ def main():
 
     mx, my = np.meshgrid(
         np.linspace(
-            comet_center[0] - profile_radius / 2, comet_center[0] + profile_radius / 2
+            comet_center.x - profile_radius / 2, comet_center.x + profile_radius / 2
         ),
         np.linspace(
-            comet_center[1] - profile_radius / 2, comet_center[1] + profile_radius / 2
+            comet_center.y - profile_radius / 2, comet_center.y + profile_radius / 2
         ),
     )
     mz = interp.griddata((xs_list, ys_list), zs_list, (mx, my), method="linear")

@@ -1,8 +1,11 @@
 import itertools
 import pathlib
 import logging as log
+
+import numpy as np
 import pandas as pd
 import pyarrow as pa
+import astropy.units as u
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS
@@ -35,6 +38,7 @@ __all__ = [
 SwiftObservationLog: TypeAlias = pd.DataFrame
 
 
+# TODO: add documentation for each of these entries and what they hold
 def observation_log_schema() -> pa.lib.Schema:
     schema = pa.schema(
         [
@@ -58,6 +62,8 @@ def observation_log_schema() -> pa.lib.Schema:
             pa.field("PX", pa.float64()),
             pa.field("PY", pa.float64()),
             pa.field("DATAMODE", pa.string()),
+            pa.field("KM_PER_PIX", pa.float64()),
+            pa.field("CREATOR", pa.string()),
         ]
     )
 
@@ -79,7 +85,7 @@ def build_observation_log(
 
     all_filters = SwiftFilter.all_filters()
 
-    # TODO: the entry DATAMODE is 'IMAGE' - figure out if this is data mode or event mode (probably data mode)
+    # TODO: the entry DATAMODE is 'IMAGE' - confirm this is data mode and not event mode
 
     fits_header_entries_to_read = [
         "OBS_ID",
@@ -102,6 +108,8 @@ def build_observation_log(
     wcs_list = []
     # keep a list of the filenames that the extensions come from
     processed_filname_list = []
+    # swift pipeline versions
+    creator_list = []
 
     image_progress_bar = tqdm(obsids, unit="images")
     for k, obsid in enumerate(image_progress_bar):
@@ -142,6 +150,7 @@ def build_observation_log(
                     processed_filname_list.append(image_path.name)  # type: ignore
 
                     image_progress_bar.set_description(f"Image: {image_path.name}")  # type: ignore
+                    creator_list.append(hdul[0].header["CREATOR"])  # type: ignore
 
     # Adjust some columns of the dataframe we just constructed
     obs_log = obs_log.rename(columns={"DATE-END": "DATE_END", "DATE-OBS": "DATE_OBS"})
@@ -159,6 +168,9 @@ def build_observation_log(
 
     # the filename the extension was pulled from
     obs_log["FITS_FILENAME"] = processed_filname_list
+
+    # version of UVOT2FITS
+    obs_log["CREATOR"] = creator_list
 
     # translates horizons results (left) to observation log column names (right)
     ephemeris_info = {
@@ -210,6 +222,16 @@ def build_observation_log(
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
     obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+
+    # Conversion rate of 1 pixel to km: DATAMODE now holds image resolution in arcseconds/pixel
+    obs_log["KM_PER_PIX"] = obs_log.apply(
+        lambda row: (
+            (
+                ((2 * np.pi) / (3600.0 * 360.0)) * row.DATAMODE * row.OBS_DIS * u.AU
+            ).to_value(u.km)
+        ),
+        axis=1,
+    )
 
     return obs_log
 

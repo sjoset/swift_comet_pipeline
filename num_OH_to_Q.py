@@ -1,12 +1,19 @@
 import pandas as pd
 from scipy.interpolate import interp1d
 
+from typing import TypeAlias
+
 from configs import read_swift_pipeline_config
+from error_propogation import ValueAndStandardDev
+from fluorescence_OH import NumOH
 
 __all__ = ["num_OH_to_Q_vectorial"]
 
 
-def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: float) -> float:
+NumQH2O: TypeAlias = ValueAndStandardDev
+
+
+def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: NumOH) -> NumQH2O:
     # TODO: this is incredibly to ugly to hard-code this vm_Q here
     # dummy production the models were run with
     vm_Q = 1.0e28
@@ -14,7 +21,8 @@ def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: float) -> float:
     spc = read_swift_pipeline_config()
     if spc is None:
         print("Could not load pipeline config")
-        return 0
+        return NumQH2O(value=0, sigma=0)
+
     vectorial_model_path = spc.vectorial_model_path
     vm_df = pd.read_csv(vectorial_model_path)
 
@@ -24,9 +32,12 @@ def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: float) -> float:
 
     predicted_num_OH = r_vs_num_OH_interp(helio_r_au)
 
-    predicted_to_actual = predicted_num_OH / num_OH
+    predicted_to_actual = predicted_num_OH / num_OH.value
 
-    return vm_Q / predicted_to_actual
+    q = vm_Q / predicted_to_actual
+    q_err = (vm_Q / predicted_num_OH) * num_OH.sigma
+
+    return NumQH2O(value=q, sigma=q_err)
 
 
 # def num_OH_to_Q_vectorial(

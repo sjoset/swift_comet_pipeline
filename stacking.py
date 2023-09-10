@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 
+from collections import UserDict
 import copy
 import pathlib
-from typing import Tuple, Optional, List
-from enum import Enum
+from typing import Tuple, Optional, List, TypeAlias
+from enum import StrEnum
 
 import numpy as np
 import logging as log
 
 from astropy.io import fits
 from tqdm import tqdm
+from dataclasses import dataclass
 
 from swift_data import SwiftData
+from swift_filter import SwiftFilter
 from uvot_image import SwiftUVOTImage, PixelCoord, SwiftPixelResolution
 from epochs import Epoch
 from coincidence_correction import coincidence_correction
@@ -26,13 +29,18 @@ __all__ = [
 ]
 
 
-class StackingMethod(str, Enum):
+class StackingMethod(StrEnum):
     summation = "sum"
     median = "median"
 
     @classmethod
     def all_stacking_methods(cls):
         return [x for x in cls]
+
+
+StackedUVOTImageSet: TypeAlias = dict[
+    tuple[SwiftFilter, StackingMethod], SwiftUVOTImage
+]
 
 
 def get_image_dimensions_to_center_comet(
@@ -87,6 +95,7 @@ def determine_stacking_image_size(
         image_dimensions_list.append(image_dimensions)
 
     if len(image_dimensions_list) == 0:
+        print("No images found in epoch!")
         return None
 
     # now take the largest size so that every image can be stacked without losing pixels
@@ -171,7 +180,7 @@ def stack_epoch(
     image_data_to_stack: List[SwiftUVOTImage] = []
     exposure_times: List[float] = []
 
-    stacking_progress_bar = tqdm(epoch.iterrows(), total=len(epoch), unit=" images")
+    stacking_progress_bar = tqdm(epoch.iterrows(), total=len(epoch), unit="images")
     for _, row in stacking_progress_bar:
         obsid = row["OBS_ID"]
 

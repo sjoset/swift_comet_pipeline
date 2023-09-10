@@ -10,7 +10,8 @@ import logging as log
 import numpy as np
 import pyarrow as pa
 from argparse import ArgumentParser
-from typing import Tuple, List
+from typing import Tuple
+from itertools import product
 
 import matplotlib.pyplot as plt
 
@@ -20,15 +21,16 @@ from astropy.visualization import (
 from astropy.io import fits
 from astropy.time import Time
 import astropy.units as u
-from pipeline_files import epoch_name_from_epoch_path, stacked_fits_path
 
+from configs import read_swift_project_config
+from pipeline_files import PipelineFiles
 from swift_data import SwiftData
 from swift_filter import (
     SwiftFilter,
+    filter_to_file_string,
     filter_to_string,
 )
-from configs import read_swift_project_config, write_swift_project_config
-from stacking import StackingMethod, stack_epoch
+from stacking import StackedUVOTImageSet, StackingMethod, stack_epoch
 from epochs import Epoch, read_epoch, write_epoch
 from user_input import get_selection, get_yes_no
 from uvot_image import (
@@ -66,18 +68,25 @@ def process_args():
     return args
 
 
-def show_fits_scaled(image_list: List[SwiftUVOTImage]):
-    # TODO: label these
+def show_fits_scaled(stacked_image_set: StackedUVOTImageSet):
     _, axes = plt.subplots(2, 2, figsize=(100, 20))
 
     zscale = ZScaleInterval()
 
-    for ax, img in zip(axes.reshape(-1), image_list):
+    filter_types = [SwiftFilter.uw1, SwiftFilter.uvv]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
+    for i, (filter_type, stacking_method) in enumerate(
+        product(filter_types, stacking_methods)
+    ):
+        img = stacked_image_set[(filter_type, stacking_method)]
         vmin, vmax = zscale.get_limits(img)
+        ax = axes[np.unravel_index(i, axes.shape)]
         ax.imshow(img, vmin=vmin, vmax=vmax, origin="lower")
         # fig.colorbar(im)
+        # TODO: get center of image from function in uvot
         ax.axvline(int(np.floor(img.shape[1] / 2)), color="b", alpha=0.1)
         ax.axhline(int(np.floor(img.shape[0] / 2)), color="b", alpha=0.1)
+        ax.set_title(f"{filter_to_file_string(filter_type)} {stacking_method}")
 
     plt.show()
     plt.close()
@@ -224,6 +233,7 @@ def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.Image
 
 
 def do_stack(
+    pipeline_files: PipelineFiles,
     swift_data: SwiftData,
     epoch: Epoch,
     epoch_path: pathlib.Path,
@@ -239,9 +249,11 @@ def do_stack(
         exit(1)
 
     epoch_pixel_resolution = epoch.DATAMODE[0]
-    epoch_name = epoch_name_from_epoch_path(epoch_path)
+    epoch_name = epoch_path.stem
 
-    stacked_images = {}
+    # epoch_name = epoch_name_from_epoch_path(epoch_path)
+
+    stacked_images = StackedUVOTImageSet({})
 
     # do the stacking
     for filter_type, stacking_method in itertools.product(
@@ -250,8 +262,13 @@ def do_stack(
         print(
             f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
         )
-        fits_file_path = stacked_fits_path(
-            stack_dir_path=stack_dir_path,
+        # fits_file_path = stacked_fits_path(
+        #     stack_dir_path=stack_dir_path,
+        #     epoch_path=epoch_path,
+        #     filter_type=filter_type,
+        #     stacking_method=stacking_method,
+        # )
+        fits_file_path = pipeline_files.get_stacked_image_path(
             epoch_path=epoch_path,
             filter_type=filter_type,
             stacking_method=stacking_method,
@@ -264,17 +281,18 @@ def do_stack(
         filter_mask = epoch["FILTER"] == filter_type
         ml = epoch[filter_mask]
 
-        stacked_images[(filter_type, stacking_method)] = stack_epoch(
+        stacked_img = stack_epoch(
             swift_data=swift_data,
             epoch=ml,
             stacking_method=stacking_method,
             do_coincidence_correction=do_coincidence_correction,
             pixel_resolution=epoch_pixel_resolution,
         )
-
-        if stacked_images[(filter_type, stacking_method)] is None:
-            print("Stacking image failed, skipping... ")
-            continue
+        if stacked_img is None:
+            print("Stacking image failed, aborting... ")
+            exit(1)
+        else:
+            stacked_images[(filter_type, stacking_method)] = stacked_img
 
     # Adjust the images from each filter to be the same size
     for stacking_method in stacking_methods:
@@ -286,14 +304,15 @@ def do_stack(
         stacked_images[(SwiftFilter.uvv, stacking_method)] = uvv_img
 
     # show them
-    show_fits_scaled(
-        [
-            stacked_images[(SwiftFilter.uw1, StackingMethod.summation)],
-            stacked_images[(SwiftFilter.uw1, StackingMethod.median)],
-            stacked_images[(SwiftFilter.uvv, StackingMethod.summation)],
-            stacked_images[(SwiftFilter.uvv, StackingMethod.median)],
-        ]
-    )
+    # show_fits_scaled(
+    #     [
+    #         stacked_images[(SwiftFilter.uw1, StackingMethod.summation)],
+    #         stacked_images[(SwiftFilter.uw1, StackingMethod.median)],
+    #         stacked_images[(SwiftFilter.uvv, StackingMethod.summation)],
+    #         stacked_images[(SwiftFilter.uvv, StackingMethod.median)],
+    #     ]
+    # )
+    show_fits_scaled(stacked_images)
 
     print("Save results?")
     save_results = get_yes_no()
@@ -319,8 +338,7 @@ def do_stack(
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
-        fits_path = stacked_fits_path(
-            stack_dir_path=stack_dir_path,
+        fits_path = pipeline_files.get_stacked_image_path(
             epoch_path=epoch_write_path,
             filter_type=filter_type,
             stacking_method=stacking_method,
@@ -349,36 +367,29 @@ def main():
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
+    pipeline_files = PipelineFiles(
+        swift_project_config.product_save_path, expect_epochs=True
+    )
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_dir_path = swift_project_config.epoch_dir_path
-    if epoch_dir_path is None:
-        print(f"Could not find epoch_path in {swift_project_config_path}, exiting.")
-        return
-
-    epoch_path = select_epoch(epoch_dir_path)
+    epoch_path = select_epoch(pipeline_files.epoch_dir_path)
     epoch = read_epoch(epoch_path)
+
     non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
 
+    # TODO: move this default path to pipeline_files
     stack_dir_path = swift_project_config.product_save_path / pathlib.Path("stacked")
     stack_dir_path.mkdir(parents=True, exist_ok=True)
 
     do_stack(
+        pipeline_files=pipeline_files,
         swift_data=swift_data,
         epoch=non_vetoed_epoch,
         epoch_path=epoch_path,
         stack_dir_path=stack_dir_path,
         do_coincidence_correction=True,
     )
-
-    if swift_project_config.stack_dir_path is None:
-        # update project config with the epoch directory, and save it back to the file
-        swift_project_config.stack_dir_path = stack_dir_path
-        write_swift_project_config(
-            config_path=pathlib.Path(swift_project_config_path),
-            swift_project_config=swift_project_config,
-        )
 
 
 if __name__ == "__main__":

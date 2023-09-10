@@ -5,14 +5,13 @@ import logging as log
 from typing import Callable, Optional
 from dataclasses import asdict, dataclass
 
-# from swift_types import SwiftProjectConfig, SwiftPipelineConfig
-
 
 __all__ = [
     "SwiftProjectConfig",
     "SwiftPipelineConfig",
     "read_swift_project_config",
     "read_swift_pipeline_config",
+    "write_swift_project_config",
 ]
 
 
@@ -21,11 +20,6 @@ class SwiftProjectConfig:
     swift_data_path: pathlib.Path
     jpl_horizons_id: str
     product_save_path: pathlib.Path
-    observation_log: Optional[pathlib.Path]
-    comet_orbital_data_path: Optional[pathlib.Path]
-    earth_orbital_data_path: Optional[pathlib.Path]
-    epoch_dir_path: Optional[pathlib.Path]
-    stack_dir_path: Optional[pathlib.Path]
 
 
 @dataclass
@@ -106,24 +100,11 @@ def read_swift_project_config(
         print(f"Could not find jpl_horizons_id in {config_path}")
         return None
 
-    observation_log = _path_from_yaml(config_yaml, "observation_log")
-    comet_orbital_data_path = _path_from_yaml(config_yaml, "comet_orbital_data_path")
-    earth_orbital_data_path = _path_from_yaml(config_yaml, "earth_orbital_data_path")
-    epoch_dir_path = _path_from_yaml(config_yaml, "epoch_dir_path")
-    stack_dir_path = _path_from_yaml(config_yaml, "stack_dir_path")
-
     project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
         product_save_path=product_save_path,
-        observation_log=observation_log,
-        comet_orbital_data_path=comet_orbital_data_path,
-        earth_orbital_data_path=earth_orbital_data_path,
-        epoch_dir_path=epoch_dir_path,
-        stack_dir_path=stack_dir_path,
     )
-    # print("Read swift project config:")
-    # print(project_config)
     return project_config
 
 
@@ -135,17 +116,12 @@ def write_swift_project_config(
     path_keys_to_convert = [
         "swift_data_path",
         "product_save_path",
-        "observation_log",
-        "comet_orbital_data_path",
-        "earth_orbital_data_path",
-        "epoch_dir_path",
-        "stack_dir_path",
     ]
+    # TODO: convert_or_delete is from an older implementation where config values could have been missing,
+    # but the config was re-worked and now we can just convert and assume the value are there without checking and deleting missing values
     for k in path_keys_to_convert:
         convert_or_delete(dict_to_write, k, os.fspath)
 
-    # print("Writing swift project config:")
-    # print(dict_to_write)
     with open(config_path, "w") as stream:
         try:
             yaml.safe_dump(dict_to_write, stream)
@@ -153,7 +129,7 @@ def write_swift_project_config(
             print(exc)
 
 
-def convert_or_delete(d: dict, k, conversion_function: Callable):
+def convert_or_delete(d: dict, k: str, conversion_function: Callable):
     if d[k] is None:
         del d[k]
     else:

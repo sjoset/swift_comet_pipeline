@@ -3,14 +3,19 @@
 import numpy as np
 from astropy.io import fits
 from astropy.visualization import ZScaleInterval
-
-from epochs import Epoch
-from swift_data import SwiftData
+from astropy.stats import sigma_clipped_stats
+from photutils.aperture import CircularAperture
+from photutils.detection import DAOStarFinder
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider
 from matplotlib.patches import Rectangle
 from mpl_toolkits import axes_grid1
+
+from epochs import Epoch
+from swift_data import SwiftData
+from swift_filter import SwiftFilter
+from uvot_image import PixelCoord
 
 
 __all__ = ["manual_veto"]
@@ -108,6 +113,7 @@ class EpochImageSlider(Slider):
         self._colorize(image_index)
 
 
+# TODO: this could use some work with update handling etc.
 class EpochImagePlot(object):
     def __init__(self, swift_data: SwiftData, epoch: Epoch, epoch_title: str):
         self.swift_data = swift_data
@@ -144,7 +150,9 @@ class EpochImagePlot(object):
         self.img_plot = None
         self.current_image_index = -1
         self.current_image = None
+        self.aperture_patches = None
         self.do_plot(0)
+        self.mark_sources()
 
     def get_image_by_index(self, index):
         if index < 0 or index >= self.num_images:
@@ -156,6 +164,10 @@ class EpochImagePlot(object):
             / epoch_row.FITS_FILENAME
         )
         return fits.getdata(image_path, ext=epoch_row.EXTENSION)  # type: ignore
+
+    def get_comet_coords(self):
+        epoch_row = self.epoch.iloc[self.current_image_index]
+        self.comet_coords = PixelCoord(x=epoch_row.PX, y=epoch_row.PY)
 
     def do_plot(self, index):
         if index < 0 or index >= self.num_images:
@@ -174,10 +186,20 @@ class EpochImagePlot(object):
         if self.img_plot is None:
             self.img_plot = self.ax.imshow(self.current_image, vmin=self.vmin, vmax=self.vmax, origin="lower", cmap=self.colormap_by_veto())  # type: ignore
             self.colorbar = self.fig.colorbar(self.img_plot, cax=self.colorbar_axis)
+            self.get_comet_coords()
+            self.comet_x_marker = self.ax.axvline(  # type: ignore
+                self.comet_coords.x, color="b", alpha=0.2
+            )
+            self.comet_y_marker = self.ax.axhline(  # type: ignore
+                self.comet_coords.y, color="b", alpha=0.2
+            )
         else:
             self.img_plot.set_data(self.current_image)
             self.img_plot.set_cmap(self.colormap_by_veto())
             self.img_plot.set_clim(vmin=self.vmin, vmax=self.vmax)
+            self.get_comet_coords()
+            self.comet_x_marker.set_xdata(self.comet_coords.x)
+            self.comet_y_marker.set_ydata(self.comet_coords.y)
 
         self.ax.set_title(  # type: ignore
             self.epoch_title
@@ -190,6 +212,38 @@ class EpochImagePlot(object):
             + " s exposure"
         )
 
+    def mark_sources(self):
+        pass
+        # if self.aperture_patches is not None:
+        #     self.ax.patches.clear()  # type: ignore
+        # epoch_row = self.epoch.iloc[self.current_image_index]
+        # if epoch_row.FILTER == SwiftFilter.uvv:
+        #     self.mark_sources_uvv()
+        # else:
+        #     self.mark_sources_uw1()
+
+    def mark_sources_uw1(self):
+        mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
+        daofind = DAOStarFinder(fwhm=7.0, threshold=5.0 * std)
+        sources = daofind(self.current_image - median)
+        if sources is None:
+            self.aperture_patches = None
+            return
+        positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
+        apertures = CircularAperture(positions, r=10.0)
+        self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.0, alpha=0.8)
+
+    def mark_sources_uvv(self):
+        mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
+        daofind = DAOStarFinder(fwhm=5.0, threshold=5.0 * std)
+        sources = daofind(self.current_image - median)
+        if sources is None:
+            self.aperture_patches = None
+            return
+        positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
+        apertures = CircularAperture(positions, r=10.0)
+        self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.5, alpha=0.5)
+
     def redraw_image(self):
         self.do_plot(self.current_image_index)
         plt.draw()
@@ -198,6 +252,7 @@ class EpochImagePlot(object):
         if int(new_index) == self.current_image_index:
             return
         self.do_plot(int(new_index))
+        self.mark_sources()
         return
 
     def veto_current_image(self, event):
