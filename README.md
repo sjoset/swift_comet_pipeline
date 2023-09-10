@@ -1,4 +1,4 @@
-# sushi_potato
+# swift_comet_pipeline
 
 ## Environment
     conda env create --file environment.yml
