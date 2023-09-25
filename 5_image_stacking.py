@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-import glob
 import pathlib
 import sys
 import itertools
 import copy
 import logging as log
 import numpy as np
-import pyarrow as pa
 from argparse import ArgumentParser
-from typing import Tuple
+from typing import Optional, Tuple
 from itertools import product
 
 import matplotlib.pyplot as plt
@@ -23,7 +21,7 @@ from astropy.time import Time
 import astropy.units as u
 
 from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
+from pipeline_files import EpochProduct, PipelineFiles
 from swift_data import SwiftData
 from swift_filter import (
     SwiftFilter,
@@ -31,7 +29,7 @@ from swift_filter import (
     filter_to_string,
 )
 from stacking import StackedUVOTImageSet, StackingMethod, stack_epoch
-from epochs import Epoch, read_epoch, write_epoch
+from epochs import Epoch
 from user_input import get_selection, get_yes_no
 from uvot_image import (
     SwiftUVOTImage,
@@ -237,7 +235,6 @@ def do_stack(
     swift_data: SwiftData,
     epoch: Epoch,
     epoch_path: pathlib.Path,
-    stack_dir_path: pathlib.Path,
     do_coincidence_correction: bool,
 ) -> None:
     # Do both filters with sum and median stacking
@@ -249,10 +246,6 @@ def do_stack(
         exit(1)
 
     epoch_pixel_resolution = epoch.DATAMODE[0]
-    epoch_name = epoch_path.stem
-
-    # epoch_name = epoch_name_from_epoch_path(epoch_path)
-
     stacked_images = StackedUVOTImageSet({})
 
     # do the stacking
@@ -262,19 +255,11 @@ def do_stack(
         print(
             f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
         )
-        # fits_file_path = stacked_fits_path(
-        #     stack_dir_path=stack_dir_path,
-        #     epoch_path=epoch_path,
-        #     filter_type=filter_type,
-        #     stacking_method=stacking_method,
-        # )
-        fits_file_path = pipeline_files.get_stacked_image_path(
-            epoch_path=epoch_path,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
-        )
-        if fits_file_path.exists():
-            print(f"Stack {fits_file_path} exists! Exiting.")
+        fits_product = pipeline_files.stacked_image_products[  # type: ignore
+            epoch_path, filter_type, stacking_method
+        ]
+        if fits_product.product_path.exists():
+            print(f"Stack {fits_product.product_path} exists! Exiting.")
             return
 
         # now narrow down the data to just one filter at a time
@@ -304,14 +289,6 @@ def do_stack(
         stacked_images[(SwiftFilter.uvv, stacking_method)] = uvv_img
 
     # show them
-    # show_fits_scaled(
-    #     [
-    #         stacked_images[(SwiftFilter.uw1, StackingMethod.summation)],
-    #         stacked_images[(SwiftFilter.uw1, StackingMethod.median)],
-    #         stacked_images[(SwiftFilter.uvv, StackingMethod.summation)],
-    #         stacked_images[(SwiftFilter.uvv, StackingMethod.median)],
-    #     ]
-    # )
     show_fits_scaled(stacked_images)
 
     print("Save results?")
@@ -319,44 +296,33 @@ def do_stack(
     if not save_results:
         return
 
-    # attach metadata to our epoch about stacking parameters
-    epoch_stack_schema = pa.schema(
-        [],
-        metadata={
-            "coincidence_correction": str(do_coincidence_correction),
-            "pixel_resolution": str(epoch_pixel_resolution),
-        },
-    )
-    epoch_write_path = stack_dir_path / pathlib.Path(epoch_name + ".parquet")
-
-    # write the filtered epoch as a record of contributing data
-    write_epoch(
-        epoch=epoch, epoch_path=epoch_write_path, additional_schema=epoch_stack_schema
-    )
+    stacked_epoch_product = pipeline_files.stacked_epoch_products[epoch_path]  # type: ignore
+    stacked_epoch_product.data_product = epoch
+    stacked_epoch_product.save_product()
 
     # write the stacked images as .FITS files
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
-        fits_path = pipeline_files.get_stacked_image_path(
-            epoch_path=epoch_write_path,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
-        )
-        print(f"Writing to {fits_path} ...")
-        # hdu = fits.PrimaryHDU(stacked_images[(filter_type, stacking_method)])
+        fits_product = pipeline_files.stacked_image_products[  # type: ignore
+            epoch_path, filter_type, stacking_method
+        ]
+        print(f"Writing to {fits_product.product_path} ...")
         hdu = epoch_stacked_image_to_fits(
             epoch=epoch, img=stacked_images[(filter_type, stacking_method)]
         )
-        hdu.writeto(fits_path, overwrite=True)
+        fits_product.data_product = hdu
+        fits_product.save_product()
 
 
-def select_epoch(epoch_dir: pathlib.Path) -> pathlib.Path:
-    glob_pattern = str(epoch_dir / pathlib.Path("*.parquet"))
-    epoch_filename_list = sorted(glob.glob(glob_pattern))
-    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
+def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
+    if pipeline_files.epoch_products is None:
+        return None
 
-    return epoch_path
+    epoch_filename_list = [x.product_path for x in pipeline_files.epoch_products]
+    selection = get_selection(epoch_filename_list)
+
+    return pipeline_files.epoch_products[selection]
 
 
 def main():
@@ -367,27 +333,24 @@ def main():
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
-    pipeline_files = PipelineFiles(
-        swift_project_config.product_save_path, expect_epochs=True
-    )
+    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_path = select_epoch(pipeline_files.epoch_dir_path)
-    epoch = read_epoch(epoch_path)
+    epoch_product = epoch_menu(pipeline_files)
+    if epoch_product is None:
+        print("Error selecting epoch! Exiting.")
+        return 1
+    epoch_product.load_product()
+    epoch = epoch_product.data_product
 
     non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
-
-    # TODO: move this default path to pipeline_files
-    stack_dir_path = swift_project_config.product_save_path / pathlib.Path("stacked")
-    stack_dir_path.mkdir(parents=True, exist_ok=True)
 
     do_stack(
         pipeline_files=pipeline_files,
         swift_data=swift_data,
         epoch=non_vetoed_epoch,
-        epoch_path=epoch_path,
-        stack_dir_path=stack_dir_path,
+        epoch_path=epoch_product.product_path,
         do_coincidence_correction=True,
     )
 

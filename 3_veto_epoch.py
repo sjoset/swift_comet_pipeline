@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
 import os
-import glob
 import pathlib
 import sys
 import logging as log
 
 from argparse import ArgumentParser
+from typing import Optional
 
 from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
+from pipeline_files import EpochProduct, PipelineFiles
 from swift_data import SwiftData
 
-from epochs import read_epoch, write_epoch
 from manual_veto import manual_veto
 from user_input import get_yes_no, get_selection
 
@@ -45,14 +44,14 @@ def process_args():
     return args
 
 
-def epoch_menu(epoch_dir: pathlib.Path) -> pathlib.Path:
-    glob_pattern = str(epoch_dir / pathlib.Path("*.parquet"))
+def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
+    if pipeline_files.epoch_products is None:
+        return None
 
-    epoch_filename_list = sorted(glob.glob(glob_pattern))
+    epoch_filename_list = [x.product_path for x in pipeline_files.epoch_products]
+    selection = get_selection(epoch_filename_list)
 
-    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
-
-    return epoch_path
+    return pipeline_files.epoch_products[selection]
 
 
 def main():
@@ -63,25 +62,33 @@ def main():
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
-    pipeline_files = PipelineFiles(
-        swift_project_config.product_save_path, expect_epochs=True
-    )
+    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_path = epoch_menu(pipeline_files.epoch_dir_path)
-    epoch_pre_veto = read_epoch(epoch_path)
+    if pipeline_files.epoch_products is None:
+        print("No epoch files found! Exiting.")
+        return 0
+    epoch_product = epoch_menu(pipeline_files)
+    if epoch_product is None:
+        print("Could not select epoch, exiting.")
+        return 1
+    epoch_product.load_product()
+    epoch_pre_veto = epoch_product.data_product
 
     epoch_post_veto = manual_veto(
-        swift_data=swift_data, epoch=epoch_pre_veto, epoch_title=epoch_path.stem
+        swift_data=swift_data,
+        epoch=epoch_pre_veto,
+        epoch_title=epoch_product.product_path.stem,
     )
 
     print("Save epoch?")
     save_epoch = get_yes_no()
     if not save_epoch:
-        return
+        return 0
 
-    write_epoch(epoch=epoch_post_veto, epoch_path=epoch_path)
+    epoch_product.data_product = epoch_post_veto
+    epoch_product.save_product()
 
 
 if __name__ == "__main__":

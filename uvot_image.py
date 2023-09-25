@@ -36,6 +36,7 @@ class SwiftUVOTImageType(StrEnum):
 
 
 def datamode_to_pixel_resolution(datamode: str) -> SwiftPixelResolution:
+    """Takes a string read from the DATAMODE entry of the FITS header of a UVOT image and converts"""
     if datamode == "IMAGE":
         return SwiftPixelResolution.data_mode
     elif datamode == "EVENT":
@@ -46,6 +47,7 @@ def datamode_to_pixel_resolution(datamode: str) -> SwiftPixelResolution:
 
 
 def pixel_resolution_to_datamode(spr: SwiftPixelResolution) -> str:
+    """Performs the inverse conversion of datamode_to_pixel_resolution for conversion back to a string"""
     if spr == SwiftPixelResolution.event_mode:
         return "EVENT"
     elif spr == SwiftPixelResolution.data_mode:
@@ -61,6 +63,7 @@ class PixelCoord:
 
 
 def get_uvot_image_center_row_col(img: SwiftUVOTImage) -> Tuple[int, int]:
+    """Given a SwiftUVOTImage, returns the (row, column) of the center pixel"""
     center_row = int(np.floor(img.shape[0] / 2))
     center_col = int(np.floor(img.shape[1] / 2))
     return (center_row, center_col)

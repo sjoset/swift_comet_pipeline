@@ -17,12 +17,12 @@ from bisect import bisect_left, bisect_right
 from astropy.time import Time
 
 from argparse import ArgumentParser
+from pipeline_files import PipelineFiles
 
 from swift_filter import SwiftFilter
 from observation_log import SwiftObservationLog
 
 from configs import read_swift_project_config
-from observation_log import read_observation_log
 
 
 def process_args():
@@ -402,70 +402,35 @@ def comet_observation_labels_by_month(
     return np.array(xs), np.array(ys), labels
 
 
-# def orbit_label_figure(xs, ys, labels):
-#     rs = np.sqrt(xs**2 + ys**2)
-#     thetas = np.arctan2(ys, xs)
-#
-#     plt.rcParams["figure.figsize"] = (15, 15)
-#
-#     fig = plt.figure()
-#     ax = fig.add_subplot(1, 1, 1, projection="polar")
-#
-#     ax.scatter(thetas, rs, color="#a4b7be", alpha=0.01, zorder=1)
-#
-#     for r, theta, label in zip(rs, thetas, labels):
-#         text_rot = theta * (180 / np.pi)
-#         if text_rot > 90 and text_rot < 180:
-#             text_rot -= 180
-#         elif text_rot > 180:
-#             text_rot -= 360
-#         plt.text(
-#             theta,
-#             r,
-#             label,
-#             rotation=text_rot,
-#             color="#688894",
-#             ha="center",
-#             va="center",
-#             alpha=0.5,
-#         )
-#
-#     ax.set_title("C/2013US10")
-#     ax.set_yticklabels([])
-#     ax.axis("off")
-#
-#     plt.show()
-#     plt.close()
-
-
 def main():
     args = process_args()
 
     swift_project_config_path = pathlib.Path(args.swift_project_config[0])
     swift_project_config = read_swift_project_config(swift_project_config_path)
-    if swift_project_config is None or swift_project_config.observation_log is None:
+    if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
-    obs_log = read_observation_log(swift_project_config.observation_log)
-
-    if swift_project_config.comet_orbital_data_path is None:
-        print(
-            f"Could not find comet orbital data path in project config {swift_project_config}"
-        )
+    pipeline_files = PipelineFiles(
+        base_product_save_path=swift_project_config.product_save_path
+    )
+    if pipeline_files.observation_log is None:
+        print("Observation log not found! Exiting.")
         return 1
 
-    comet_orbit = pd.read_csv(swift_project_config.comet_orbital_data_path)
+    pipeline_files.observation_log.load_product()
+    obs_log = pipeline_files.observation_log.data_product
+
+    pipeline_files.comet_orbital_data.load_product()
+    comet_orbit = pipeline_files.comet_orbital_data.data_product
+
+    # comet_orbit = pd.read_csv(swift_project_config.comet_orbital_data_path)
     comet_orbit["jd"] = list(
         map(lambda t: Time(t, format="jd"), comet_orbit["datetime_jd"])
     )
 
-    if swift_project_config.earth_orbital_data_path is None:
-        print(
-            f"Could not find earth orbital data path in project config {swift_project_config}"
-        )
-        return 1
-    earth_orbit = pd.read_csv(swift_project_config.earth_orbital_data_path)
+    pipeline_files.earth_orbital_data.load_product()
+    earth_orbit = pipeline_files.earth_orbital_data.data_product
 
     # rs, thetas = find_observation_coords_from_obs_log(obs_log, comet_orbit)
 

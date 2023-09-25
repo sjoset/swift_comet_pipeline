@@ -6,21 +6,13 @@ import sys
 import warnings
 import logging as log
 
-# import pyarrow as pa
-# import numpy as np
-# import astropy.units as u
-
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 from pipeline_files import PipelineFiles
 
 from swift_data import SwiftData
-from configs import read_swift_project_config, write_swift_project_config
-from observation_log import (
-    build_observation_log,
-    # observation_log_schema,
-    write_observation_log,
-)
+from configs import read_swift_project_config
+from observation_log import build_observation_log
 
 
 def process_args():
@@ -64,18 +56,19 @@ def main():
 
     args = process_args()
 
+    # load the project config
     swift_project_config_path = pathlib.Path(args.swift_project_config[0])
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print(f"Error reading config file {swift_project_config_path}, exiting.")
         return 1
-
-    pipeline_files = PipelineFiles(
-        swift_project_config.product_save_path, expect_epochs=False
-    )
-
     horizons_id = swift_project_config.jpl_horizons_id
+
+    # the raw swift data lives here
     sdd = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
+
+    # put together the pipeline file list
+    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     df = build_observation_log(
         swift_data=sdd,
@@ -89,7 +82,8 @@ def main():
         )
         return 1
 
-    write_observation_log(df, pipeline_files.get_observation_log_path())
+    pipeline_files.observation_log.data_product = df
+    pipeline_files.observation_log.save_product()
 
 
 if __name__ == "__main__":

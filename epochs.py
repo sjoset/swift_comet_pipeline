@@ -22,6 +22,15 @@ __all__ = [
 
 Epoch: TypeAlias = pd.DataFrame
 
+# For saving metadata with a parquet file
+# epoch_stack_schema = pa.schema(
+#     [],
+#     metadata={
+#         "coincidence_correction": str(do_coincidence_correction),
+#         "pixel_resolution": str(epoch_pixel_resolution),
+#     },
+# )
+
 
 # TODO: merge this schema into observation log and just initialize all these possible error values in build_observation_log
 def epoch_schema() -> pa.lib.Schema:
@@ -52,7 +61,7 @@ def write_epoch(
 
     # do any column processing of our own here
 
-    write_observation_log(epoch, epoch_path, additional_schema=epoch_schema())
+    write_observation_log(epoch, epoch_path, additional_schema=schema)
 
 
 def epoch_from_obs_log(obs_log: SwiftObservationLog) -> Epoch:

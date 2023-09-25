@@ -230,7 +230,12 @@ def q_vs_aperture_radius(
     helio_v_kms = np.mean(epoch.HELIO_V)
     delta = np.mean(epoch.OBS_DIS)
 
-    aperture_radii, r_step = np.linspace(1, 300, num=300, retstep=True)
+    # TODO: can vectorial model give a better estimate? might be able to borrow the code for grid size here
+    radius_km_guess = 1e5
+    r_pix = int(radius_km_guess / np.mean(epoch.KM_PER_PIX))
+    print(f"Guessing radius of 1e5 km or {r_pix} pixels")
+
+    aperture_radii, r_step = np.linspace(1, 2 * r_pix, num=2 * r_pix, retstep=True)
     redness_to_beta = {x.reddening: beta_parameter(x) for x in dust_rednesses}
 
     count_uw1 = []
@@ -502,9 +507,7 @@ def main():
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
-    pipeline_files = PipelineFiles(
-        swift_project_config.product_save_path, expect_epochs=True
-    )
+    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     epoch_path = pathlib.Path(
         pipeline_files.stacked_epoch_paths[
@@ -516,14 +519,14 @@ def main():
     # print(epoch)
 
     uw1_sum: SwiftUVOTImage = fits.getdata(  # type: ignore
-        pipeline_files.get_stacked_image_path(
+        pipeline_files._get_stacked_image_path(
             epoch_path=epoch_path,
             filter_type=SwiftFilter.uw1,
             stacking_method=StackingMethod.summation,
         )
     )
     uvv_sum: SwiftUVOTImage = fits.getdata(  # type: ignore
-        pipeline_files.get_stacked_image_path(
+        pipeline_files._get_stacked_image_path(
             epoch_path=epoch_path,
             filter_type=SwiftFilter.uvv,
             stacking_method=StackingMethod.summation,
@@ -726,16 +729,6 @@ def main():
     # ax2.contourf(mx, my, mz, cmap="magma")
     #
     # plt.show()
-
-    # analysis_dir = default_analysis_dir(
-    #     product_save_path=swift_project_config.product_save_path,
-    #     epoch_name=epoch_name_from_epoch_path(epoch_path),
-    # )
-    # analysis_dir.mkdir(parents=True, exist_ok=True)
-
-    pipeline_files.get_analysis_path(epoch_path=epoch_path).mkdir(
-        parents=True, exist_ok=True
-    )
 
     ####
     # save the background-subtracted fits

@@ -3,9 +3,12 @@ import numpy as np
 import os
 import glob
 
+from astropy.io import fits
+from astropy.wcs import WCS
+
 from typing import Optional, TypeAlias, List
 from swift_filter import SwiftFilter, filter_to_file_string
-from uvot_image import SwiftUVOTImageType
+from uvot_image import SwiftUVOTImage, SwiftUVOTImageType
 
 
 __all__ = [
@@ -121,3 +124,25 @@ class SwiftData:
         """Returns a path to the directory containing the uvot images of the given observation id"""
         image_path = self.base_path / obsid / "uvot" / "image"
         return image_path
+
+    def get_uvot_image(
+        self, obsid: SwiftObservationID, fits_filename: str, fits_extension: int
+    ) -> SwiftUVOTImage:
+        image_path = self.get_uvot_image_directory(obsid=obsid) / pathlib.Path(
+            fits_filename
+        )
+        image_data: SwiftUVOTImage = fits.getdata(image_path, ext=fits_extension)  # type: ignore
+        return image_data
+
+    def get_uvot_image_wcs(
+        self, obsid: SwiftObservationID, fits_filename: str, fits_extension: int
+    ):
+        image_path = self.get_uvot_image_directory(obsid=obsid) / pathlib.Path(
+            fits_filename
+        )
+
+        with fits.open(image_path) as hdul:
+            header = hdul[fits_extension].header  # type: ignore
+            wcs = WCS(header)
+
+        return wcs

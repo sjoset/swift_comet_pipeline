@@ -27,8 +27,8 @@ __all__ = [
     "BackgroundDeterminationMethod",
     "BackgroundResult",
     "determine_background",
-    "write_background_analysis",
-    "read_background_analysis",
+    "background_analysis_to_yaml_dict",
+    "yaml_dict_to_background_analysis",
 ]
 
 
@@ -271,12 +271,12 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     )
 
 
-def write_background_analysis(
-    out_path: pathlib.Path,
+# TODO: write a BackgroundAnalysis class to avoid these dictionary shenanigans if possible
+def background_analysis_to_yaml_dict(
     method: BackgroundDeterminationMethod,
     uw1_result: BackgroundResult,
     uvv_result: BackgroundResult,
-) -> None:
+) -> dict:
     # yaml serializer doesn't support numpy floats for some reason
     uw1_result.count_rate_per_pixel.value = float(uw1_result.count_rate_per_pixel.value)
     uw1_result.count_rate_per_pixel.sigma = float(uw1_result.count_rate_per_pixel.sigma)
@@ -291,23 +291,16 @@ def write_background_analysis(
         "params": uvv_result.params,
         "count_rate_per_pixel": asdict(uvv_result.count_rate_per_pixel),
     }
-    dict_to_write = {"uw1": uw1_dict, "uvv": uvv_dict, "method": str(method)}
+    dict_to_write = {
+        filter_to_file_string(SwiftFilter.uw1): uw1_dict,
+        filter_to_file_string(SwiftFilter.uvv): uvv_dict,
+        "method": str(method),
+    }
 
-    with open(out_path, "w") as stream:
-        try:
-            yaml.safe_dump(dict_to_write, stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+    return dict_to_write
 
 
-def read_background_analysis(in_path: pathlib.Path) -> Optional[dict]:
-    with open(in_path, "r") as stream:
-        try:
-            raw_yaml = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-            return None
-
+def yaml_dict_to_background_analysis(raw_yaml: dict) -> dict:
     bg = SimpleNamespace(**raw_yaml)
     uw1_dict = bg.uw1
     uw1_result = BackgroundResult(
@@ -320,4 +313,8 @@ def read_background_analysis(in_path: pathlib.Path) -> Optional[dict]:
         params=uvv_dict["params"],
     )
 
-    return {SwiftFilter.uw1: uw1_result, SwiftFilter.uvv: uvv_result}
+    return {
+        "method": bg.method,
+        SwiftFilter.uw1: uw1_result,
+        SwiftFilter.uvv: uvv_result,
+    }

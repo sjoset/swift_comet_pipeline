@@ -7,15 +7,13 @@ import logging as log
 
 from argparse import ArgumentParser
 
-from configs import read_swift_project_config, write_swift_project_config
+from configs import read_swift_project_config
 
 from swift_filter import SwiftFilter
 
-from observation_log import read_observation_log, includes_uvv_and_uw1_filters
-from epochs import write_epoch
+from observation_log import includes_uvv_and_uw1_filters
 
-# from pipeline_files import epoch_filenames_from_epoch_list, default_epoch_dir
-from pipeline_files import PipelineFiles
+from pipeline_files import EpochProduct, PipelineFiles
 from user_input import get_yes_no
 from epoch_time_window import (
     epochs_from_time_delta,
@@ -60,11 +58,11 @@ def main():
         print("Error reading config file {swift_project_config_path}, exiting.")
         return 1
 
-    pipeline_files = PipelineFiles(
-        swift_project_config.product_save_path, expect_epochs=False
-    )
+    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
-    obs_log = read_observation_log(pipeline_files.get_observation_log_path())
+    # obs_log = read_observation_log(pipeline_files.get_observation_log_path())
+    pipeline_files.observation_log.load_product()
+    obs_log = pipeline_files.observation_log.data_product
 
     if not includes_uvv_and_uw1_filters(obs_log=obs_log):
         print("The selection does not have data in both uw1 and uvv filters!")
@@ -87,12 +85,12 @@ def main():
     if not save_epochs:
         return
 
-    pipeline_files.epoch_dir_path.mkdir(parents=True, exist_ok=True)
-
     epoch_path_list = pipeline_files.determine_epoch_file_paths(epoch_list=epoch_list)
     for epoch, epoch_path in zip(epoch_list, epoch_path_list):
-        print(f"Writing file: {epoch_path} ...")
-        write_epoch(epoch=epoch, epoch_path=epoch_path)
+        epoch_product = EpochProduct(product_path=epoch_path)
+        epoch_product.data_product = epoch
+        print(f"Writing {epoch_product.product_path} ...")
+        epoch_product.save_product()
 
 
 if __name__ == "__main__":
