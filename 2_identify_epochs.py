@@ -14,7 +14,7 @@ from swift_filter import SwiftFilter
 from observation_log import includes_uvv_and_uw1_filters
 
 from pipeline_files import EpochProduct, PipelineFiles
-from user_input import get_yes_no
+from tui import get_yes_no
 from epoch_time_window import (
     epochs_from_time_delta,
     select_epoch_time_window,

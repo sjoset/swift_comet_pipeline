@@ -8,7 +8,7 @@ import copy
 import logging as log
 import numpy as np
 from argparse import ArgumentParser
-from typing import Optional, Tuple
+from typing import Tuple
 from itertools import product
 
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ from astropy.time import Time
 import astropy.units as u
 
 from configs import read_swift_project_config
-from pipeline_files import EpochProduct, PipelineFiles
+from pipeline_files import PipelineFiles
 from swift_data import SwiftData
 from swift_filter import (
     SwiftFilter,
@@ -30,7 +30,7 @@ from swift_filter import (
 )
 from stacking import StackedUVOTImageSet, StackingMethod, stack_epoch
 from epochs import Epoch
-from user_input import get_selection, get_yes_no
+from tui import get_yes_no, epoch_menu, bool_to_x_or_check
 from uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
@@ -252,15 +252,15 @@ def do_stack(
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
-        print(
-            f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
-        )
         fits_product = pipeline_files.stacked_image_products[  # type: ignore
             epoch_path, filter_type, stacking_method
         ]
         if fits_product.product_path.exists():
-            print(f"Stack {fits_product.product_path} exists! Exiting.")
+            print(f"Stack {fits_product.product_path} exists! Skipping.")
             return
+        print(
+            f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
+        )
 
         # now narrow down the data to just one filter at a time
         filter_mask = epoch["FILTER"] == filter_type
@@ -315,14 +315,34 @@ def do_stack(
         fits_product.save_product()
 
 
-def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
-    if pipeline_files.epoch_products is None:
-        return None
+def print_stacked_images_summary(
+    pipeline_files: PipelineFiles,
+) -> dict[pathlib.Path, bool]:
+    is_epoch_stacked: dict[pathlib.Path, bool] = {}
+    print("Summary of detected stacked images:")
+    # loop through each epoch and look for associated stacked files
+    for x in pipeline_files.epoch_file_paths:  # type: ignore
+        ep_prod = pipeline_files.stacked_epoch_products[x]  # type: ignore
+        print(ep_prod.product_path.stem, "\t", bool_to_x_or_check(ep_prod.exists()))
+        is_epoch_stacked[x] = ep_prod.exists()
 
-    epoch_filename_list = [x.product_path for x in pipeline_files.epoch_products]
-    selection = get_selection(epoch_filename_list)
+    return is_epoch_stacked
 
-    return pipeline_files.epoch_products[selection]
+
+def menu_stack_all_or_selection() -> str:
+    user_selection = None
+    default_selection = "s"
+
+    print("Stack all or make a selection? (a/s)")
+    print("Default: selection")
+    while user_selection is None:
+        raw_selection = input()
+        if raw_selection == "a" or "s":
+            user_selection = raw_selection
+        if raw_selection == "":
+            user_selection = default_selection
+
+    return user_selection
 
 
 def main():
@@ -337,22 +357,38 @@ def main():
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_product = epoch_menu(pipeline_files)
-    if epoch_product is None:
-        print("Error selecting epoch! Exiting.")
+    is_epoch_stacked = print_stacked_images_summary(pipeline_files=pipeline_files)
+    if all(is_epoch_stacked.values()):
+        print("Everything stacked! Nothing to do.")
+        return 0
+
+    epochs_to_stack = []
+    menu_selection = menu_stack_all_or_selection()
+    if menu_selection == "a":
+        epochs_to_stack = pipeline_files.epoch_products
+    elif menu_selection == "s":
+        epochs_to_stack = [epoch_menu(pipeline_files)]
+
+    if epochs_to_stack is None:
+        print("Pipeline error! This is a bug with pipeline_files.epoch_products!")
         return 1
-    epoch_product.load_product()
-    epoch = epoch_product.data_product
 
-    non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
+    for epoch_product in epochs_to_stack:
+        if epoch_product is None:
+            print("Error selecting epoch! Exiting.")
+            return 1
+        epoch_product.load_product()
+        epoch = epoch_product.data_product
 
-    do_stack(
-        pipeline_files=pipeline_files,
-        swift_data=swift_data,
-        epoch=non_vetoed_epoch,
-        epoch_path=epoch_product.product_path,
-        do_coincidence_correction=True,
-    )
+        non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
+
+        do_stack(
+            pipeline_files=pipeline_files,
+            swift_data=swift_data,
+            epoch=non_vetoed_epoch,
+            epoch_path=epoch_product.product_path,
+            do_coincidence_correction=False,
+        )
 
 
 if __name__ == "__main__":

@@ -196,7 +196,8 @@ class BackgroundAperturePlacementPlot(object):
 
         self.count_rate_annotation = self.ax.annotate(  # type: ignore
             self.count_rate_string(),
-            (0.10, 0.95),
+            xy=(0.03, 0.95),
+            xytext=(0.03, 0.95),
             textcoords="axes fraction",
             size=10,
             color="orange",

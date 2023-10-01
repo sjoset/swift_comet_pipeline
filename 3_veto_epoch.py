@@ -6,14 +6,13 @@ import sys
 import logging as log
 
 from argparse import ArgumentParser
-from typing import Optional
 
 from configs import read_swift_project_config
-from pipeline_files import EpochProduct, PipelineFiles
+from pipeline_files import PipelineFiles
 from swift_data import SwiftData
 
 from manual_veto import manual_veto
-from user_input import get_yes_no, get_selection
+from tui import get_yes_no, epoch_menu
 
 
 def process_args():
@@ -42,16 +41,6 @@ def process_args():
         log.basicConfig(format="%(levelname)s: %(message)s")
 
     return args
-
-
-def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
-    if pipeline_files.epoch_products is None:
-        return None
-
-    epoch_filename_list = [x.product_path for x in pipeline_files.epoch_products]
-    selection = get_selection(epoch_filename_list)
-
-    return pipeline_files.epoch_products[selection]
 
 
 def main():

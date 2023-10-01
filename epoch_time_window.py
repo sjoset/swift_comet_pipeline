@@ -12,7 +12,7 @@ from typing import List
 
 from swift_filter import SwiftFilter
 from observation_log import SwiftObservationLog
-from user_input import get_float, get_selection, get_yes_no
+from tui import get_float, get_selection, get_yes_no
 from epochs import epoch_from_obs_log
 
 
@@ -166,7 +166,7 @@ class EpochTimeWindowSelect(object):
             ax=self.slider_ax,
             label="Max time between observations (hours)",
             valmin=1.0,
-            valmax=48.0,
+            valmax=96.0,
             valstep=1.0,
             valinit=initial_dt.to_value(u.hour),
         )
