@@ -50,7 +50,10 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swift_project_config", nargs=1, help="Filename of project config"
+        "swift_project_config",
+        nargs="?",
+        help="Filename of project config",
+        default="config.yaml",
     )
 
     args = parser.parse_args()
@@ -236,6 +239,8 @@ def do_stack(
     epoch: Epoch,
     epoch_path: pathlib.Path,
     do_coincidence_correction: bool,
+    ask_to_save_stack: bool,
+    show_stacked_images: bool,
 ) -> None:
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
@@ -274,8 +279,8 @@ def do_stack(
             pixel_resolution=epoch_pixel_resolution,
         )
         if stacked_img is None:
-            print("Stacking image failed, aborting... ")
-            exit(1)
+            print("Stacking image failed, skipping... ")
+            return
         else:
             stacked_images[(filter_type, stacking_method)] = stacked_img
 
@@ -288,14 +293,17 @@ def do_stack(
         stacked_images[(SwiftFilter.uw1, stacking_method)] = uw1_img
         stacked_images[(SwiftFilter.uvv, stacking_method)] = uvv_img
 
-    # show them
-    show_fits_scaled(stacked_images)
+    if show_stacked_images:
+        # show them
+        show_fits_scaled(stacked_images)
 
-    print("Save results?")
-    save_results = get_yes_no()
-    if not save_results:
-        return
+    if ask_to_save_stack:
+        print("Save results?")
+        save_results = get_yes_no()
+        if not save_results:
+            return
 
+    # get the stacked epoch pipeline product, stuff the epoch in it, and save
     stacked_epoch_product = pipeline_files.stacked_epoch_products[epoch_path]  # type: ignore
     stacked_epoch_product.data_product = epoch
     stacked_epoch_product.save_product()
@@ -348,7 +356,7 @@ def menu_stack_all_or_selection() -> str:
 def main():
     args = process_args()
 
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config)
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
@@ -362,10 +370,15 @@ def main():
         print("Everything stacked! Nothing to do.")
         return 0
 
-    epochs_to_stack = []
     menu_selection = menu_stack_all_or_selection()
+
+    epochs_to_stack = []
+    ask_to_save_stack = True
+    show_stacked_images = True
     if menu_selection == "a":
         epochs_to_stack = pipeline_files.epoch_products
+        ask_to_save_stack = False
+        show_stacked_images = False
     elif menu_selection == "s":
         epochs_to_stack = [epoch_menu(pipeline_files)]
 
@@ -387,7 +400,9 @@ def main():
             swift_data=swift_data,
             epoch=non_vetoed_epoch,
             epoch_path=epoch_product.product_path,
-            do_coincidence_correction=False,
+            do_coincidence_correction=True,
+            ask_to_save_stack=ask_to_save_stack,
+            show_stacked_images=show_stacked_images,
         )
 
 

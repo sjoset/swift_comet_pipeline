@@ -27,14 +27,17 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swift_project_config", nargs=1, help="Filename of project config"
+        "swift_project_config",
+        nargs="?",
+        help="Filename of project config",
+        default="config.yaml",
     )
-    parser.add_argument(
-        "--output",
-        "-o",
-        default="observation_log.parquet",
-        help="Filename of observation log output",
-    )
+    # parser.add_argument(
+    #     "--output",
+    #     "-o",
+    #     default="observation_log.parquet",
+    #     help="Filename of observation log output",
+    # )
 
     args = parser.parse_args()
 
@@ -57,7 +60,7 @@ def main():
     args = process_args()
 
     # load the project config
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config)
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print(f"Error reading config file {swift_project_config_path}, exiting.")
@@ -69,6 +72,8 @@ def main():
 
     # put together the pipeline file list
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+
+    # TODO: check if observation log exists and ask user whether to exit or generate new and overwrite
 
     df = build_observation_log(
         swift_data=sdd,

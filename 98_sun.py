@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import glob
 import pathlib
 import warnings
 import sys
@@ -17,14 +16,11 @@ from configs import read_swift_project_config
 from pipeline_files import PipelineFiles
 from swift_data import SwiftData
 
-from epochs import read_epoch, write_epoch
-from manual_veto import manual_veto
+from epochs import read_epoch
 from swift_filter import SwiftFilter
-from user_input import get_yes_no, get_selection
+from tui import epoch_menu
 
-from astropy.coordinates import get_body_barycentric, get_sun
-from astropy.io import fits
-from astropy.wcs import WCS
+from astropy.coordinates import get_sun
 from astropy.time import Time
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.wcs.wcs import FITSFixedWarning
@@ -83,16 +79,6 @@ def show_fits(img, sun_x, sun_y, comet_x, comet_y):
     plt.show()
 
 
-def epoch_menu(epoch_dir: pathlib.Path) -> pathlib.Path:
-    glob_pattern = str(epoch_dir / pathlib.Path("*.parquet"))
-
-    epoch_filename_list = sorted(glob.glob(glob_pattern))
-
-    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
-
-    return epoch_path
-
-
 def main():
     warnings.resetwarnings()
     warnings.filterwarnings("ignore", category=FITSFixedWarning, append=True)
@@ -108,7 +94,10 @@ def main():
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    epoch_path = epoch_menu(pipeline_files.epoch_dir_path)
+    epoch_prod = epoch_menu(pipeline_files=pipeline_files)
+    if epoch_prod is None:
+        return
+    epoch_path = epoch_prod.product_path
     epoch_pre_veto = read_epoch(epoch_path)
 
     filter_mask = epoch_pre_veto["FILTER"] == SwiftFilter.uvv
@@ -136,25 +125,6 @@ def main():
         print(sun_x, sun_y, np.degrees(np.arctan2(sun_y, sun_x)))
 
         show_fits(img, sun_x, sun_y, row.PX, row.PY)
-
-    # image_path = swift_data.get_uvot_image_directory(obsid=row.OBS_ID) / pathlib.Path(
-    #     row["FITS_FILENAME"]
-    # )
-    #
-    # with fits.open(image_path) as hdul:
-    #     header = hdul[ext_id].header  # type: ignore
-    #     wcs_list.append(WCS(header))
-
-    # epoch_post_veto = manual_veto(
-    #     swift_data=swift_data, epoch=epoch_pre_veto, epoch_title=epoch_path.stem
-    # )
-    #
-    # print("Save epoch?")
-    # save_epoch = get_yes_no()
-    # if not save_epoch:
-    #     return
-    #
-    # write_epoch(epoch=epoch_post_veto, epoch_path=epoch_path)
 
 
 if __name__ == "__main__":

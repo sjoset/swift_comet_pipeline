@@ -155,6 +155,7 @@ def center_image_on_coords(
     return centered_image
 
 
+# TODO: this could just return the sum and median images together
 def stack_epoch(
     swift_data: SwiftData,
     epoch: Epoch,
@@ -186,6 +187,8 @@ def stack_epoch(
 
         image_path = swift_data.get_uvot_image_directory(obsid=obsid) / row["FITS_FILENAME"]  # type: ignore
 
+        exp_time = float(row["EXPOSURE"])
+
         # read the image
         image_data = fits.getdata(image_path, ext=row["EXTENSION"])
 
@@ -198,12 +201,11 @@ def stack_epoch(
 
         # do any processing before stacking
         if do_coincidence_correction:
+            # the correction expects images in count rate, but we are storing the raw images so divide by exposure time here
             coi_map = coincidence_correction(
-                img_data=image_data, scale=pixel_resolution
+                img_data=image_data / exp_time, scale=pixel_resolution
             )
             image_data = image_data * coi_map
-
-        exp_time = float(row["EXPOSURE"])
 
         image_data_to_stack.append(image_data)
         exposure_times.append(exp_time)

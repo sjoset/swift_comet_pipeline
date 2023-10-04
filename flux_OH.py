@@ -11,12 +11,12 @@ from count_rate import CountRate
 
 
 __all__ = [
-    "Flux",
+    "OHFlux",
     "beta_parameter",
     "OH_flux_from_count_rate",
 ]
 
-Flux: TypeAlias = ValueAndStandardDev
+OHFlux: TypeAlias = ValueAndStandardDev
 
 
 def beta_parameter(
@@ -63,7 +63,7 @@ def OH_flux_from_count_rate(
     uw1: CountRate,
     uvv: CountRate,
     beta: float,
-) -> Flux:
+) -> OHFlux:
     # TODO: read Lucy's thesis and figure out why the conversion units are 1.275e-12
     # TODO: start tagging with astropy units to avoid conversion units?
     alpha = 1.2750906353215913e-12
@@ -72,4 +72,4 @@ def OH_flux_from_count_rate(
 
     oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + (uvv.sigma * beta) ** 2)
 
-    return Flux(value=oh_flux, sigma=oh_flux_err)
+    return OHFlux(value=oh_flux, sigma=oh_flux_err)

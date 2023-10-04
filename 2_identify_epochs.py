@@ -33,7 +33,10 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swift_project_config", nargs=1, help="Filename of project config"
+        "swift_project_config",
+        nargs="?",
+        help="Filename of project config",
+        default="config.yaml",
     )
 
     args = parser.parse_args()
@@ -52,7 +55,7 @@ def process_args():
 def main():
     args = process_args()
 
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config)
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")

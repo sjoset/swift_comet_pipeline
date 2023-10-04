@@ -4,17 +4,16 @@ import os
 import pathlib
 import sys
 import glob
+import copy
 
 # import yaml
 import numpy as np
 import pandas as pd
 import logging as log
-from typing import List, Optional
+from typing import List
 from itertools import product
 
 from photutils.aperture import ApertureStats, CircularAperture, CircularAnnulus
-
-from astropy.io import fits
 
 # from astropy import modeling
 
@@ -30,6 +29,7 @@ import matplotlib.pyplot as plt
 # from astropy.visualization import ZScaleInterval
 
 from configs import read_swift_project_config
+from error_propogation import ValueAndStandardDev
 from pipeline_files import PipelineFiles
 
 from reddening_correction import DustReddeningPercent
@@ -39,14 +39,12 @@ from uvot_image import SwiftUVOTImage, get_uvot_image_center
 from fluorescence_OH import flux_OH_to_num_OH
 from flux_OH import OH_flux_from_count_rate, beta_parameter
 from num_OH_to_Q import num_OH_to_Q_vectorial
-from tui import get_selection
+from tui import get_selection, stacked_epoch_menu
 from determine_background import (
-    BackgroundDeterminationMethod,
-    BackgroundResult,
-    background_analysis_to_yaml_dict,
-    determine_background,
+    # BackgroundDeterminationMethod,
+    # BackgroundResult,
+    # determine_background,
     yaml_dict_to_background_analysis,
-    # read_background_analysis,
 )
 from comet_signal import (
     CometCenterFindingMethod,
@@ -76,7 +74,10 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swift_project_config", nargs=1, help="Filename of project config"
+        "swift_project_config",
+        nargs="?",
+        help="Filename of project config",
+        default="config.yaml",
     )
 
     args = parser.parse_args()
@@ -159,15 +160,15 @@ def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
     return epoch_path
 
 
-def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
-    # TODO: menu here for type of BG method
-    bg_cr = determine_background(
-        img=img,
-        background_method=BackgroundDeterminationMethod.gui_manual_aperture,
-        filter_type=filter_type,
-    )
-
-    return bg_cr
+# def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
+#     # TODO: menu here for type of BG method
+#     bg_cr = determine_background(
+#         img=img,
+#         background_method=BackgroundDeterminationMethod.gui_manual_aperture,
+#         filter_type=filter_type,
+#     )
+#
+#     return bg_cr
 
 
 def compare_comet_center_methods(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
@@ -362,26 +363,47 @@ def q_vs_aperture_radius(
         print("No plateaus in uvv counts detected")
     print("")
 
-    _, axs = plt.subplots(nrows=1, ncols=3)
-    axs[2].set_yscale("log")
-    df.plot.line(x="aperture_radius", y="counts_uw1", subplots=True, ax=axs[0])
-    axs[0].errorbar(df.aperture_radius, df.counts_uw1, df.sigma_counts_uw1)
-    df.plot.line(x="aperture_radius", y="counts_uvv", subplots=True, ax=axs[1])
-    axs[1].errorbar(df.aperture_radius, df.counts_uvv, df.sigma_counts_uvv)
-    df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[2])
-    axs[2].errorbar(df.aperture_radius, df.Q_H2O, df.sigma_Q_H2O)
+    df_reds = [y for x, y in df.groupby("dust_redness")]
+    for redness_df in df_reds:
+        _, axs = plt.subplots(nrows=1, ncols=3)
+        axs[2].set_yscale("log")
 
-    for p in uw1_plateau_list:
-        i = p.begin_index
-        j = p.end_index
-        axs[0].axvspan(df.loc[i].aperture_radius, df.loc[j].aperture_radius, color="blue", alpha=0.1)  # type: ignore
+        redness_df.plot.line(
+            x="aperture_radius", y="counts_uw1", subplots=True, ax=axs[0]
+        )
+        axs[0].errorbar(
+            redness_df.aperture_radius,
+            redness_df.counts_uw1,
+            redness_df.sigma_counts_uw1,
+        )
+        axs[0].set_title(
+            f"uw1 counts vs aperture radius with dust redness {redness_df.dust_redness.iloc[0]}"
+        )
+        redness_df.plot.line(
+            x="aperture_radius", y="counts_uvv", subplots=True, ax=axs[1]
+        )
+        axs[1].errorbar(
+            redness_df.aperture_radius,
+            redness_df.counts_uvv,
+            redness_df.sigma_counts_uvv,
+        )
+        redness_df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[2])
+        axs[2].errorbar(
+            redness_df.aperture_radius, redness_df.Q_H2O, redness_df.sigma_Q_H2O
+        )
 
-    for p in uvv_plateau_list:
-        i = p.begin_index
-        j = p.end_index
-        axs[1].axvspan(df.loc[i].aperture_radius, df.loc[j].aperture_radius, color="orange", alpha=0.1)  # type: ignore
+        # TODO: rewrite this to show plateau per redness
+        # for p in uw1_plateau_list:
+        #     i = p.begin_index
+        #     j = p.end_index
+        #     axs[0].axvspan(redness_df.loc[i].aperture_radius, redness_df.loc[j].aperture_radius, color="blue", alpha=0.1)  # type: ignore
+        #
+        # for p in uvv_plateau_list:
+        #     i = p.begin_index
+        #     j = p.end_index
+        #     axs[1].axvspan(redness_df.loc[i].aperture_radius, redness_df.loc[j].aperture_radius, color="orange", alpha=0.1)  # type: ignore
 
-    plt.show()
+        plt.show()
 
     return df
 
@@ -496,32 +518,32 @@ def test_circular_aperture_vs_donut_stack(img: SwiftUVOTImage) -> None:
     pass
 
 
-def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
-    if pipeline_files.epoch_products is None:
-        return None
-
-    epoch_paths = [x.product_path for x in pipeline_files.epoch_products]
-    stacked_epoch_paths = [
-        pipeline_files.stacked_epoch_products[x].product_path for x in epoch_paths  # type: ignore
-    ]
-
-    # filter epochs out of the list if we haven't stacked it by seeing if the stacked_epoch_path exists or not
-    filtered_epochs = list(
-        filter(lambda x: x[1].exists(), zip(epoch_paths, stacked_epoch_paths))
-    )
-
-    selectable_epochs = [x[0] for x in filtered_epochs]
-    if len(selectable_epochs) == 0:
-        return None
-    selection = get_selection(selectable_epochs)
-    return selectable_epochs[selection]
+# def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
+#     if pipeline_files.epoch_products is None:
+#         return None
+#
+#     epoch_paths = [x.product_path for x in pipeline_files.epoch_products]
+#     stacked_epoch_paths = [
+#         pipeline_files.stacked_epoch_products[x].product_path for x in epoch_paths  # type: ignore
+#     ]
+#
+#     # filter epochs out of the list if we haven't stacked it by seeing if the stacked_epoch_path exists or not
+#     filtered_epochs = list(
+#         filter(lambda x: x[1].exists(), zip(epoch_paths, stacked_epoch_paths))
+#     )
+#
+#     selectable_epochs = [x[0] for x in filtered_epochs]
+#     if len(selectable_epochs) == 0:
+#         return None
+#     selection = get_selection(selectable_epochs)
+#     return selectable_epochs[selection]
 
 
 def main():
     args = process_args()
 
     # load the config
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config)
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
@@ -543,6 +565,9 @@ def main():
     # load the epoch database
     pipeline_files.stacked_epoch_products[epoch_path].load_product()
     epoch = pipeline_files.stacked_epoch_products[epoch_path].data_product
+    print(
+        f"Starting analysis of {epoch_path.stem}: observation at {np.mean(epoch.HELIO)} AU"
+    )
 
     # more sanity checks
     if pipeline_files.stacked_image_products is None:
@@ -556,12 +581,14 @@ def main():
         )
         return 1
 
+    stacking_method = StackingMethod.summation
+
     # load the background-subtracted images into 'uw1' and 'uvv' as numpy arrays
     uw1_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uw1, StackingMethod.summation
+        epoch_path, SwiftFilter.uw1, stacking_method
     ]
     uvv_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uvv, StackingMethod.summation
+        epoch_path, SwiftFilter.uvv, stacking_method
     ]
     if not uw1_prod.product_path.exists() or not uvv_prod.product_path.exists():
         print(
@@ -595,14 +622,16 @@ def main():
         uw1=uw1,
         uvv=uvv,
         dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10, 20, 30, 40]],
+        # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10]],
+        # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [40]],
         bguw1=bgresults[SwiftFilter.uw1].count_rate_per_pixel,
         bguvv=bgresults[SwiftFilter.uvv].count_rate_per_pixel,
     )
 
-    fit_inverse_r(uw1)
-    fit_inverse_r(uvv)
+    # fit_inverse_r(uw1)
+    # fit_inverse_r(uvv)
 
-    profile_radius = 100
+    profile_radius = 40
     pix_center = get_uvot_image_center(img=uvv)
 
     # TODO: check if uw1 and uvv peak are the same, then use peak, otherwise, image center
@@ -710,22 +739,32 @@ def main():
         bg=bgresults[SwiftFilter.uvv].count_rate_per_pixel,
     )
 
-    flux_OH = OH_flux_from_count_rate(
-        uw1=uw1cr,
-        uvv=uvvcr,
-        beta=beta_parameter(DustReddeningPercent(reddening=10)),
-    )
+    correction_factors = np.linspace(1.0, 3.0, num=50, endpoint=True)
+    correction_factors = np.append(correction_factors, [10.0, 100.0])
+    for correction_factor in correction_factors:
+        # corr_uw1cr = copy.deepcopy(uw1cr)
+        # corr_uw1cr.value = corr_uw1cr.value * correction_factor
 
-    num_oh = flux_OH_to_num_OH(
-        flux_OH=flux_OH,
-        helio_r_au=helio_r_au,
-        helio_v_kms=helio_v_kms,
-        delta_au=delta,
-    )
+        flux_OH = OH_flux_from_count_rate(
+            uw1=ValueAndStandardDev(
+                value=uw1cr.value * correction_factor, sigma=uw1cr.sigma
+            ),
+            uvv=uvvcr,
+            beta=beta_parameter(DustReddeningPercent(reddening=10)),
+        )
 
-    q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
+        num_oh = flux_OH_to_num_OH(
+            flux_OH=flux_OH,
+            helio_r_au=helio_r_au,
+            helio_v_kms=helio_v_kms,
+            delta_au=delta,
+        )
 
-    print(f"Q from best guess: {q}")
+        q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
+
+        print(
+            f"Correction factor {correction_factor:7.6f}\t\tQ from best guess: {q.value:7.6e}"
+        )
 
     # xs_list = []
     # ys_list = []

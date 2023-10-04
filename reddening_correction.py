@@ -8,6 +8,7 @@ from effective_areas import read_effective_area
 __all__ = ["reddening_correction", "DustReddeningPercent"]
 
 
+# TODO: this can just be a type alias
 @dataclass
 class DustReddeningPercent:
     reddening: float

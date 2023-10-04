@@ -37,7 +37,10 @@ def process_args():
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
     parser.add_argument(
-        "swift_project_config", nargs=1, help="Filename of project config"
+        "swift_project_config",
+        nargs="?",
+        help="Filename of project config",
+        default="config.yaml",
     )
 
     args = parser.parse_args()
@@ -75,7 +78,7 @@ def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundR
 def main():
     args = process_args()
 
-    swift_project_config_path = pathlib.Path(args.swift_project_config[0])
+    swift_project_config_path = pathlib.Path(args.swift_project_config)
     swift_project_config = read_swift_project_config(swift_project_config_path)
     if swift_project_config is None:
         print("Error reading config file {swift_project_config_path}, exiting.")
@@ -96,19 +99,21 @@ def main():
     # pipeline_files.stacked_epoch_products[epoch_path].load_product()
     # epoch = pipeline_files.stacked_epoch_products[epoch_path].data_product
 
+    stacking_method = StackingMethod.summation
+
     if pipeline_files.stacked_image_products is None:
         print(
             "Pipeline error! This is a bug with pipeline_files.stacked_image_products!"
         )
         return 1
     uw1_sum_prod = pipeline_files.stacked_image_products[
-        epoch_path, SwiftFilter.uw1, StackingMethod.summation
+        epoch_path, SwiftFilter.uw1, stacking_method
     ]
     uw1_sum_prod.load_product()
     uw1_sum = uw1_sum_prod.data_product.data
 
     uvv_sum_prod = pipeline_files.stacked_image_products[
-        epoch_path, SwiftFilter.uvv, StackingMethod.summation
+        epoch_path, SwiftFilter.uvv, stacking_method
     ]
     uvv_sum_prod.load_product()
     uvv_sum = uvv_sum_prod.data_product.data
@@ -151,11 +156,11 @@ def main():
     bg_images = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
     for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
         bg_sub_image_prod = pipeline_files.analysis_bg_subtracted_images[
-            epoch_path, filter_type, StackingMethod.summation
+            epoch_path, filter_type, stacking_method
         ]
 
         stacked_image_prod = pipeline_files.stacked_image_products[
-            epoch_path, filter_type, StackingMethod.summation
+            epoch_path, filter_type, stacking_method
         ]
         # grab the original stacked image header and copy to background-subtracted fits
         stacked_hdul = fits.open(stacked_image_prod.product_path)

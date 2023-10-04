@@ -9,7 +9,7 @@ from typing import Optional, TypeAlias
 
 from configs import read_swift_pipeline_config
 from error_propogation import ValueAndStandardDev
-from flux_OH import Flux
+from flux_OH import OHFlux
 
 
 __all__ = ["FluorescenceGFactor1AU", "NumOH", "read_gfactor_1au", "flux_OH_to_num_OH"]
@@ -35,7 +35,7 @@ def read_gfactor_1au(fluorescence_file: pathlib.Path) -> FluorescenceGFactor1AU:
 
 
 def flux_OH_to_num_OH(
-    flux_OH: Flux,
+    flux_OH: OHFlux,
     helio_r_au: float,
     helio_v_kms: float,
     delta_au: float,

@@ -314,6 +314,36 @@ def includes_uvv_and_uw1_filters(
     return has_both
 
 
+def get_image_path_from_obs_log_row(swift_data: SwiftData, obs_log_row) -> pathlib.Path:
+    image_path = (
+        swift_data.get_uvot_image_directory(obsid=obs_log_row.OBS_ID)
+        / obs_log_row.FITS_FILENAME
+    )
+
+    return image_path
+
+
+def get_image_from_obs_log_row(swift_data: SwiftData, obs_log_row):
+    image_path = get_image_path_from_obs_log_row(
+        swift_data=swift_data, obs_log_row=obs_log_row
+    )
+    image_data = fits.getdata(image_path, ext=obs_log_row.EXTENSION)
+
+    return image_data
+
+
+def get_header_from_obs_log_row(swift_data: SwiftData, obs_log_row):
+    image_path = (
+        swift_data.get_uvot_image_directory(obsid=obs_log_row.OBS_ID)
+        / obs_log_row.FITS_FILENAME
+    )
+
+    # image_data = fits.getdata(image_path, ext=obs_log_row.EXTENSION)
+    header = fits.getheader(image_path)
+
+    return header
+
+
 # def print_parquet_metadata():
 #
 #     m = pa.parquet.read_metadata(parquet_path)
