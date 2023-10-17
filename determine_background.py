@@ -1,12 +1,14 @@
 import copy
-import pathlib
-import yaml
+
+# import pathlib
+# import yaml
 import numpy as np
 
 from dataclasses import dataclass, asdict
 from enum import StrEnum, auto
 from types import SimpleNamespace
-from typing import Optional
+
+# from typing import Optional
 
 from astropy.visualization import ZScaleInterval
 
@@ -68,9 +70,8 @@ def determine_background(
 
 
 # TODO: come up with some decent values here
-def bg_swift_constant(
-    img: SwiftUVOTImage, filter_type: SwiftFilter  # pyright: ignore
-) -> BackgroundResult:
+def bg_swift_constant(_: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
+    """Return what the background is believed to be based on the published information about the SWIFT instrumentation"""
     if filter_type == SwiftFilter.uvv:
         count_rate_per_pixel = CountRatePerPixel(value=1.0, sigma=1.0)
     elif filter_type == SwiftFilter.uvv:
@@ -101,6 +102,7 @@ def bg_manual_aperture_stats(
     # error_abs = 1.2533 * aperture_stats.std[0]
     #
     # return CountRatePerPixel(value=count_rate_per_pixel, sigma=error_abs)
+
     return aperture_stats
 
 

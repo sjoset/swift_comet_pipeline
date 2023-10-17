@@ -56,6 +56,7 @@ def process_args():
     return args
 
 
+# TODO: should this be in tui? is it already there?
 def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
     glob_pattern = str(stack_dir_path / pathlib.Path("*.parquet"))
     epoch_filename_list = sorted(glob.glob(glob_pattern))
@@ -99,6 +100,7 @@ def main():
     # pipeline_files.stacked_epoch_products[epoch_path].load_product()
     # epoch = pipeline_files.stacked_epoch_products[epoch_path].data_product
 
+    # TODO: Priority 1: move product file background_analysis.yaml to background_analysis_{stacking_method}.yaml
     stacking_method = StackingMethod.summation
 
     if pipeline_files.stacked_image_products is None:

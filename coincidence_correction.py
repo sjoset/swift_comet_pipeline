@@ -33,7 +33,7 @@ class CoincidenceCorrection:
         cr_corrected = cr_theory / np.polyval(self.poly, x)
 
         ratio = cr_corrected / raw_pixel_count_rate
-        ratio = np.nan_to_num(ratio, nan=0.0, posinf=0.0, neginf=0.0)
+        ratio = np.nan_to_num(ratio, nan=1.0, posinf=0.0, neginf=0.0)
 
         return ratio
 
