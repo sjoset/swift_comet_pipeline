@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +19,7 @@ __all__ = [
     "count_rate_from_comet_radial_profile",
     "count_rate_from_comet_profile",
     "fit_comet_profile_gaussian",
-    "plot_fitted_profile",
+    "plot_fitted_gaussian_profile",
     "estimate_comet_radius_at_angle",
 ]
 
@@ -246,7 +246,7 @@ def estimate_comet_radius_at_angle(
     return sigma_threshold * float(fitted.stddev.value)
 
 
-def plot_fitted_profile(
+def plot_fitted_gaussian_profile(
     comet_profile: CometProfile,
     fitted_model: Gaussian1D,
     sigma_threshold: float,
@@ -271,3 +271,50 @@ def plot_fitted_profile(
     )
     plt.title(plot_title)
     plt.show()
+
+
+# def fit_inverse_r(img: SwiftUVOTImage) -> None:
+#     profile_radius = 40
+#
+#     pix_center = get_uvot_image_center(img=img)
+#     search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
+#     peak = find_comet_center(
+#         img=img,
+#         method=CometCenterFindingMethod.aperture_peak,
+#         search_aperture=search_aperture,
+#     )
+#     comet_profile = count_rate_profile(
+#         img=img,
+#         comet_center=peak,
+#         theta=0,
+#         r=profile_radius,
+#     )
+#
+#     mask = comet_profile.distances_from_center > 0
+#     rs = np.log10(comet_profile.distances_from_center[mask])
+#     pix = comet_profile.pixel_values[mask]
+#
+#     def log_dust_profile(r, a, b):
+#         return a * r + b
+#
+#     dust_fit = curve_fit(
+#         log_dust_profile,
+#         rs,
+#         pix,
+#         [-1, 0],
+#     )
+#
+#     a_fit = dust_fit[0][0]
+#     b_fit = dust_fit[0][1]
+#
+#     print(f"{a_fit=}, {b_fit=}")
+#
+#     plt.plot(
+#         rs,
+#         log_dust_profile(rs, a_fit, b_fit),
+#     )
+#     plt.plot(
+#         np.log10(np.abs(comet_profile.distances_from_center)),
+#         comet_profile.pixel_values,
+#     )
+#     plt.show()

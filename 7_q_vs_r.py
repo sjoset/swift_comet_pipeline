@@ -3,7 +3,6 @@
 import os
 import pathlib
 import sys
-import glob
 
 import numpy as np
 import pandas as pd
@@ -24,13 +23,13 @@ from configs import read_swift_project_config
 from pipeline_files import PipelineFiles
 
 from reddening_correction import DustReddeningPercent
-from swift_filter import SwiftFilter, filter_to_file_string
+from swift_filter import SwiftFilter
 from stacking import StackingMethod
 from uvot_image import SwiftUVOTImage, get_uvot_image_center
 from fluorescence_OH import flux_OH_to_num_OH
 from flux_OH import OH_flux_from_count_rate, beta_parameter
 from num_OH_to_Q import num_OH_to_Q_vectorial
-from tui import get_selection, stacked_epoch_menu
+from tui import stacked_epoch_menu
 from determine_background import (
     # BackgroundDeterminationMethod,
     # BackgroundResult,
@@ -40,6 +39,7 @@ from determine_background import (
 from comet_signal import (
     CometCenterFindingMethod,
     comet_manual_aperture,
+    compare_comet_center_methods,
     # estimate_comet_radius_by_angle,
     # estimate_comet_radius_at_angle,
     find_comet_center,
@@ -80,127 +80,12 @@ def process_args():
     return args
 
 
-# def show_fits_subtracted(uw1, uvv, beta):
-#     # adjust for the different count rates between filters
-#     beta *= 6.0
+# def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
+#     glob_pattern = str(stack_dir_path / pathlib.Path("*.parquet"))
+#     epoch_filename_list = sorted(glob.glob(glob_pattern))
+#     epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
 #
-#     dust_map = -(uw1 - beta * uvv)
-#
-#     # dust_scaled = np.log10(np.clip(dust_map, 0, None) + eps)
-#     dust_scaled = np.log10(dust_map)
-#
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(1, 1, 1)
-#
-#     zscale = ZScaleInterval()
-#     vmin, vmax = zscale.get_limits(dust_scaled)
-#
-#     im1 = ax1.imshow(dust_scaled, vmin=vmin, vmax=vmax)
-#     # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
-#     fig.colorbar(im1)
-#
-#     image_center_row = int(np.floor(uw1.shape[0] / 2))
-#     image_center_col = int(np.floor(uw1.shape[1] / 2))
-#     ax1.axvline(image_center_col, color="b", alpha=0.2)
-#     ax1.axhline(image_center_row, color="b", alpha=0.2)
-#
-#     # hdu = fits.PrimaryHDU(dust_subtracted)
-#     # hdu.writeto("subtracted.fits", overwrite=True)
-#     plt.show()
-
-
-# def show_centers(img, cs: List[PixelCoord]):
-#     # img_scaled = np.log10(img)
-#     img_scaled = img
-#
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(1, 1, 1)
-#
-#     pix_center = get_uvot_image_center(img)
-#     ax1.add_patch(
-#         plt.Circle(
-#             (pix_center.x, pix_center.y),
-#             radius=30,
-#             fill=False,
-#         )
-#     )
-#
-#     zscale = ZScaleInterval()
-#     vmin, vmax = zscale.get_limits(img_scaled)
-#
-#     im1 = ax1.imshow(img_scaled, vmin=vmin, vmax=vmax)
-#     fig.colorbar(im1)
-#
-#     for c in cs:
-#         line_color = next(ax1._get_lines.prop_cycler)["color"]
-#         ax1.axvline(c.x, alpha=0.7, color=line_color)
-#         ax1.axhline(c.y, alpha=0.9, color=line_color)
-#
-#     plt.show()
-
-
-def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
-    glob_pattern = str(stack_dir_path / pathlib.Path("*.parquet"))
-    epoch_filename_list = sorted(glob.glob(glob_pattern))
-    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
-
-    return epoch_path
-
-
-# def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
-#     # TODO: menu here for type of BG method
-#     bg_cr = determine_background(
-#         img=img,
-#         background_method=BackgroundDeterminationMethod.gui_manual_aperture,
-#         filter_type=filter_type,
-#     )
-#
-#     return bg_cr
-
-
-def compare_comet_center_methods(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
-    # TODO: uvv tends to pick up the dust tail so we might expect some difference depending on the method of center detection,
-    # so maybe we just use the uw1 and assume it's less likely to have a tail to scramble the center-finding
-
-    peaks = {}
-    imgs = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
-    for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-        print(f"Determining center of comet for {filter_to_file_string(filter_type)}:")
-        pix_center = get_uvot_image_center(img=imgs[filter_type])
-        search_ap = CircularAperture((pix_center.x, pix_center.y), r=30)
-        pixel_center = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.pixel_center,
-            search_aperture=search_ap,
-        )
-        centroid = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.aperture_centroid,
-            search_aperture=search_ap,
-        )
-        peak = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.aperture_peak,
-            search_aperture=search_ap,
-        )
-        print("\tBy image center: ", pixel_center)
-        print(
-            "\tBy centroid (center of mass) in aperture radius 30 at image center: ",
-            centroid,
-        )
-        print("\tBy peak value in aperture radius 30 at image center: ", peak)
-
-        peaks[filter_type] = peak
-
-    xdist = peaks[SwiftFilter.uw1].x - peaks[SwiftFilter.uvv].x
-    ydist = peaks[SwiftFilter.uw1].y - peaks[SwiftFilter.uvv].y
-    dist = np.sqrt(xdist**2 + ydist**2)
-    if dist > np.sqrt(2.0):
-        print(
-            f"Comet peaks in uw1 and uvv are separated by {dist} pixels! Fitting might suffer."
-        )
-
-    # show_centers(uw1, [pixel_center, centroid, peak])  # pyright: ignore
+#     return epoch_path
 
 
 def q_vs_aperture_radius(
@@ -223,8 +108,6 @@ def q_vs_aperture_radius(
 
     aperture_radii, r_step = np.linspace(1, 2 * r_pix, num=5 * r_pix, retstep=True)
     redness_to_beta = {x.reddening: beta_parameter(x) for x in dust_rednesses}
-    # aperture_radii, r_step = np.linspace(1, 300, num=300, retstep=True)
-    # redness_to_beta = {x.reddening: beta_parameter(x) for x in dust_rednesses}
 
     count_uw1 = []
     count_uvv = []
@@ -238,7 +121,6 @@ def q_vs_aperture_radius(
         total=(len(aperture_radii) * len(dust_rednesses)),
     )
     for ap_r, redness in progress_bar:
-        # for ap_r, redness in product(aperture_radii, dust_rednesses):
         rs.append(ap_r)
         red_list.append(redness)
 
@@ -350,7 +232,7 @@ def q_vs_aperture_radius(
         print("No plateaus in uvv counts detected")
     print("")
 
-    df_reds = [y for x, y in df.groupby("dust_redness")]
+    df_reds = [y for _, y in df.groupby("dust_redness")]
     for redness_df in df_reds:
         _, axs = plt.subplots(nrows=1, ncols=3)
         axs[2].set_yscale("log")
@@ -485,8 +367,6 @@ def test_circular_aperture_vs_donut_stack(img: SwiftUVOTImage) -> None:
         endpoint=True,
         retstep=True,
     )
-    # outer_rs = inner_rs + r_step
-    # mid_rs = (outer_rs + inner_rs) / 2
 
     ap_stats_list = []
     for inner_r in inner_rs:
@@ -503,27 +383,6 @@ def test_circular_aperture_vs_donut_stack(img: SwiftUVOTImage) -> None:
     )
 
     pass
-
-
-# def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
-#     if pipeline_files.epoch_products is None:
-#         return None
-#
-#     epoch_paths = [x.product_path for x in pipeline_files.epoch_products]
-#     stacked_epoch_paths = [
-#         pipeline_files.stacked_epoch_products[x].product_path for x in epoch_paths  # type: ignore
-#     ]
-#
-#     # filter epochs out of the list if we haven't stacked it by seeing if the stacked_epoch_path exists or not
-#     filtered_epochs = list(
-#         filter(lambda x: x[1].exists(), zip(epoch_paths, stacked_epoch_paths))
-#     )
-#
-#     selectable_epochs = [x[0] for x in filtered_epochs]
-#     if len(selectable_epochs) == 0:
-#         return None
-#     selection = get_selection(selectable_epochs)
-#     return selectable_epochs[selection]
 
 
 def main():
@@ -593,7 +452,7 @@ def main():
             "Pipeline error! This is a bug with pipeline_files.analysis_background_products!"
         )
         return 1
-    bg_prod = pipeline_files.analysis_background_products[epoch_path]
+    bg_prod = pipeline_files.analysis_background_products[epoch_path, stacking_method]
     if not bg_prod.product_path.exists():
         print(
             f"The background analysis for {epoch_path.stem} has not been done! Exiting."

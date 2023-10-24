@@ -3,70 +3,37 @@
 import os
 import pathlib
 import sys
-import glob
 
-# import yaml
-import numpy as np
-
-# import pandas as pd
 import logging as log
-
-# from typing import List
-# from itertools import product
-
-from photutils.aperture import ApertureStats, CircularAperture, CircularAnnulus
-
-# from astropy import modeling
-
-# from scipy.optimize import curve_fit
-
-# import scipy.interpolate as interp
-
-# from tqdm import tqdm
+import numpy as np
+import astropy.units as u
 
 from argparse import ArgumentParser
+from astropy.time import Time
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
-# from astropy.visualization import ZScaleInterval
+from astropy.visualization import ZScaleInterval
 
 from configs import read_swift_project_config
+from epochs import Epoch
 
-# from error_propogation import ValueAndStandardDev
 from pipeline_files import PipelineFiles
 
-# from reddening_correction import DustReddeningPercent
-from swift_filter import SwiftFilter, filter_to_file_string
+from reddening_correction import DustReddeningPercent
+from swift_filter import SwiftFilter
 from stacking import StackingMethod
-from uvot_image import SwiftUVOTImage, get_uvot_image_center
+from uvot_image import PixelCoord, SwiftUVOTImage, get_uvot_image_center
 
-# from fluorescence_OH import flux_OH_to_num_OH
-# from flux_OH import OH_flux_from_count_rate, beta_parameter
-# from num_OH_to_Q import num_OH_to_Q_vectorial
+from fluorescence_OH import flux_OH_to_num_OH
+from flux_OH import OH_flux_from_count_rate, beta_parameter
+from num_OH_to_Q import num_OH_to_Q_vectorial
 from tui import get_selection, stacked_epoch_menu
-from determine_background import (
-    # BackgroundDeterminationMethod,
-    # BackgroundResult,
-    # determine_background,
-    yaml_dict_to_background_analysis,
-)
-from comet_signal import (
-    CometCenterFindingMethod,
-    find_comet_center,
-)
+from determine_background import BackgroundResult, yaml_dict_to_background_analysis
 from comet_profile import (
-    CometProfile,
-    count_rate_from_comet_profile,
     count_rate_from_comet_radial_profile,
-    estimate_comet_radius_at_angle,
     extract_comet_radial_profile,
-    fit_comet_profile_gaussian,
-    plot_fitted_profile,
 )
-
-# from plateau_detect import plateau_detect
-# from epochs import Epoch
-# from count_rate import CountRate, CountRatePerPixel, magnitude_from_count_rate
 
 
 def process_args():
@@ -100,243 +67,261 @@ def process_args():
     return args
 
 
-# def show_fits_subtracted(uw1, uvv, beta):
-#     # adjust for the different count rates between filters
-#     beta *= 6.0
-#
-#     dust_map = -(uw1 - beta * uvv)
-#
-#     # dust_scaled = np.log10(np.clip(dust_map, 0, None) + eps)
-#     dust_scaled = np.log10(dust_map)
-#
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(1, 1, 1)
-#
-#     zscale = ZScaleInterval()
-#     vmin, vmax = zscale.get_limits(dust_scaled)
-#
-#     im1 = ax1.imshow(dust_scaled, vmin=vmin, vmax=vmax)
-#     # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
-#     fig.colorbar(im1)
-#
-#     image_center_row = int(np.floor(uw1.shape[0] / 2))
-#     image_center_col = int(np.floor(uw1.shape[1] / 2))
-#     ax1.axvline(image_center_col, color="b", alpha=0.2)
-#     ax1.axhline(image_center_row, color="b", alpha=0.2)
-#
-#     # hdu = fits.PrimaryHDU(dust_subtracted)
-#     # hdu.writeto("subtracted.fits", overwrite=True)
-#     plt.show()
+class RadialProfileSelectionPlot(object):
+    def __init__(
+        self,
+        epoch: Epoch,
+        uw1_img: SwiftUVOTImage,
+        uw1_bg: BackgroundResult,
+        uvv_img: SwiftUVOTImage,
+        uvv_bg: BackgroundResult,
+    ):
+        self.epoch = epoch
+        self.helio_r_au = np.mean(epoch.HELIO)
+        self.helio_v_kms = np.mean(epoch.HELIO_V)
+        self.delta = np.mean(epoch.OBS_DIS)
+        self.km_per_pix = np.mean(epoch.KM_PER_PIX)
 
+        # TODO: add calculation of perihelion from orbital data or as a given from the user
+        self.perihelion = Time("2015-11-15")
+        self.time_from_perihelion = Time(np.mean(epoch.MID_TIME)) - self.perihelion
+        # print(f"Time to perihelion: {self.time_to_perihelion.to(u.day)}")
 
-# def show_centers(img, cs: List[PixelCoord]):
-#     # img_scaled = np.log10(img)
-#     img_scaled = img
-#
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(1, 1, 1)
-#
-#     pix_center = get_uvot_image_center(img)
-#     ax1.add_patch(
-#         plt.Circle(
-#             (pix_center.x, pix_center.y),
-#             radius=30,
-#             fill=False,
-#         )
-#     )
-#
-#     zscale = ZScaleInterval()
-#     vmin, vmax = zscale.get_limits(img_scaled)
-#
-#     im1 = ax1.imshow(img_scaled, vmin=vmin, vmax=vmax)
-#     fig.colorbar(im1)
-#
-#     for c in cs:
-#         line_color = next(ax1._get_lines.prop_cycler)["color"]
-#         ax1.axvline(c.x, alpha=0.7, color=line_color)
-#         ax1.axhline(c.y, alpha=0.9, color=line_color)
-#
-#     plt.show()
+        self.uw1_img = uw1_img
+        self.uw1_bg = uw1_bg
+        self.uvv_img = uvv_img
+        self.uvv_bg = uvv_bg
 
+        self.image_center = get_uvot_image_center(self.uw1_img)
 
-def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
-    glob_pattern = str(stack_dir_path / pathlib.Path("*.parquet"))
-    epoch_filename_list = sorted(glob.glob(glob_pattern))
-    epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
+        self.fig, self.axes = plt.subplots(2, 2)
+        self.uw1_ax = self.axes[0][0]
+        self.uvv_ax = self.axes[1][0]
+        self.uw1_profile_ax = self.axes[0][1]
+        self.uvv_profile_ax = self.axes[1][1]
+        # plt.subplots_adjust(left=0.20, bottom=0.20)
 
-    return epoch_path
+        self.uw1_ax.set_aspect("equal")  # type: ignore
+        self.uvv_ax.set_aspect("equal")  # type: ignore
 
+        self.uw1_ax.set_title("Select radial profile")  # type: ignore
 
-# def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
-#     # TODO: menu here for type of BG method
-#     bg_cr = determine_background(
-#         img=img,
-#         background_method=BackgroundDeterminationMethod.gui_manual_aperture,
-#         filter_type=filter_type,
-#     )
-#
-#     return bg_cr
+        # self.radius_slider_ax = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor="orange")
+        # self.radius_slider = Slider(
+        #     self.radius_slider_ax, "r", valmin=1, valmax=100, valstep=1, valinit=50
+        # )
+        # self.radius_slider.on_changed(self.onslider)
+        self.dust_redness = DustReddeningPercent(0.0)
+        self.beta_parameter = beta_parameter(self.dust_redness)
 
-
-def compare_comet_center_methods(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
-    # TODO: uvv tends to pick up the dust tail so we might expect some difference depending on the method of center detection,
-    # so maybe we just use the uw1 and assume it's less likely to have a tail to scramble the center-finding
-
-    peaks = {}
-    imgs = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
-    for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-        print(f"Determining center of comet for {filter_to_file_string(filter_type)}:")
-        pix_center = get_uvot_image_center(img=imgs[filter_type])
-        search_ap = CircularAperture((pix_center.x, pix_center.y), r=30)
-        pixel_center = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.pixel_center,
-            search_aperture=search_ap,
+        # Image coordinates for extracting the profile: start at comet center, and stop at arbitrary point away from center for initialization
+        self.profile_begin: PixelCoord = self.image_center
+        self.profile_end: PixelCoord = PixelCoord(
+            x=self.image_center.x + 50, y=self.image_center.y + 50
         )
-        centroid = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.aperture_centroid,
-            search_aperture=search_ap,
+
+        # holds the line objects that mark the profile we are looking at
+        self.uw1_extraction_line = None
+        self.uvv_extraction_line = None
+
+        # holds the extracted profiles
+        self.uw1_radial_profile = None
+        self.uvv_radial_profile = None
+
+        # holds the plots for 2d extracted profiles
+        self.uw1_profile_plot = None
+        self.uvv_profile_plot = None
+
+        self.colormap = "magma"
+        self.zscale = ZScaleInterval()
+        self.uw1_vmin, self.uw1_vmax = self.zscale.get_limits(self.uw1_img)
+        self.uvv_vmin, self.uvv_vmax = self.zscale.get_limits(self.uvv_img)
+        self.uw1_img_plot = self.uw1_ax.imshow(  # type: ignore
+            self.uw1_img,
+            vmin=self.uw1_vmin,
+            vmax=self.uw1_vmax,
+            origin="lower",
+            cmap=self.colormap,
         )
-        peak = find_comet_center(
-            img=imgs[filter_type],
-            method=CometCenterFindingMethod.aperture_peak,
-            search_aperture=search_ap,
+        self.uvv_img_plot = self.uvv_ax.imshow(  # type: ignore
+            self.uvv_img,
+            vmin=self.uvv_vmin,
+            vmax=self.uvv_vmax,
+            origin="lower",
+            cmap=self.colormap,
         )
-        print("\tBy image center: ", pixel_center)
+
+        self.fig.canvas.mpl_connect("button_press_event", self.onclick)  # type: ignore
+        self.update_plots()
+
+    def onclick(self, event):
+        # check that the click was in the image, and handle it if so
+        if event.inaxes != self.uw1_ax and event.inaxes != self.uvv_ax:
+            return
+        rounded_x = int(np.round(event.xdata))
+        rounded_y = int(np.round(event.ydata))
+        self.profile_end = PixelCoord(x=rounded_x, y=rounded_y)
+        self.update_plots()
+
+    def update_plots(self):
+        self.update_profile_extraction()
+        self.update_profile_plot()
+        self.update_q_from_profiles()
+        self.fig.canvas.draw_idle()  # type: ignore
+
+    def update_profile_extraction(self):
+        x0, y0 = self.image_center.x, self.image_center.y
+        x1, y1 = self.profile_end.x, self.profile_end.y
+        r = np.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+        r = int(np.round(r))
+        theta = np.arctan2(y1 - y0, x1 - x0)
+
+        self.uw1_radial_profile = extract_comet_radial_profile(
+            img=self.uw1_img, comet_center=self.image_center, r=r, theta=theta
+        )
+        self.uvv_radial_profile = extract_comet_radial_profile(
+            img=self.uvv_img, comet_center=self.image_center, r=r, theta=theta
+        )
+
+        if self.uw1_extraction_line is None or self.uvv_extraction_line is None:
+            self.uw1_extraction_line = plt.Line2D(
+                xdata=[x1, x0], ydata=[y1, y0], lw=1, color="white", alpha=0.3
+            )
+            self.uvv_extraction_line = plt.Line2D(
+                xdata=[x1, x0], ydata=[y1, y0], lw=1, color="white", alpha=0.3
+            )
+            self.uw1_ax.add_line(self.uw1_extraction_line)  # type: ignore
+            self.uvv_ax.add_line(self.uvv_extraction_line)  # type: ignore
+        else:
+            self.uw1_extraction_line.set_xdata([x1, x0])
+            self.uw1_extraction_line.set_ydata([y1, y0])
+            self.uvv_extraction_line.set_xdata([x1, x0])
+            self.uvv_extraction_line.set_ydata([y1, y0])
+
+        # self.bg_count_rate = bgresult.count_rate_per_pixel.value
+        # self.count_rate_annotation.set_text(self.count_rate_string())
+        # self.img_plot.set_data(self.original_img - self.bg_count_rate)
+
+    def update_profile_plot(self):
+        if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
+            print(
+                "Attempted to update the profile plot without selecting a profile from the image first! Skipping profile plot."
+            )
+            return
+
+        # have we already plotted a profile? clear it now
+        if self.uw1_profile_plot is not None:
+            self.uw1_profile_ax.clear()
+        if self.uvv_profile_plot is not None:
+            self.uvv_profile_ax.clear()
+
+        uw1_pix_to_km = self.uw1_radial_profile.profile_axis_xs[1:] * self.km_per_pix
+        uvv_pix_to_km = self.uvv_radial_profile.profile_axis_xs[1:] * self.km_per_pix
+        self.uw1_profile_plot = self.uw1_profile_ax.plot(
+            # np.log(self.uw1_radial_profile.profile_axis_xs[1:]),
+            uw1_pix_to_km,
+            self.uw1_radial_profile.pixel_values[1:],
+        )
+        self.uvv_profile_plot = self.uvv_profile_ax.plot(
+            # np.log10(self.uvv_radial_profile.profile_axis_xs[1:]),
+            uvv_pix_to_km,
+            self.uvv_radial_profile.pixel_values[1:],
+        )
+
+    # def onslider(self, new_value):
+    #     self.aperture.set_radius(new_value)
+    #     self.recalc_background()
+    #     self.fig.canvas.draw_idle()  # type: ignore
+
+    def update_q_from_profiles(self):
+        if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
+            return
+        self.uw1_count_rate = count_rate_from_comet_radial_profile(
+            comet_profile=self.uw1_radial_profile, bg=self.uw1_bg.count_rate_per_pixel
+        )
+        self.uvv_count_rate = count_rate_from_comet_radial_profile(
+            comet_profile=self.uvv_radial_profile, bg=self.uvv_bg.count_rate_per_pixel
+        )
+
+        self.flux_OH = OH_flux_from_count_rate(
+            uw1=self.uw1_count_rate,
+            uvv=self.uvv_count_rate,
+            beta=self.beta_parameter,
+        )
+
+        self.num_OH = flux_OH_to_num_OH(
+            flux_OH=self.flux_OH,
+            helio_r_au=self.helio_r_au,
+            helio_v_kms=self.helio_v_kms,
+            delta_au=self.delta,
+        )
+
+        self.q_h2o = num_OH_to_Q_vectorial(
+            helio_r_au=self.helio_r_au, num_OH=self.num_OH
+        )
+
+        if self.q_h2o.value < 0.0:
+            self.fig.suptitle(
+                f"Q: No detection {self.q_h2o.value:3.2e} +/- {self.q_h2o.sigma:3.2e}\nTime from perihelion: {self.time_from_perihelion.to(u.day)}"
+            )
+        else:
+            self.fig.suptitle(
+                f"Q: {self.q_h2o.value:3.2e} +/- {self.q_h2o.sigma:3.2e}\nTime from perihelion: {self.time_from_perihelion.to(u.day)}"
+            )
+
+    def show(self):
+        plt.show()
+
+
+def profile_test_plot(
+    pipeline_files: PipelineFiles, stacking_method: StackingMethod
+) -> None:
+    # stacking_method = StackingMethod.summation
+
+    epoch_path = stacked_epoch_menu(pipeline_files=pipeline_files)
+    if epoch_path is None:
+        return
+    if pipeline_files.analysis_bg_subtracted_images is None:
+        return
+
+    if pipeline_files.stacked_epoch_products is None:
+        return
+    epoch_prod = pipeline_files.stacked_epoch_products[epoch_path]
+    epoch_prod.load_product()
+    epoch = epoch_prod.data_product
+
+    uw1_prod = pipeline_files.analysis_bg_subtracted_images[
+        epoch_path, SwiftFilter.uw1, stacking_method
+    ]
+    uw1_prod.load_product()
+    uw1_sum = uw1_prod.data_product.data
+
+    uvv_prod = pipeline_files.analysis_bg_subtracted_images[
+        epoch_path, SwiftFilter.uvv, stacking_method
+    ]
+    uvv_prod.load_product()
+    uvv_sum = uvv_prod.data_product.data
+
+    if pipeline_files.analysis_background_products is None:
         print(
-            "\tBy centroid (center of mass) in aperture radius 30 at image center: ",
-            centroid,
+            "Pipeline error! This is a bug with pipeline_files.analysis_background_products!"
         )
-        print("\tBy peak value in aperture radius 30 at image center: ", peak)
-
-        peaks[filter_type] = peak
-
-    xdist = peaks[SwiftFilter.uw1].x - peaks[SwiftFilter.uvv].x
-    ydist = peaks[SwiftFilter.uw1].y - peaks[SwiftFilter.uvv].y
-    dist = np.sqrt(xdist**2 + ydist**2)
-    if dist > np.sqrt(2.0):
+        return
+    bg_prod = pipeline_files.analysis_background_products[epoch_path, stacking_method]
+    if not bg_prod.product_path.exists():
         print(
-            f"Comet peaks in uw1 and uvv are separated by {dist} pixels! Fitting might suffer."
+            f"The background analysis for {epoch_path.stem} has not been done! Exiting."
         )
+        return
+    bg_prod.load_product()
+    bgresults = yaml_dict_to_background_analysis(bg_prod.data_product)
+    uw1_bg = bgresults[SwiftFilter.uw1]
+    uvv_bg = bgresults[SwiftFilter.uvv]
 
-    # show_centers(uw1, [pixel_center, centroid, peak])  # pyright: ignore
-
-
-# def fit_inverse_r(img: SwiftUVOTImage) -> None:
-#     profile_radius = 40
-#
-#     pix_center = get_uvot_image_center(img=img)
-#     search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-#     peak = find_comet_center(
-#         img=img,
-#         method=CometCenterFindingMethod.aperture_peak,
-#         search_aperture=search_aperture,
-#     )
-#     comet_profile = count_rate_profile(
-#         img=img,
-#         comet_center=peak,
-#         theta=0,
-#         r=profile_radius,
-#     )
-#
-#     mask = comet_profile.distances_from_center > 0
-#     rs = np.log10(comet_profile.distances_from_center[mask])
-#     pix = comet_profile.pixel_values[mask]
-#
-#     def log_dust_profile(r, a, b):
-#         return a * r + b
-#
-#     dust_fit = curve_fit(
-#         log_dust_profile,
-#         rs,
-#         pix,
-#         [-1, 0],
-#     )
-#
-#     a_fit = dust_fit[0][0]
-#     b_fit = dust_fit[0][1]
-#
-#     print(f"{a_fit=}, {b_fit=}")
-#
-#     plt.plot(
-#         rs,
-#         log_dust_profile(rs, a_fit, b_fit),
-#     )
-#     plt.plot(
-#         np.log10(np.abs(comet_profile.distances_from_center)),
-#         comet_profile.pixel_values,
-#     )
-#     plt.show()
-
-
-def test_circular_aperture_vs_donut_stack(img: SwiftUVOTImage) -> None:
-    """
-    Computes the total signal from a large aperture against concentric annulus apertures
-
-    If we want to compute signal as a function of aperture radius, we can either re-calculate an entirely new aperture
-    at each r, or keep a running total of annulus results from from r=0 up to r-1 pixels and add the results from a thin annulus
-    at r=r
-
-    This examines the difference between the two approaches to make sure the "donut stack" results are an accurate signal count
-    """
-
-    profile_radius = 30
-    num_donuts = 10
-    pix_center = get_uvot_image_center(img=img)
-    search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-    peak = find_comet_center(
-        img=img,
-        method=CometCenterFindingMethod.aperture_peak,
-        search_aperture=search_aperture,
+    rpsp = RadialProfileSelectionPlot(
+        epoch=epoch, uw1_img=uw1_sum, uw1_bg=uw1_bg, uvv_img=uvv_sum, uvv_bg=uvv_bg
     )
-
-    inner_rs, r_step = np.linspace(
-        0.001,
-        profile_radius - (profile_radius / num_donuts),
-        num=num_donuts,
-        endpoint=True,
-        retstep=True,
-    )
-    # outer_rs = inner_rs + r_step
-    # mid_rs = (outer_rs + inner_rs) / 2
-
-    ap_stats_list = []
-    for inner_r in inner_rs:
-        outer_r = inner_r + r_step
-        ap = CircularAnnulus((peak.x, peak.y), r_in=inner_r, r_out=outer_r)
-        ap_stats_list.append(ApertureStats(img, ap))
-
-    total_signal = np.sum([x.sum for x in ap_stats_list])
-
-    total_aperture = CircularAperture((peak.x, peak.y), r=profile_radius)
-    total_stats = ApertureStats(img, total_aperture)
-    print(
-        f"From circular aperture: {total_stats.sum} ({total_stats.sum * 100/total_signal})% of annulus stack signal"
-    )
-
-    pass
-
-
-# def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
-#     if pipeline_files.epoch_products is None:
-#         return None
-#
-#     epoch_paths = [x.product_path for x in pipeline_files.epoch_products]
-#     stacked_epoch_paths = [
-#         pipeline_files.stacked_epoch_products[x].product_path for x in epoch_paths  # type: ignore
-#     ]
-#
-#     # filter epochs out of the list if we haven't stacked it by seeing if the stacked_epoch_path exists or not
-#     filtered_epochs = list(
-#         filter(lambda x: x[1].exists(), zip(epoch_paths, stacked_epoch_paths))
-#     )
-#
-#     selectable_epochs = [x[0] for x in filtered_epochs]
-#     if len(selectable_epochs) == 0:
-#         return None
-#     selection = get_selection(selectable_epochs)
-#     return selectable_epochs[selection]
+    rpsp.show()
 
 
 def main():
@@ -351,269 +336,10 @@ def main():
 
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
-    # select the epoch we want to process
-    epoch_path = stacked_epoch_menu(pipeline_files=pipeline_files)
-    if epoch_path is None:
-        print("No stacked images found! Exiting.")
-        return 1
-    if pipeline_files.stacked_epoch_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.stacked_epoch_products!"
-        )
-        return 1
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
+    stacking_method = stacking_methods[get_selection(stacking_methods)]
 
-    # load the epoch database
-    pipeline_files.stacked_epoch_products[epoch_path].load_product()
-    epoch = pipeline_files.stacked_epoch_products[epoch_path].data_product
-    print(
-        f"Starting analysis of {epoch_path.stem}: observation at {np.mean(epoch.HELIO)} AU"
-    )
-
-    # more sanity checks
-    if pipeline_files.stacked_image_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.stacked_image_products!"
-        )
-        return 1
-    if pipeline_files.analysis_bg_subtracted_images is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_bg_subtracted_images!"
-        )
-        return 1
-
-    stacking_method = StackingMethod.summation
-
-    # load the background-subtracted images into 'uw1' and 'uvv' as numpy arrays
-    uw1_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uw1, stacking_method
-    ]
-    uvv_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uvv, stacking_method
-    ]
-    if not uw1_prod.product_path.exists() or not uvv_prod.product_path.exists():
-        print(
-            f"The background-subtracted images for {epoch_path.stem} need to be generated! Exiting."
-        )
-        return 1
-    uw1_prod.load_product()
-    uvv_prod.load_product()
-    uw1 = uw1_prod.data_product.data
-    uvv = uvv_prod.data_product.data
-
-    # load the background analysis values and uncertainties for error propogation
-    if pipeline_files.analysis_background_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_background_products!"
-        )
-        return 1
-    bg_prod = pipeline_files.analysis_background_products[epoch_path]
-    if not bg_prod.product_path.exists():
-        print(
-            f"The background analysis for {epoch_path.stem} has not been done! Exiting."
-        )
-        return 1
-    bg_prod.load_product()
-    bgresults = yaml_dict_to_background_analysis(bg_prod.data_product)
-
-    profile_radius = 20
-    pix_center = get_uvot_image_center(img=uvv)
-    peak = pix_center
-
-    # TODO: check if uw1 and uvv peak are the same, then use peak, otherwise, image center
-    # search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-    # peak = find_comet_center(
-    #     img=uw1,
-    #     method=CometCenterFindingMethod.aperture_peak,
-    #     search_aperture=search_aperture,
-    # )
-
-    imgs = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
-    radius_estimation = {}
-
-    for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-        # peak = pix_center
-        # test_circular_aperture_vs_donut_stack(img=imgs[filter_type])
-
-        # count_list = []
-        # ecr_list = []
-        # thetas = np.linspace(0, np.pi, num=50, endpoint=False)
-        # for theta in thetas:
-        #     comet_profile = count_rate_profile(
-        #         img=imgs[filter_type],
-        #         comet_center=peak,
-        #         theta=theta,
-        #         r=profile_radius,
-        #     )
-        #     ccr = count_rate_from_count_rate_profile(
-        #         comet_profile, bgresults[filter_type].count_rate_per_pixel
-        #     )
-        #     # print(f"From profile at {theta=}: {ccr}")
-        #     count_list.append(ccr)
-        #
-        #     ecr = estimate_comet_radius_at_angle(
-        #         img=imgs[filter_type],
-        #         comet_center=peak,
-        #         radius_guess=profile_radius,
-        #         theta=theta,
-        #     )
-        #     # print(f"Estimated comet radius: {ecr}")
-        #     ecr_list.append(ecr)
-        #
-        # print("Using 50 cuts of comet profile at different angles:")
-        # cl_mean = np.mean([x.value for x in count_list])
-        # cl_median = np.median([x.value for x in count_list])
-        # cl_std = np.std([x.value for x in count_list])
-        # print(
-        #     f"Count rate summary: avg = {cl_mean}, median = {cl_median}, std = {cl_std}"
-        # )
-        # print(
-        #     f"Estimated comet radius: avg = {np.mean(ecr_list)}, median = {np.median(ecr_list)}, std = {np.std(ecr_list)}"
-        # )
-        # print("")
-        #
-        # # cfe_ap = CircularAperture((peak.x, peak.y), np.mean(ecr_list))
-        # # cfe_stats = ApertureStats(imgs[filter_type], cfe_ap)
-        # # print(f"Counts in aperture of average radius from estimation: {cfe_stats.sum}")
-        #
-        # radius_estimation[filter_type] = np.mean(ecr_list)
-
-        # theta_list, radii_list = estimate_comet_radius_by_angle(
-        #     img=imgs[filter_type],
-        #     comet_center=peak,
-        #     radius_guess=30,
-        # )
-        #
-        # rl_ap = CircularAperture((peak.x, peak.y), np.mean(radii_list))
-        # rl_stats = ApertureStats(imgs[filter_type], rl_ap)
-        # print(f"Counts in aperture of average radius list: {rl_stats.sum}")
-
-        # just plot along specified theta, mark 4-sigma threshold
-        comet_radial_profile = extract_comet_radial_profile(
-            img=imgs[filter_type],
-            comet_center=peak,
-            theta=0.0,
-            r=profile_radius,
-        )
-        comet_profile = CometProfile.from_radial_profile(comet_radial_profile)
-        print(
-            count_rate_from_comet_radial_profile(
-                comet_radial_profile, bg=bgresults[filter_type].count_rate_per_pixel
-            )
-        )
-        print(
-            count_rate_from_comet_profile(
-                comet_profile=comet_profile,
-                bg=bgresults[filter_type].count_rate_per_pixel,
-            )
-        )
-        print(
-            estimate_comet_radius_at_angle(
-                img=imgs[filter_type],
-                comet_center=peak,
-                radius_guess=profile_radius,
-                theta=0.0,
-            )
-        )
-        fitted_model = fit_comet_profile_gaussian(comet_profile=comet_profile)
-        plot_fitted_profile(
-            comet_profile=comet_profile,
-            fitted_model=fitted_model,
-            sigma_threshold=4.0,
-            plot_title=f"Comet profile along theta = 0, with estimated aperture radius for filter {filter_to_file_string(filter_type)}",
-        )
-
-    # max_radius = np.max(
-    #     [radius_estimation[SwiftFilter.uw1], radius_estimation[SwiftFilter.uvv]]
-    # )
-    # print(f"Taking the radius to be {max_radius} for both filters")
-    # helio_r_au = np.mean(epoch.HELIO)
-    # helio_v_kms = np.mean(epoch.HELIO_V)
-    # delta = np.mean(epoch.OBS_DIS)
-    #
-    # uw1cr = comet_manual_aperture(
-    #     imgs[SwiftFilter.uw1],
-    #     aperture_x=peak.x,
-    #     aperture_y=peak.y,
-    #     aperture_radius=max_radius,
-    #     bg=bgresults[SwiftFilter.uw1].count_rate_per_pixel,
-    # )
-    # uvvcr = comet_manual_aperture(
-    #     imgs[SwiftFilter.uvv],
-    #     aperture_x=peak.x,
-    #     aperture_y=peak.y,
-    #     aperture_radius=max_radius,
-    #     bg=bgresults[SwiftFilter.uvv].count_rate_per_pixel,
-    # )
-    #
-    # correction_factors = np.linspace(1.0, 3.0, num=50, endpoint=True)
-    # correction_factors = np.append(correction_factors, [10.0, 100.0])
-    # for correction_factor in correction_factors:
-    #     flux_OH = OH_flux_from_count_rate(
-    #         uw1=ValueAndStandardDev(
-    #             value=uw1cr.value * correction_factor, sigma=uw1cr.sigma
-    #         ),
-    #         uvv=uvvcr,
-    #         beta=beta_parameter(DustReddeningPercent(reddening=10)),
-    #     )
-    #
-    #     num_oh = flux_OH_to_num_OH(
-    #         flux_OH=flux_OH,
-    #         helio_r_au=helio_r_au,
-    #         helio_v_kms=helio_v_kms,
-    #         delta_au=delta,
-    #     )
-    #
-    #     q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
-    #
-    #     print(
-    #         f"Correction factor {correction_factor:7.6f}\t\tQ from best guess: {q.value:7.6e}"
-    #     )
-
-    # xs_list = []
-    # ys_list = []
-    # zs_list = []
-    #
-    # profile_radius = 30
-    # # angles = [3 * np.pi / 2, np.pi / 2, np.pi / 4]
-    # angles = np.linspace(0, np.pi, 50)
-    # angles = angles[:-1]
-    # for theta in angles:
-    #     xs, ys, prof = extract_profile(
-    #         img=uvv, r=profile_radius, theta=theta, plot_profile=False
-    #     )
-    #     xs_list.extend(xs)
-    #     ys_list.extend(ys)
-    #     zs_list.extend(prof)
-    #
-    # pix_center = get_uvot_image_center(img=uvv)
-    # search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-    #
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(1, 2, 1, projection="3d")
-    # ax2 = fig.add_subplot(1, 2, 2, projection="3d")
-    #
-    # comet_center = find_comet_center(
-    #     img=uvv,
-    #     method=CometCenterFindingMethod.aperture_peak,
-    #     search_aperture=search_aperture,
-    # )
-    #
-    # mx, my = np.meshgrid(
-    #     np.linspace(
-    #         comet_center[0] - profile_radius / 2, comet_center[0] + profile_radius / 2
-    #     ),
-    #     np.linspace(
-    #         comet_center[1] - profile_radius / 2, comet_center[1] + profile_radius / 2
-    #     ),
-    # )
-    # mz = interp.griddata((xs_list, ys_list), zs_list, (mx, my), method="linear")
-    #
-    # ax1.plot_surface(mx, my, mz, cmap="magma")
-    #
-    # # ax.plot_trisurf(xs_list, ys_list, zs_list, cmap="magma")
-    # ax2.contourf(mx, my, mz, cmap="magma")
-    #
-    # plt.show()
+    profile_test_plot(pipeline_files=pipeline_files, stacking_method=stacking_method)
 
     # next step in pipeline should be to decide redness and aperture radius?
 

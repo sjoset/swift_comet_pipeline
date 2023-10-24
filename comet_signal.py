@@ -4,6 +4,7 @@ from photutils.aperture import CircularAperture, ApertureStats
 
 from typing import Optional
 from enum import StrEnum, auto
+from swift_filter import SwiftFilter, filter_to_file_string
 
 from uvot_image import PixelCoord, SwiftUVOTImage, get_uvot_image_center
 from count_rate import CountRate, CountRatePerPixel
@@ -13,6 +14,7 @@ __all__ = [
     "CometCenterFindingMethod",
     "comet_manual_aperture",
     "find_comet_center",
+    "compare_comet_center_methods",
 ]
 
 
@@ -97,3 +99,78 @@ def comet_center_by_peak(
 
     # return (float(ap_min_x + peak_pos[1]), float(ap_min_y + peak_pos[0]))
     return PixelCoord(x=ap_min_x + peak_pos[1], y=ap_min_y + peak_pos[0])
+
+
+def compare_comet_center_methods(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
+    # TODO: uvv images tend to pick up the dust tail so we might expect some difference depending on the method of center detection,
+    # so maybe we just use the uw1 and assume it's less likely to have a tail to scramble the center-finding
+
+    peaks = {}
+    imgs = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
+    for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
+        print(f"Determining center of comet for {filter_to_file_string(filter_type)}:")
+        pix_center = get_uvot_image_center(img=imgs[filter_type])
+        search_ap = CircularAperture((pix_center.x, pix_center.y), r=30)
+        pixel_center = find_comet_center(
+            img=imgs[filter_type],
+            method=CometCenterFindingMethod.pixel_center,
+            search_aperture=search_ap,
+        )
+        centroid = find_comet_center(
+            img=imgs[filter_type],
+            method=CometCenterFindingMethod.aperture_centroid,
+            search_aperture=search_ap,
+        )
+        peak = find_comet_center(
+            img=imgs[filter_type],
+            method=CometCenterFindingMethod.aperture_peak,
+            search_aperture=search_ap,
+        )
+        print("\tBy image center: ", pixel_center)
+        print(
+            "\tBy centroid (center of mass) in aperture radius 30 at image center: ",
+            centroid,
+        )
+        print("\tBy peak value in aperture radius 30 at image center: ", peak)
+
+        peaks[filter_type] = peak
+
+    xdist = peaks[SwiftFilter.uw1].x - peaks[SwiftFilter.uvv].x
+    ydist = peaks[SwiftFilter.uw1].y - peaks[SwiftFilter.uvv].y
+    dist = np.sqrt(xdist**2 + ydist**2)
+    if dist > np.sqrt(2.0):
+        print(
+            f"Comet peaks in uw1 and uvv are separated by {dist} pixels! Fitting might suffer."
+        )
+
+    # show_centers(uw1, [pixel_center, centroid, peak])  # pyright: ignore
+
+
+# def show_centers(img, cs: List[PixelCoord]):
+#     # img_scaled = np.log10(img)
+#     img_scaled = img
+#
+#     fig = plt.figure()
+#     ax1 = fig.add_subplot(1, 1, 1)
+#
+#     pix_center = get_uvot_image_center(img)
+#     ax1.add_patch(
+#         plt.Circle(
+#             (pix_center.x, pix_center.y),
+#             radius=30,
+#             fill=False,
+#         )
+#     )
+#
+#     zscale = ZScaleInterval()
+#     vmin, vmax = zscale.get_limits(img_scaled)
+#
+#     im1 = ax1.imshow(img_scaled, vmin=vmin, vmax=vmax)
+#     fig.colorbar(im1)
+#
+#     for c in cs:
+#         line_color = next(ax1._get_lines.prop_cycler)["color"]
+#         ax1.axvline(c.x, alpha=0.7, color=line_color)
+#         ax1.axhline(c.y, alpha=0.9, color=line_color)
+#
+#     plt.show()

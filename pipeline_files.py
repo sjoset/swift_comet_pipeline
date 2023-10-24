@@ -206,7 +206,7 @@ class PipelineFiles:
         ] = None
         # background analysis
         self.analysis_background_products: Optional[
-            dict[pathlib.Path, YamlProduct]
+            dict[tuple[pathlib.Path, StackingMethod], YamlProduct]
         ] = None
         self.analysis_bg_subtracted_images: Optional[
             dict[
@@ -253,9 +253,13 @@ class PipelineFiles:
 
         # background analysis: given an epoch path, store a corresponding yaml file containing relevant background analysis
         bg_analysis_dict = {}
-        for epoch_path in self.epoch_file_paths:
-            bg_analysis_dict[epoch_path] = YamlProduct(
-                product_path=self._get_analysis_background_path(epoch_path=epoch_path)
+        for epoch_path, stacking_method in product(
+            self.epoch_file_paths, [StackingMethod.summation, StackingMethod.median]
+        ):
+            bg_analysis_dict[epoch_path, stacking_method] = YamlProduct(
+                product_path=self._get_analysis_background_path(
+                    epoch_path=epoch_path, stacking_method=stacking_method
+                )
             )
         self.analysis_background_products = bg_analysis_dict
 
@@ -330,10 +334,12 @@ class PipelineFiles:
         """Naming convention for the analysis products: each epoch gets its own folder to store results"""
         return self.analysis_base_path / epoch_path.stem
 
-    def _get_analysis_background_path(self, epoch_path: pathlib.Path) -> pathlib.Path:
+    def _get_analysis_background_path(
+        self, epoch_path: pathlib.Path, stacking_method: StackingMethod
+    ) -> pathlib.Path:
         """Naming convention for bacground analysis summary"""
         return self._get_analysis_path(epoch_path) / pathlib.Path(
-            "background_analysis.yaml"
+            f"background_analysis_{stacking_method}.yaml"
         )
 
     def _get_analysis_bg_subtracted_fits_path(
