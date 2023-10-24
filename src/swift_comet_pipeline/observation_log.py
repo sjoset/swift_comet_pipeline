@@ -115,7 +115,7 @@ def build_observation_log(
     wcs_list = []
     # keep a list of the filenames that the extensions come from
     processed_filname_list = []
-    # swift pipeline versions
+    # swift pipeline versions that produced our downloaded data
     creator_list = []
 
     image_progress_bar = tqdm(obsids, unit="images")
