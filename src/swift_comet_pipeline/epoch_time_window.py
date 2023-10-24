@@ -10,10 +10,10 @@ from matplotlib.pyplot import cm
 
 from typing import List
 
-from swift_filter import SwiftFilter
-from observation_log import SwiftObservationLog
-from tui import get_float, get_selection, get_yes_no
-from epochs import epoch_from_obs_log
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.observation_log import SwiftObservationLog
+from swift_comet_pipeline.tui import get_float, get_selection, get_yes_no
+from swift_comet_pipeline.epochs import epoch_from_obs_log
 
 
 __all__ = ["select_epoch_time_window", "epochs_from_time_delta", "time_delta_loop"]

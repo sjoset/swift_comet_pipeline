@@ -20,9 +20,9 @@ from photutils.aperture import (
     ApertureStats,
 )
 
-from uvot_image import SwiftUVOTImage
-from swift_filter import SwiftFilter, filter_to_file_string
-from count_rate import CountRatePerPixel
+from swift_comet_pipeline.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.count_rate import CountRatePerPixel
 
 
 __all__ = [

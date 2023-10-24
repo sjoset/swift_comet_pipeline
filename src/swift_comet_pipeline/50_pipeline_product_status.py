@@ -12,17 +12,17 @@ import logging as log
 
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
-from pipeline_files import PipelineFiles
-from stacking import StackingMethod
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.stacking import StackingMethod
 
-from swift_data import SwiftData
-from configs import read_swift_project_config
-from observation_log import (
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.observation_log import (
     build_observation_log,
     # observation_log_schema,
     write_observation_log,
 )
-from swift_filter import SwiftFilter
+from swift_comet_pipeline.swift_filter import SwiftFilter
 
 
 def process_args():

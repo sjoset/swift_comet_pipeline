@@ -13,10 +13,13 @@ import pandas as pd
 from astropy.time import Time
 from astropy.io import fits
 
-from epochs import Epoch, read_epoch, write_epoch
-from observation_log import read_observation_log, write_observation_log
-from swift_filter import filter_to_file_string, SwiftFilter
-from stacking import StackingMethod
+from swift_comet_pipeline.epochs import Epoch, read_epoch, write_epoch
+from swift_comet_pipeline.observation_log import (
+    read_observation_log,
+    write_observation_log,
+)
+from swift_comet_pipeline.swift_filter import filter_to_file_string, SwiftFilter
+from swift_comet_pipeline.stacking import StackingMethod
 
 
 __all__ = ["PipelineFiles"]

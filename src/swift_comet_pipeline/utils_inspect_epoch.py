@@ -15,14 +15,14 @@ import numpy as np
 
 # from astropy.visualization import ZScaleInterval
 
-from configs import read_swift_project_config
-from epochs import Epoch
-from observation_log import get_image_path_from_obs_log_row
-from pipeline_files import PipelineFiles
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.observation_log import get_image_path_from_obs_log_row
+from swift_comet_pipeline.pipeline_files import PipelineFiles
 
-from swift_data import SwiftData
-from swift_filter import SwiftFilter, filter_to_file_string
-from tui import epoch_menu
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.tui import epoch_menu
 
 
 def process_args():

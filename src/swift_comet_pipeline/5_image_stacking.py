@@ -20,18 +20,22 @@ from astropy.io import fits
 from astropy.time import Time
 import astropy.units as u
 
-from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
-from swift_data import SwiftData
-from swift_filter import (
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.swift_filter import (
     SwiftFilter,
     filter_to_file_string,
     filter_to_string,
 )
-from stacking import StackedUVOTImageSet, StackingMethod, stack_epoch
-from epochs import Epoch
-from tui import get_yes_no, epoch_menu, bool_to_x_or_check
-from uvot_image import (
+from swift_comet_pipeline.stacking import (
+    StackedUVOTImageSet,
+    StackingMethod,
+    stack_epoch,
+)
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.tui import get_yes_no, epoch_menu, bool_to_x_or_check
+from swift_comet_pipeline.uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
     get_uvot_image_center_row_col,

@@ -11,8 +11,8 @@ from argparse import ArgumentParser
 from astroquery.jplhorizons import Horizons
 from astropy.time import Time
 
-from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
 
 
 def process_args():

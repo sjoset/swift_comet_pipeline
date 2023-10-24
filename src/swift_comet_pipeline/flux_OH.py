@@ -3,11 +3,14 @@ from typing import Optional, TypeAlias
 import numpy as np
 from astropy.time import Time
 
-from configs import read_swift_pipeline_config
-from solar_spectrum import solar_count_rate_in_filter
-from reddening_correction import reddening_correction, DustReddeningPercent
-from error_propogation import ValueAndStandardDev
-from count_rate import CountRate
+from swift_comet_pipeline.configs import read_swift_pipeline_config
+from swift_comet_pipeline.solar_spectrum import solar_count_rate_in_filter
+from swift_comet_pipeline.reddening_correction import (
+    reddening_correction,
+    DustReddeningPercent,
+)
+from swift_comet_pipeline.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.count_rate import CountRate
 
 
 __all__ = [

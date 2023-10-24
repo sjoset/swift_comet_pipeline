@@ -3,9 +3,9 @@ from scipy.interpolate import interp1d
 
 from typing import TypeAlias
 
-from configs import read_swift_pipeline_config
-from error_propogation import ValueAndStandardDev
-from fluorescence_OH import NumOH
+from swift_comet_pipeline.configs import read_swift_pipeline_config
+from swift_comet_pipeline.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.fluorescence_OH import NumOH
 
 __all__ = ["num_OH_to_Q_vectorial"]
 

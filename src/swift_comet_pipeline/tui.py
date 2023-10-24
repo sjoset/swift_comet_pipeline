@@ -1,7 +1,7 @@
 import pathlib
 from typing import Optional
 
-from pipeline_files import PipelineFiles, EpochProduct
+from swift_comet_pipeline.pipeline_files import PipelineFiles, EpochProduct
 
 __all__ = [
     "get_float",

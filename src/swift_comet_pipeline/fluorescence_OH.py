@@ -7,9 +7,9 @@ from scipy.interpolate import interp1d
 from dataclasses import dataclass
 from typing import Optional, TypeAlias
 
-from configs import read_swift_pipeline_config
-from error_propogation import ValueAndStandardDev
-from flux_OH import OHFlux
+from swift_comet_pipeline.configs import read_swift_pipeline_config
+from swift_comet_pipeline.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.flux_OH import OHFlux
 
 
 __all__ = ["FluorescenceGFactor1AU", "NumOH", "read_gfactor_1au", "flux_OH_to_num_OH"]

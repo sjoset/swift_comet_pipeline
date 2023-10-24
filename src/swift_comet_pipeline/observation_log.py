@@ -15,14 +15,21 @@ from typing import List, Optional, TypeAlias
 
 from tqdm import tqdm
 
-from swift_data import (
+from swift_comet_pipeline.swift_data import (
     SwiftData,
     SwiftObservationID,
     swift_observation_id_from_int,
     swift_orbit_id_from_obsid,
 )
-from swift_filter import SwiftFilter, obs_string_to_filter, filter_to_obs_string
-from uvot_image import datamode_to_pixel_resolution, pixel_resolution_to_datamode
+from swift_comet_pipeline.swift_filter import (
+    SwiftFilter,
+    obs_string_to_filter,
+    filter_to_obs_string,
+)
+from swift_comet_pipeline.uvot_image import (
+    datamode_to_pixel_resolution,
+    pixel_resolution_to_datamode,
+)
 
 
 __all__ = [

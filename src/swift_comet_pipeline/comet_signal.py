@@ -4,10 +4,14 @@ from photutils.aperture import CircularAperture, ApertureStats
 
 from typing import Optional
 from enum import StrEnum, auto
-from swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
 
-from uvot_image import PixelCoord, SwiftUVOTImage, get_uvot_image_center
-from count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.uvot_image import (
+    PixelCoord,
+    SwiftUVOTImage,
+    get_uvot_image_center,
+)
+from swift_comet_pipeline.count_rate import CountRate, CountRatePerPixel
 
 
 __all__ = [

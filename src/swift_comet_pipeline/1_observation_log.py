@@ -4,15 +4,16 @@ import os
 import pathlib
 import sys
 import warnings
+
 import logging as log
 
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
-from pipeline_files import PipelineFiles
 
-from swift_data import SwiftData
-from configs import read_swift_project_config
-from observation_log import build_observation_log
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.observation_log import build_observation_log
 
 
 def process_args():
@@ -22,7 +23,6 @@ def process_args():
         description=__doc__,
         prog=os.path.basename(sys.argv[0]),
     )
-    # parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
         "--verbose", "-v", action="count", default=0, help="increase verbosity level"
     )
@@ -32,12 +32,6 @@ def process_args():
         help="Filename of project config",
         default="config.yaml",
     )
-    # parser.add_argument(
-    #     "--output",
-    #     "-o",
-    #     default="observation_log.parquet",
-    #     help="Filename of observation log output",
-    # )
 
     args = parser.parse_args()
 

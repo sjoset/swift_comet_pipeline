@@ -12,10 +12,10 @@ from matplotlib.widgets import Button, Slider
 from matplotlib.patches import Rectangle
 from mpl_toolkits import axes_grid1
 
-from epochs import Epoch
-from swift_data import SwiftData
-from swift_filter import SwiftFilter
-from uvot_image import PixelCoord
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.uvot_image import PixelCoord
 
 
 __all__ = ["manual_veto"]

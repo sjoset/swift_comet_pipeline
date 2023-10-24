@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from collections import UserDict
 import copy
 import pathlib
 from typing import Tuple, Optional, List, TypeAlias
@@ -11,13 +10,16 @@ import logging as log
 
 from astropy.io import fits
 from tqdm import tqdm
-from dataclasses import dataclass
 
-from swift_data import SwiftData
-from swift_filter import SwiftFilter
-from uvot_image import SwiftUVOTImage, PixelCoord, SwiftPixelResolution
-from epochs import Epoch
-from coincidence_correction import coincidence_correction
+from swift_comet_pipeline.swift_data import SwiftData
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.uvot_image import (
+    SwiftUVOTImage,
+    PixelCoord,
+    SwiftPixelResolution,
+)
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.coincidence_correction import coincidence_correction
 
 
 __all__ = [

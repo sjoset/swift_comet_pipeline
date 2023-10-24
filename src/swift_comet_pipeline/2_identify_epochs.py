@@ -7,15 +7,15 @@ import logging as log
 
 from argparse import ArgumentParser
 
-from configs import read_swift_project_config
+from swift_comet_pipeline.configs import read_swift_project_config
 
-from swift_filter import SwiftFilter
+from swift_comet_pipeline.swift_filter import SwiftFilter
 
-from observation_log import includes_uvv_and_uw1_filters
+from swift_comet_pipeline.observation_log import includes_uvv_and_uw1_filters
 
-from pipeline_files import EpochProduct, PipelineFiles
-from tui import get_yes_no
-from epoch_time_window import (
+from swift_comet_pipeline.pipeline_files import EpochProduct, PipelineFiles
+from swift_comet_pipeline.tui import get_yes_no
+from swift_comet_pipeline.epoch_time_window import (
     epochs_from_time_delta,
     select_epoch_time_window,
 )

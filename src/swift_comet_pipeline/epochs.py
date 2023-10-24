@@ -4,7 +4,7 @@ import pyarrow as pa
 
 from typing import TypeAlias
 
-from observation_log import (
+from swift_comet_pipeline.observation_log import (
     read_observation_log,
     write_observation_log,
     SwiftObservationLog,

@@ -6,7 +6,7 @@ from astropy.time import Time
 from dataclasses import dataclass
 from scipy.interpolate import interp1d
 
-from effective_areas import read_effective_area
+from swift_comet_pipeline.effective_areas import read_effective_area
 
 
 @dataclass

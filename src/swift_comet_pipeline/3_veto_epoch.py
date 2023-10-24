@@ -7,12 +7,12 @@ import logging as log
 
 from argparse import ArgumentParser
 
-from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
-from swift_data import SwiftData
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.swift_data import SwiftData
 
-from manual_veto import manual_veto
-from tui import get_yes_no, epoch_menu
+from swift_comet_pipeline.manual_veto import manual_veto
+from swift_comet_pipeline.tui import get_yes_no, epoch_menu
 
 
 def process_args():

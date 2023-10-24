@@ -19,24 +19,24 @@ import matplotlib.pyplot as plt
 
 # from astropy.visualization import ZScaleInterval
 
-from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
 
-from reddening_correction import DustReddeningPercent
-from swift_filter import SwiftFilter
-from stacking import StackingMethod
-from uvot_image import SwiftUVOTImage, get_uvot_image_center
-from fluorescence_OH import flux_OH_to_num_OH
-from flux_OH import OH_flux_from_count_rate, beta_parameter
-from num_OH_to_Q import num_OH_to_Q_vectorial
-from tui import stacked_epoch_menu
-from determine_background import (
+from swift_comet_pipeline.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.stacking import StackingMethod
+from swift_comet_pipeline.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
+from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.tui import stacked_epoch_menu
+from swift_comet_pipeline.determine_background import (
     # BackgroundDeterminationMethod,
     # BackgroundResult,
     # determine_background,
     yaml_dict_to_background_analysis,
 )
-from comet_signal import (
+from swift_comet_pipeline.comet_signal import (
     CometCenterFindingMethod,
     comet_manual_aperture,
     compare_comet_center_methods,
@@ -44,9 +44,13 @@ from comet_signal import (
     # estimate_comet_radius_at_angle,
     find_comet_center,
 )
-from plateau_detect import plateau_detect
-from epochs import Epoch
-from count_rate import CountRate, CountRatePerPixel, magnitude_from_count_rate
+from swift_comet_pipeline.plateau_detect import plateau_detect
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.count_rate import (
+    CountRate,
+    CountRatePerPixel,
+    magnitude_from_count_rate,
+)
 
 
 def process_args():

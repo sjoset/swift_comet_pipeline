@@ -12,17 +12,13 @@ import astropy.units as u
 
 from bisect import bisect_left, bisect_right
 
-# from datetime import datetime
-
 from astropy.time import Time
-
 from argparse import ArgumentParser
-from pipeline_files import PipelineFiles
 
-from swift_filter import SwiftFilter
-from observation_log import SwiftObservationLog
-
-from configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.observation_log import SwiftObservationLog
+from swift_comet_pipeline.configs import read_swift_project_config
 
 
 def process_args():

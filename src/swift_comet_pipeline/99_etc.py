@@ -12,31 +12,38 @@ import astropy.units as u
 from astropy.visualization import ZScaleInterval
 
 from argparse import ArgumentParser
-from comet_profile import (
+from swift_comet_pipeline.comet_profile import (
     count_rate_from_comet_radial_profile,
     extract_comet_radial_profile,
 )
 
-from configs import read_swift_project_config
-from determine_background import BackgroundResult, yaml_dict_to_background_analysis
-from fluorescence_OH import flux_OH_to_num_OH
-from flux_OH import OH_flux_from_count_rate, beta_parameter
-from num_OH_to_Q import num_OH_to_Q_vectorial
-from pipeline_files import PipelineFiles
-from reddening_correction import DustReddeningPercent
-from stacking import StackingMethod
-from swift_data import SwiftData
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.determine_background import (
+    BackgroundResult,
+    yaml_dict_to_background_analysis,
+)
+from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
+from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.stacking import StackingMethod
+from swift_comet_pipeline.swift_data import SwiftData
 
-from epochs import Epoch, read_epoch
-from swift_filter import SwiftFilter
-from tui import epoch_menu, get_selection, stacked_epoch_menu
+from swift_comet_pipeline.epochs import Epoch, read_epoch
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.tui import epoch_menu, get_selection, stacked_epoch_menu
 
 from astropy.coordinates import get_sun
 from astropy.time import Time
 from astropy.wcs.utils import skycoord_to_pixel
 from astropy.wcs.wcs import FITSFixedWarning
 
-from uvot_image import PixelCoord, SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.uvot_image import (
+    PixelCoord,
+    SwiftUVOTImage,
+    get_uvot_image_center,
+)
 
 
 def process_args():

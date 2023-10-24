@@ -7,8 +7,8 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from typing import Optional, TypeAlias, List
-from swift_filter import SwiftFilter, filter_to_file_string
-from uvot_image import SwiftUVOTImage, SwiftUVOTImageType
+from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.uvot_image import SwiftUVOTImage, SwiftUVOTImageType
 
 
 __all__ = [

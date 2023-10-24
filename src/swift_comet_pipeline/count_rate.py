@@ -2,8 +2,8 @@ import numpy as np
 
 from typing import TypeAlias
 
-from error_propogation import ValueAndStandardDev
-from swift_filter import SwiftFilter, get_filter_parameters
+from swift_comet_pipeline.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.swift_filter import SwiftFilter, get_filter_parameters
 
 __all__ = ["CountRate", "CountRatePerPixel", "magnitude_from_count_rate"]
 

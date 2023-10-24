@@ -8,8 +8,8 @@ from astropy.modeling.models import Gaussian1D
 from scipy.integrate import simpson
 from astropy import modeling
 
-from uvot_image import PixelCoord, SwiftUVOTImage
-from count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.count_rate import CountRate, CountRatePerPixel
 
 
 __all__ = [

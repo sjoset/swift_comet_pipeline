@@ -10,14 +10,14 @@ import logging as log
 from argparse import ArgumentParser
 from astropy.io import fits
 
-from configs import read_swift_project_config
-from pipeline_files import PipelineFiles
+from swift_comet_pipeline.configs import read_swift_project_config
+from swift_comet_pipeline.pipeline_files import PipelineFiles
 
-from swift_filter import SwiftFilter
-from stacking import StackingMethod
-from uvot_image import SwiftUVOTImage
-from tui import get_selection, stacked_epoch_menu
-from determine_background import (
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.stacking import StackingMethod
+from swift_comet_pipeline.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.tui import get_selection, stacked_epoch_menu
+from swift_comet_pipeline.determine_background import (
     BackgroundDeterminationMethod,
     BackgroundResult,
     background_analysis_to_yaml_dict,
