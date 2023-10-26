@@ -130,6 +130,7 @@ def write_swift_project_config(
 
 
 def convert_or_delete(d: dict, k: str, conversion_function: Callable):
+    """Applies f to members of the dictionary, but deletes the members whose value is None"""
     if d[k] is None:
         del d[k]
     else:

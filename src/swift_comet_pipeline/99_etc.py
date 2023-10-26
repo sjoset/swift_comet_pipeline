@@ -2,48 +2,19 @@
 
 import os
 import pathlib
+
 import warnings
 import sys
 import logging as log
-import numpy as np
 
-import matplotlib.pyplot as plt
-import astropy.units as u
-from astropy.visualization import ZScaleInterval
-
+from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
-from swift_comet_pipeline.comet_profile import (
-    count_rate_from_comet_radial_profile,
-    extract_comet_radial_profile,
-)
 
 from swift_comet_pipeline.configs import read_swift_project_config
-from swift_comet_pipeline.determine_background import (
-    BackgroundResult,
-    yaml_dict_to_background_analysis,
-)
-from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
-from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
-from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
 from swift_comet_pipeline.pipeline_files import PipelineFiles
-from swift_comet_pipeline.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.stacking import StackingMethod
 from swift_comet_pipeline.swift_data import SwiftData
-
-from swift_comet_pipeline.epochs import Epoch, read_epoch
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.tui import epoch_menu, get_selection, stacked_epoch_menu
-
-from astropy.coordinates import get_sun
-from astropy.time import Time
-from astropy.wcs.utils import skycoord_to_pixel
-from astropy.wcs.wcs import FITSFixedWarning
-
-from swift_comet_pipeline.uvot_image import (
-    PixelCoord,
-    SwiftUVOTImage,
-    get_uvot_image_center,
-)
+from swift_comet_pipeline.tui import get_selection
+from swift_comet_pipeline.sun_direction import find_sun_direction
 
 
 def process_args():
@@ -77,66 +48,6 @@ def process_args():
     return args
 
 
-def show_fits_sun_direction(img, sun_x, sun_y, comet_x, comet_y):
-    fig = plt.figure()
-    ax1 = fig.add_subplot(1, 1, 1)
-
-    zscale = ZScaleInterval()
-    vmin, vmax = zscale.get_limits(img)
-
-    im1 = ax1.imshow(img, vmin=vmin, vmax=vmax)  # type: ignore
-    # im2 = ax2.imshow(image_median, vmin=vmin, vmax=vmax)
-    fig.colorbar(im1)
-
-    # img_center = get_uvot_image_center(img)
-
-    # ax1.plot([sun_x, image_center_col, -sun_x], [sun_y, image_center_row, -sun_y])
-    ax1.plot([sun_x, comet_x], [sun_y, comet_y])  # type: ignore
-    ax1.set_xlim(0, img.shape[1])  # type: ignore
-    ax1.set_ylim(0, img.shape[0])  # type: ignore
-    # ax1.axvline(image_center_col, color="b", alpha=0.2)
-    # ax1.axhline(image_center_row, color="b", alpha=0.2)
-
-    # hdu = fits.PrimaryHDU(dust_subtracted)
-    # hdu.writeto("subtracted.fits", overwrite=True)
-    plt.show()
-
-
-def find_sun_direction(swift_data: SwiftData, pipeline_files: PipelineFiles) -> None:
-    """Selects an epoch and attempts to find the direction of the sun on the raw images"""
-    epoch_prod = epoch_menu(pipeline_files=pipeline_files)
-    if epoch_prod is None:
-        return
-    epoch_path = epoch_prod.product_path
-    epoch_pre_veto = read_epoch(epoch_path)
-
-    filter_mask = epoch_pre_veto["FILTER"] == SwiftFilter.uvv
-    epoch_pre_veto = epoch_pre_veto[filter_mask]
-
-    for _, row in epoch_pre_veto.iterrows():
-        img = swift_data.get_uvot_image(
-            obsid=row.OBS_ID,
-            fits_filename=row.FITS_FILENAME,
-            fits_extension=row.EXTENSION,
-        )
-        wcs = swift_data.get_uvot_image_wcs(
-            obsid=row.OBS_ID,
-            fits_filename=row.FITS_FILENAME,
-            fits_extension=row.EXTENSION,
-        )
-        print(wcs)
-
-        print(f"t = {Time(row.MID_TIME)}")
-        sun = get_sun(Time(row.MID_TIME))
-        print(f"{sun=}")
-
-        # print(wcs.wcs_world2pix(sun))
-        sun_x, sun_y = skycoord_to_pixel(sun, wcs)
-        print(sun_x, sun_y, np.degrees(np.arctan2(sun_y, sun_x)))
-
-        show_fits_sun_direction(img, sun_x, sun_y, row.PX, row.PY)
-
-
 def main():
     warnings.resetwarnings()
     warnings.filterwarnings("ignore", category=FITSFixedWarning, append=True)
@@ -160,8 +71,6 @@ def main():
         find_sun_direction(swift_data=swift_data, pipeline_files=pipeline_files)
     else:
         return
-
-    # profile_test_plot(pipeline_files=pipeline_files)
 
 
 if __name__ == "__main__":

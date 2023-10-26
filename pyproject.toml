@@ -23,4 +23,7 @@ photutils = ">=1.9.0"
 tqdm = ">=4.66.1"
 pyarrow = ">=13.0.0"
 
+[tool.poetry.scripts]
+scp_tui = 'swift_comet_pipeline.scp_tui:main'
+
 [tool.poetry.dev-dependencies]
