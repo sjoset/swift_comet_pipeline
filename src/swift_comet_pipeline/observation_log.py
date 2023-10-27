@@ -1,17 +1,17 @@
 import itertools
 import pathlib
-import logging as log
+from typing import List, Optional, TypeAlias
 
+import logging as log
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import astropy.units as u
+
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS
 from astroquery.jplhorizons import Horizons
-
-from typing import List, Optional, TypeAlias
 
 from tqdm import tqdm
 
@@ -298,11 +298,6 @@ def write_observation_log(
 def includes_uvv_and_uw1_filters(
     obs_log: SwiftObservationLog,
 ) -> bool:
-    """
-    To find OH and perform dust subtraction we need data from the UV and UW1 filter from somewhere across the given data set in orbit_ids.
-    Returns a list of orbits that have UV or UW1 images, after removing orbits that have no data in the UV or UW1 filters
-    """
-
     has_uvv_filter = obs_log[obs_log["FILTER"] == SwiftFilter.uvv]
     has_uvv_set = set(has_uvv_filter["ORBIT_ID"])
 
@@ -311,13 +306,6 @@ def includes_uvv_and_uw1_filters(
 
     has_both = len(has_uvv_set) > 0 and len(has_uw1_set) > 0
 
-    # print(
-    #     f"Found {len(has_uw1_filter)} uw1 observations and {len(has_uvv_filter)} uvv observations"
-    # )
-    # contributing_orbits = has_uvv_set
-    # contributing_orbits.update(has_uw1_set)
-
-    # return (has_both, list(contributing_orbits))
     return has_both
 
 
@@ -344,8 +332,6 @@ def get_header_from_obs_log_row(swift_data: SwiftData, obs_log_row):
         swift_data.get_uvot_image_directory(obsid=obs_log_row.OBS_ID)
         / obs_log_row.FITS_FILENAME
     )
-
-    # image_data = fits.getdata(image_path, ext=obs_log_row.EXTENSION)
     header = fits.getheader(image_path)
 
     return header
@@ -355,45 +341,3 @@ def get_header_from_obs_log_row(swift_data: SwiftData, obs_log_row):
 #
 #     m = pa.parquet.read_metadata(parquet_path)
 #     print(m.metadata[b'metadata_key'])
-
-
-# def get_obsids_in_orbits(
-#     obs_log: SwiftObservationLog, orbit_ids: List[SwiftOrbitID]
-# ) -> List[SwiftObservationID]:
-#     """Returns a list of all the observation ids contained in the given orbit_ids"""
-#     ml = match_by_orbit_ids_and_filters(
-#         obs_log=obs_log, orbit_ids=orbit_ids, filter_types=SwiftFilter.all_filters()
-#     )
-#
-#     return sorted(np.unique(ml["OBS_ID"].values))
-#
-#
-# def match_by_obsids_and_filters(
-#     obs_log: SwiftObservationLog,
-#     obsids: List[SwiftObservationID],
-#     filter_types: List[SwiftFilter],
-# ) -> SwiftObservationLog:
-#     """Returns the matching rows of the observation log that match any combination of the given obsids & filters"""
-#     masks = []
-#     for obsid, filter_type in itertools.product(obsids, filter_types):
-#         masks.append((obs_log["FILTER"] == filter_type) & (obs_log["OBS_ID"] == obsid))
-#
-#     mask = np.logical_or.reduce(masks)
-#
-#     return obs_log[mask]
-#
-#
-# def match_by_orbit_ids_and_filters(
-#     obs_log: SwiftObservationLog,
-#     orbit_ids: List[SwiftOrbitID],
-#     filter_types: List[SwiftFilter],
-# ) -> SwiftObservationLog:
-#     """Returns the matching rows of the observation log that match any combination of the given orbit_ids & filters"""
-#     masks = []
-#     for orbit_id, filter_type in itertools.product(orbit_ids, filter_types):
-#         masks.append(
-#             (obs_log["ORBIT_ID"] == orbit_id) & (obs_log["FILTER"] == filter_type)
-#         )
-#
-#     mask = np.logical_or.reduce(masks)
-#     return obs_log[mask]

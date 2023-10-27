@@ -9,6 +9,7 @@ import numpy as np
 import logging as log
 
 from astropy.io import fits
+
 from tqdm import tqdm
 
 from swift_comet_pipeline.swift_data import SwiftData
@@ -27,7 +28,7 @@ __all__ = [
     "get_image_dimensions_to_center_comet",
     "determine_stacking_image_size",
     "center_image_on_coords",
-    "stack_epoch",
+    "stack_epoch_into_image",
 ]
 
 
@@ -158,7 +159,7 @@ def center_image_on_coords(
 
 
 # TODO: this could just return the sum and median images together
-def stack_epoch(
+def stack_epoch_into_image(
     swift_data: SwiftData,
     epoch: Epoch,
     stacking_method: StackingMethod = StackingMethod.summation,

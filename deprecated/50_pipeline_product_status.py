@@ -59,11 +59,11 @@ def process_args():
     return args
 
 
-def bool_to_x_or_check(x: bool):
-    if x:
-        return "✔"
-    else:
-        return "✗"
+# def bool_to_x_or_check(x: bool):
+#     if x:
+#         return "✔"
+#     else:
+#         return "✗"
 
 
 def main():

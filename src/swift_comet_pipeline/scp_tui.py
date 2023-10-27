@@ -3,23 +3,45 @@
 import os
 import pathlib
 import sys
-from typing import Optional
 import warnings
-
 import logging as log
+from enum import StrEnum
 
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-from swift_comet_pipeline.pipeline_files import PipelineFiles
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.configs import (
-    SwiftProjectConfig,
-    read_swift_project_config,
-    write_swift_project_config,
+from swift_comet_pipeline.configs import read_or_create_project_config
+from swift_comet_pipeline.pipeline_extras import pipeline_extras_menu
+from swift_comet_pipeline.pipeline_steps_background_analysis_step import (
+    background_analysis_step,
 )
-from swift_comet_pipeline.observation_log import build_observation_log
-from swift_comet_pipeline.tui import get_yes_no
+from swift_comet_pipeline.pipeline_steps_observation_log import observation_log_step
+from swift_comet_pipeline.pipeline_steps_identify_epochs import identify_epochs_step
+from swift_comet_pipeline.pipeline_steps_qH2O_from_profile import qH2O_from_profile_step
+from swift_comet_pipeline.pipeline_steps_qH2O_vs_aperture_radius import (
+    qH2O_vs_aperture_radius_step,
+)
+from swift_comet_pipeline.pipeline_steps_veto_epoch import veto_epoch_step
+from swift_comet_pipeline.pipeline_steps_epoch_stacking import epoch_stacking_step
+from swift_comet_pipeline.tui import clear_screen, get_selection
+
+
+class PipelineStepsMenuEntry(StrEnum):
+    observation_log = "generate observation log"
+    identify_epochs = "slice observation log into epochs"
+    veto_epoch = "view and veto images in epoch"
+    epoch_stacking = "stack images in an epoch"
+    background_analysis = "background analysis and subtraction"
+    qH2O_vs_aperture_radius = "water production as a function of aperture radius"
+    qH2O_from_profile = "water production from a comet profile/slice"
+
+    extra_functions = "extra functions"
+
+    # exit_pipeline = "exit"
+
+    @classmethod
+    def all_pipeline_steps(cls):
+        return [x for x in cls]
 
 
 def process_args():
@@ -52,92 +74,9 @@ def process_args():
     return args
 
 
-def read_or_create_project_config(
-    swift_project_config_path: pathlib.Path,
-) -> Optional[SwiftProjectConfig]:
-    # check if project config exists, and offer to create if not
-    if not swift_project_config_path.exists():
-        print(
-            f"Config file {swift_project_config_path} does not exist! Would you like to create one now?"
-        )
-        create_config = get_yes_no()
-        if create_config:
-            create_swift_project_config(
-                swift_project_config_path=swift_project_config_path
-            )
-        else:
-            print("Ok, exiting.")
-            return
-
-    # load the project config
-    swift_project_config = read_swift_project_config(swift_project_config_path)
-    if swift_project_config is None:
-        print(f"Error reading config file {swift_project_config_path}, exiting.")
-        return None
-
-    return swift_project_config
-
-
-def create_swift_project_config(swift_project_config_path: pathlib.Path) -> None:
-    """
-    Collect info on the data directories and how to identify the comet through JPL horizons,
-    and write it to a yaml config
-    """
-
-    print(
-        f"Creating project config {swift_project_config_path}\n-----------------------"
-    )
-
-    swift_data_path = pathlib.Path(input("Directory of the downloaded swift data: "))
-
-    # try to validate that this path actually has data before accepting
-    test_of_swift_data = SwiftData(data_path=swift_data_path)
-    num_obsids = len(test_of_swift_data.get_all_observation_ids())
-    if num_obsids == 0:
-        print(
-            "There doesn't seem to be data in the necessary format at {swift_data_path}!"
-        )
-    else:
-        print(f"Found appropriate data with a total of {num_obsids} observation IDs")
-
-    product_save_path = pathlib.Path(
-        input("Directory to store results and intermediate products: ")
-    )
-
-    jpl_horizons_id = input("JPL Horizons ID of the comet: ")
-
-    swift_project_config = SwiftProjectConfig(
-        swift_data_path=swift_data_path,
-        product_save_path=product_save_path,
-        jpl_horizons_id=jpl_horizons_id,
-    )
-
-    write_swift_project_config(
-        config_path=swift_project_config_path, swift_project_config=swift_project_config
-    )
-
-
-def obs_log_main(swift_project_config: SwiftProjectConfig):
-    horizons_id = swift_project_config.jpl_horizons_id
-    sdd = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
-
-    # TODO: check if observation log exists and ask user whether to exit or generate new and overwrite
-
-    df = build_observation_log(
-        swift_data=sdd,
-        obsids=sdd.get_all_observation_ids(),
-        horizons_id=horizons_id,
-    )
-
-    if df is None:
-        print(
-            "Could not construct the observation log in memory, exiting without writing output."
-        )
-        return 1
-
-    pipeline_files.observation_log.data_product = df
-    pipeline_files.observation_log.save_product()
+# TODO: menu with icons that indicate whether step has been done completely or partially
+def pipeline_step_menu() -> PipelineStepsMenuEntry:
+    return PipelineStepsMenuEntry.observation_log
 
 
 def main():
@@ -151,7 +90,38 @@ def main():
     swift_project_config = read_or_create_project_config(
         swift_project_config_path=swift_project_config_path
     )
-    print(swift_project_config)
+
+    if swift_project_config is None:
+        print("Could not load a valid configuration! Exiting.")
+        return
+
+    exit_program = False
+    pipeline_steps = PipelineStepsMenuEntry.all_pipeline_steps()
+    while not exit_program:
+        clear_screen()
+        step_selection = get_selection(pipeline_steps)
+        if step_selection is None:
+            exit_program = True
+            continue
+        step = pipeline_steps[step_selection]
+        if step == PipelineStepsMenuEntry.observation_log:
+            observation_log_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.identify_epochs:
+            identify_epochs_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.veto_epoch:
+            veto_epoch_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.epoch_stacking:
+            epoch_stacking_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.background_analysis:
+            background_analysis_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.qH2O_vs_aperture_radius:
+            qH2O_vs_aperture_radius_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.qH2O_from_profile:
+            qH2O_from_profile_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.extra_functions:
+            pipeline_extras_menu(swift_project_config=swift_project_config)
+        else:
+            exit_program = True
 
 
 if __name__ == "__main__":

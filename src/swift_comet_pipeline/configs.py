@@ -5,11 +5,14 @@ import logging as log
 from typing import Callable, Optional
 from dataclasses import asdict, dataclass
 
+from swift_comet_pipeline.tui import get_yes_no
+from swift_comet_pipeline.swift_data import SwiftData
 
 __all__ = [
     "SwiftProjectConfig",
     "SwiftPipelineConfig",
     "read_swift_project_config",
+    "read_or_create_project_config",
     "read_swift_pipeline_config",
     "write_swift_project_config",
 ]
@@ -135,3 +138,70 @@ def convert_or_delete(d: dict, k: str, conversion_function: Callable):
         del d[k]
     else:
         d[k] = conversion_function(d[k])
+
+
+def read_or_create_project_config(
+    swift_project_config_path: pathlib.Path,
+) -> Optional[SwiftProjectConfig]:
+    # check if project config exists, and offer to create if not
+    if not swift_project_config_path.exists():
+        print(
+            f"Config file {swift_project_config_path} does not exist! Would you like to create one now?"
+        )
+        create_config = get_yes_no()
+        if create_config:
+            create_swift_project_config_from_input(
+                swift_project_config_path=swift_project_config_path
+            )
+        else:
+            print("Ok, exiting.")
+            return
+
+    # load the project config
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print(f"Error reading config file {swift_project_config_path}, exiting.")
+        return None
+
+    return swift_project_config
+
+
+def create_swift_project_config_from_input(
+    swift_project_config_path: pathlib.Path,
+) -> None:
+    """
+    Collect info on the data directories and how to identify the comet through JPL horizons,
+    and write it to a yaml config
+    """
+
+    print(
+        f"Creating project config {swift_project_config_path}\n-----------------------"
+    )
+
+    swift_data_path = pathlib.Path(input("Directory of the downloaded swift data: "))
+
+    # try to validate that this path actually has data before accepting
+    test_of_swift_data = SwiftData(data_path=swift_data_path)
+    num_obsids = len(test_of_swift_data.get_all_observation_ids())
+    if num_obsids == 0:
+        print(
+            "There doesn't seem to be data in the necessary format at {swift_data_path}!"
+        )
+    else:
+        print(f"Found appropriate data with a total of {num_obsids} observation IDs")
+
+    product_save_path = pathlib.Path(
+        input("Directory to store results and intermediate products: ")
+    )
+
+    jpl_horizons_id = input("JPL Horizons ID of the comet: ")
+
+    swift_project_config = SwiftProjectConfig(
+        swift_data_path=swift_data_path,
+        product_save_path=product_save_path,
+        jpl_horizons_id=jpl_horizons_id,
+    )
+
+    write_swift_project_config(
+        config_path=swift_project_config_path, swift_project_config=swift_project_config
+    )

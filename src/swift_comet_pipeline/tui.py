@@ -1,6 +1,9 @@
 import pathlib
 from typing import Optional
 
+from rich import print as rprint
+from rich.console import Console
+
 from swift_comet_pipeline.pipeline_files import PipelineFiles, EpochProduct
 
 __all__ = [
@@ -10,6 +13,8 @@ __all__ = [
     "epoch_menu",
     "stacked_epoch_menu",
     "bool_to_x_or_check",
+    "wait_for_key",
+    "clear_screen",
 ]
 
 
@@ -30,15 +35,17 @@ def get_float(prompt: str) -> float:
     return user_input
 
 
-def get_selection(selection_list: list) -> int:
+def get_selection(selection_list: list) -> Optional[int]:
     user_selection = None
 
     while user_selection is None:
-        print("Selection:")
+        rprint("[red]Selection (q to cancel and exit menu):[/red]")
         for i, element in enumerate(selection_list):
-            print(f"{i}:\t{element}")
+            rprint(f"\t[white]{i}:[/white]\t[blue]{element}[/blue]")
 
         raw_selection = input()
+        if raw_selection == "q":
+            return None
         try:
             selection = int(raw_selection)
         except ValueError:
@@ -51,11 +58,17 @@ def get_selection(selection_list: list) -> int:
     return user_selection
 
 
-def bool_to_x_or_check(x: bool):
+def bool_to_x_or_check(x: bool, rich_text: bool = True):
     if x:
-        return "✔"
+        if rich_text:
+            return "[green]✔[/green]"
+        else:
+            return "✔"
     else:
-        return "✗"
+        if rich_text:
+            return "[red]✗[/red]"
+        else:
+            return "✗"
 
 
 def get_yes_no() -> bool:
@@ -70,10 +83,13 @@ def get_yes_no() -> bool:
 def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
     """Allows selection of an epoch via a text menu"""
     if pipeline_files.epoch_products is None:
+        print("No epochs available!")
         return None
 
     epoch_path_list = [x.product_path for x in pipeline_files.epoch_products]
     selection = get_selection([x.stem for x in epoch_path_list])
+    if selection is None:
+        return None
 
     return pipeline_files.epoch_products[selection]
 
@@ -101,4 +117,16 @@ def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
     if len(selectable_epochs) == 0:
         return None
     selection = get_selection(selectable_epochs)
+    if selection is None:
+        return None
+
     return selectable_epochs[selection]
+
+
+def wait_for_key(prompt: str = "Press enter to continue") -> None:
+    _ = input(prompt)
+
+
+def clear_screen() -> None:
+    console = Console()
+    console.clear()

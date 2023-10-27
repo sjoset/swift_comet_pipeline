@@ -1,95 +1,47 @@
-#!/usr/bin/env python3
-
-import os
-import pathlib
-import sys
-
+from itertools import product
+from typing import List
 import numpy as np
 import pandas as pd
-import logging as log
-from typing import List
-from itertools import product
-
-from photutils.aperture import ApertureStats, CircularAperture, CircularAnnulus
-
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from argparse import ArgumentParser
-import matplotlib.pyplot as plt
-
-# from astropy.visualization import ZScaleInterval
-
-from swift_comet_pipeline.configs import read_swift_project_config
-from swift_comet_pipeline.pipeline_files import PipelineFiles
-
-from swift_comet_pipeline.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage, get_uvot_image_center
 from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
 from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.plateau_detect import plateau_detect
+from swift_comet_pipeline.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.swift_filter import SwiftFilter
+from swift_comet_pipeline.stacking import StackingMethod
 from swift_comet_pipeline.tui import stacked_epoch_menu
-from swift_comet_pipeline.determine_background import (
-    # BackgroundDeterminationMethod,
-    # BackgroundResult,
-    # determine_background,
-    yaml_dict_to_background_analysis,
-)
+from swift_comet_pipeline.determine_background import yaml_dict_to_background_analysis
 from swift_comet_pipeline.comet_signal import (
-    CometCenterFindingMethod,
     comet_manual_aperture,
     compare_comet_center_methods,
-    # estimate_comet_radius_by_angle,
-    # estimate_comet_radius_at_angle,
-    find_comet_center,
 )
-from swift_comet_pipeline.plateau_detect import plateau_detect
-from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.configs import SwiftProjectConfig
+from swift_comet_pipeline.uvot_image import SwiftUVOTImage, get_uvot_image_center
 from swift_comet_pipeline.count_rate import (
     CountRate,
     CountRatePerPixel,
     magnitude_from_count_rate,
 )
+from swift_comet_pipeline.epochs import Epoch
 
 
-def process_args():
-    # Parse command-line arguments
-    parser = ArgumentParser(
-        usage="%(prog)s [options] [inputfile]",
-        description=__doc__,
-        prog=os.path.basename(sys.argv[0]),
+def do_comet_photometry_at_img_center(
+    img: SwiftUVOTImage, aperture_radius: float, bg: CountRatePerPixel
+) -> CountRate:
+    pix_center = get_uvot_image_center(img=img)
+    ap_x, ap_y = pix_center.x, pix_center.y
+
+    return comet_manual_aperture(
+        img=img,
+        aperture_x=ap_x,
+        aperture_y=ap_y,
+        aperture_radius=aperture_radius,
+        bg=bg,
     )
-    # parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument(
-        "--verbose", "-v", action="count", default=0, help="increase verbosity level"
-    )
-    parser.add_argument(
-        "swift_project_config",
-        nargs="?",
-        help="Filename of project config",
-        default="config.yaml",
-    )
-
-    args = parser.parse_args()
-
-    # handle verbosity
-    if args.verbose >= 2:
-        log.basicConfig(format="%(levelname)s: %(message)s", level=log.DEBUG)
-    elif args.verbose == 1:
-        log.basicConfig(format="%(levelname)s: %(message)s", level=log.INFO)
-    else:
-        log.basicConfig(format="%(levelname)s: %(message)s")
-
-    return args
-
-
-# def select_stacked_epoch(stack_dir_path: pathlib.Path) -> pathlib.Path:
-#     glob_pattern = str(stack_dir_path / pathlib.Path("*.parquet"))
-#     epoch_filename_list = sorted(glob.glob(glob_pattern))
-#     epoch_path = pathlib.Path(epoch_filename_list[get_selection(epoch_filename_list)])
-#
-#     return epoch_path
 
 
 def q_vs_aperture_radius(
@@ -281,124 +233,7 @@ def q_vs_aperture_radius(
     return df
 
 
-def do_comet_photometry_at_img_center(
-    img: SwiftUVOTImage, aperture_radius: float, bg: CountRatePerPixel
-) -> CountRate:
-    pix_center = get_uvot_image_center(img=img)
-    ap_x, ap_y = pix_center.x, pix_center.y
-
-    return comet_manual_aperture(
-        img=img,
-        aperture_x=ap_x,
-        aperture_y=ap_y,
-        aperture_radius=aperture_radius,
-        bg=bg,
-    )
-
-
-# def fit_inverse_r(img: SwiftUVOTImage) -> None:
-#     profile_radius = 40
-#
-#     pix_center = get_uvot_image_center(img=img)
-#     search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-#     peak = find_comet_center(
-#         img=img,
-#         method=CometCenterFindingMethod.aperture_peak,
-#         search_aperture=search_aperture,
-#     )
-#     comet_profile = count_rate_profile(
-#         img=img,
-#         comet_center=peak,
-#         theta=0,
-#         r=profile_radius,
-#     )
-#
-#     mask = comet_profile.distances_from_center > 0
-#     rs = np.log10(comet_profile.distances_from_center[mask])
-#     pix = comet_profile.pixel_values[mask]
-#
-#     def log_dust_profile(r, a, b):
-#         return a * r + b
-#
-#     dust_fit = curve_fit(
-#         log_dust_profile,
-#         rs,
-#         pix,
-#         [-1, 0],
-#     )
-#
-#     a_fit = dust_fit[0][0]
-#     b_fit = dust_fit[0][1]
-#
-#     print(f"{a_fit=}, {b_fit=}")
-#
-#     plt.plot(
-#         rs,
-#         log_dust_profile(rs, a_fit, b_fit),
-#     )
-#     plt.plot(
-#         np.log10(np.abs(comet_profile.distances_from_center)),
-#         comet_profile.pixel_values,
-#     )
-#     plt.show()
-
-
-def test_circular_aperture_vs_donut_stack(img: SwiftUVOTImage) -> None:
-    """
-    Computes the total signal from a large aperture against concentric annulus apertures
-
-    If we want to compute signal as a function of aperture radius, we can either re-calculate an entirely new aperture
-    at each r, or keep a running total of annulus results from from r=0 up to r-1 pixels and add the results from a thin annulus
-    at r=r
-
-    This examines the difference between the two approaches to make sure the "donut stack" results are an accurate signal count
-    """
-
-    profile_radius = 30
-    num_donuts = 10
-    pix_center = get_uvot_image_center(img=img)
-    search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-    peak = find_comet_center(
-        img=img,
-        method=CometCenterFindingMethod.aperture_peak,
-        search_aperture=search_aperture,
-    )
-
-    inner_rs, r_step = np.linspace(
-        0.001,
-        profile_radius - (profile_radius / num_donuts),
-        num=num_donuts,
-        endpoint=True,
-        retstep=True,
-    )
-
-    ap_stats_list = []
-    for inner_r in inner_rs:
-        outer_r = inner_r + r_step
-        ap = CircularAnnulus((peak.x, peak.y), r_in=inner_r, r_out=outer_r)
-        ap_stats_list.append(ApertureStats(img, ap))
-
-    total_signal = np.sum([x.sum for x in ap_stats_list])
-
-    total_aperture = CircularAperture((peak.x, peak.y), r=profile_radius)
-    total_stats = ApertureStats(img, total_aperture)
-    print(
-        f"From circular aperture: {total_stats.sum} ({total_stats.sum * 100/total_signal})% of annulus stack signal"
-    )
-
-    pass
-
-
-def main():
-    args = process_args()
-
-    # load the config
-    swift_project_config_path = pathlib.Path(args.swift_project_config)
-    swift_project_config = read_swift_project_config(swift_project_config_path)
-    if swift_project_config is None:
-        print("Error reading config file {swift_project_config_path}, exiting.")
-        return 1
-
+def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig):
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     # select the epoch we want to process
@@ -683,7 +518,3 @@ def main():
     # decide radius --> inform vectorial model about extent of grid?
 
     # dust profile + column density fitting? --> redness
-
-
-if __name__ == "__main__":
-    sys.exit(main())

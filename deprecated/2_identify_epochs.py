@@ -8,11 +8,8 @@ import logging as log
 from argparse import ArgumentParser
 
 from swift_comet_pipeline.configs import read_swift_project_config
-
 from swift_comet_pipeline.swift_filter import SwiftFilter
-
 from swift_comet_pipeline.observation_log import includes_uvv_and_uw1_filters
-
 from swift_comet_pipeline.pipeline_files import EpochProduct, PipelineFiles
 from swift_comet_pipeline.tui import get_yes_no
 from swift_comet_pipeline.epoch_time_window import (
@@ -63,7 +60,6 @@ def main():
 
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
-    # obs_log = read_observation_log(pipeline_files.get_observation_log_path())
     pipeline_files.observation_log.load_product()
     obs_log = pipeline_files.observation_log.data_product
 
