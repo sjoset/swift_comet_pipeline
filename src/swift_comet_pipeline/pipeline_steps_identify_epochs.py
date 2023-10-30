@@ -60,5 +60,4 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
 
     pipeline_files.create_epochs(epoch_list=epoch_list)
     rprint("[green]Done writing epochs![/green]")
-    pipeline_extra_status(swift_project_config=swift_project_config)
     wait_for_key()

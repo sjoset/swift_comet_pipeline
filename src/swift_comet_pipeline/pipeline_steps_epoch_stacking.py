@@ -3,6 +3,8 @@ import itertools
 import numpy as np
 
 from rich import print as rprint
+from rich.panel import Panel
+
 import astropy.units as u
 from astropy.io import fits
 from astropy.time import Time
@@ -13,7 +15,7 @@ from swift_comet_pipeline.epochs import Epoch
 from swift_comet_pipeline.stacking import (
     StackedUVOTImageSet,
     StackingMethod,
-    stack_epoch_into_image,
+    stack_epoch_into_sum_and_median,
 )
 from swift_comet_pipeline.swift_data import SwiftData
 from swift_comet_pipeline.configs import SwiftProjectConfig
@@ -96,7 +98,7 @@ def menu_stack_all_or_selection() -> str:
 def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.ImageHDU:
     hdu = fits.ImageHDU(data=img)
 
-    # TODO: include data mode or event mode here
+    # TODO: include data mode or event mode here, time of processing, pipeline version?
 
     hdr = hdu.header
     hdr["distunit"] = "AU"
@@ -185,29 +187,25 @@ def uw1_and_uvv_stacks_from_epoch(
     stacked_images = StackedUVOTImageSet({})
 
     # do the stacking
-    for filter_type, stacking_method in itertools.product(
-        filter_types, stacking_methods
-    ):
-        print(
-            f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
-        )
+    for filter_type in filter_types:
+        print(f"Stacking for filter {filter_to_string(filter_type)} ...")
 
         # now narrow down the data to just one filter at a time
         filter_mask = epoch["FILTER"] == filter_type
         stacked_epoch = epoch[filter_mask]
 
-        stacked_img = stack_epoch_into_image(
+        stack_result = stack_epoch_into_sum_and_median(
             swift_data=swift_data,
-            epoch=stacked_epoch,
-            stacking_method=stacking_method,
+            epoch=stacked_epoch,  # type: ignore
             do_coincidence_correction=do_coincidence_correction,
             pixel_resolution=epoch_pixel_resolution,
         )
-        if stacked_img is None:
-            print("Stacking image failed, skipping... ")
+        if stack_result is None:
+            print("Stacking image failed!")
             return
-        else:
-            stacked_images[(filter_type, stacking_method)] = stacked_img
+
+        stacked_images[(filter_type, StackingMethod.summation)] = stack_result[0]
+        stacked_images[(filter_type, StackingMethod.median)] = stack_result[1]
 
     # Adjust the images from each filter to be the same size
     for stacking_method in stacking_methods:
@@ -282,10 +280,12 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     epoch_ids_to_stack = []
     ask_to_save_stack = True
     show_stacked_images = True
+    skip_if_stacked = False
     if menu_selection == "a":
         epoch_ids_to_stack = pipeline_files.get_epoch_ids()
         ask_to_save_stack = False
         show_stacked_images = False
+        skip_if_stacked = True
     elif menu_selection == "s":
         epoch_id_selected = epoch_menu(pipeline_files)
         if epoch_id_selected is None:
@@ -297,7 +297,7 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
         return
 
     # for each epoch selected, load the epoch and stack the images in it
-    for epoch_id in epoch_ids_to_stack:
+    for epoch_id, is_stacked in zip(epoch_ids_to_stack, fully_stacked):
         epoch = pipeline_files.read_pipeline_product(
             PipelineProductType.epoch, epoch_id=epoch_id
         )
@@ -311,8 +311,14 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
             print(f"Path associated with {epoch_id=} was not found! This is a bug.")
             continue
 
+        # filter out the manually vetoed images
         non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
 
+        # check if the stacked images exist and ask to replace, unless we are stacking all epochs - in that case, skip the stacks we already have
+        if is_stacked and skip_if_stacked:
+            continue
+
+        rprint(Panel(f"Epoch {epoch_id}:", expand=False))
         uw1_and_uvv_stacks_from_epoch(
             pipeline_files=pipeline_files,
             swift_data=swift_data,

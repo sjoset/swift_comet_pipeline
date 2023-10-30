@@ -1,3 +1,4 @@
+import copy
 import math
 import numpy as np
 
@@ -9,6 +10,7 @@ __all__ = ["coincidence_correction", "CoincidenceCorrection"]
 
 class CoincidenceCorrection:
     def __init__(self) -> None:
+        # Poole 2008
         # polynomial coefficients
         self.a1: float = -0.0663428
         self.a2: float = 0.0900434
@@ -20,7 +22,6 @@ class CoincidenceCorrection:
         # frame time, seconds
         self.frame_time: float = 0.0110329
 
-        # self.coefficient_list = [self.a4, self.a3, self.a2, self.a1, 1]
         self.poly = np.poly1d([self.a4, self.a3, self.a2, self.a1, 1])
 
     def coi_factor(self, raw_pixel_count_rate: float) -> float:
@@ -38,7 +39,15 @@ class CoincidenceCorrection:
         return ratio
 
 
-def coincidence_correction(img_data: SwiftUVOTImage, scale: SwiftPixelResolution):
+def coincidence_correction(img: SwiftUVOTImage, scale: SwiftPixelResolution):
+    # don't alter the image that passed in
+    img_data = copy.deepcopy(img)
+
+    # the padding around the images from swift are pure zeros - we have to divide by the pixel value
+    # in CoincidenceCorrectioncoi_factor() so change the padding pixels to be slightly non-zero
+    dead_space_mask = img_data == 0
+    img_data[dead_space_mask] = 1e-29
+
     coi = CoincidenceCorrection()
     aper = math.ceil(5.0 / float(scale))
     area_frac = np.pi / 4

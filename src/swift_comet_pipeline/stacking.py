@@ -28,7 +28,7 @@ __all__ = [
     "get_image_dimensions_to_center_comet",
     "determine_stacking_image_size",
     "center_image_on_coords",
-    "stack_epoch_into_image",
+    "stack_epoch_into_sum_and_median",
 ]
 
 
@@ -158,17 +158,16 @@ def center_image_on_coords(
     return centered_image
 
 
-# TODO: this could just return the sum and median images together
-def stack_epoch_into_image(
+def stack_epoch_into_sum_and_median(
     swift_data: SwiftData,
     epoch: Epoch,
-    stacking_method: StackingMethod = StackingMethod.summation,
     do_coincidence_correction: bool = True,
     pixel_resolution: SwiftPixelResolution = SwiftPixelResolution.data_mode,
-) -> Optional[SwiftUVOTImage]:
+) -> Optional[Tuple[SwiftUVOTImage, SwiftUVOTImage]]:
     """
     Blindly takes every entry in the given Epoch and attempts to stack it - epoch should be pre-filtered because
     no checks are made here
+    If successful, returns a tuple of images (sum, median)
     """
 
     # determine how big our stacked image needs to be
@@ -195,18 +194,18 @@ def stack_epoch_into_image(
         # read the image
         image_data = fits.getdata(image_path, ext=row["EXTENSION"])
 
-        # center the comet
+        # new image with the comet nucleus centered
         image_data = center_image_on_coords(
             source_image=image_data,  # type: ignore
-            source_coords_to_center=PixelCoord(x=row["PX"], y=row["PY"]),  # type: ignore
-            stacking_image_size=stacking_image_size,  # type: ignore
+            source_coords_to_center=PixelCoord(x=float(row["PX"]), y=float(row["PY"])),
+            stacking_image_size=stacking_image_size,
         )
 
         # do any processing before stacking
         if do_coincidence_correction:
             # the correction expects images in count rate, but we are storing the raw images so divide by exposure time here
             coi_map = coincidence_correction(
-                img_data=image_data / exp_time, scale=pixel_resolution
+                img=image_data / exp_time, scale=pixel_resolution
             )
             image_data = image_data * coi_map
 
@@ -219,15 +218,12 @@ def stack_epoch_into_image(
 
     exposure_time = epoch.EXPOSURE.sum()
 
-    if stacking_method == StackingMethod.summation:
-        stacked_image = np.sum(image_data_to_stack, axis=0) / exposure_time
-    elif stacking_method == StackingMethod.median:
-        imgs_copy = copy.deepcopy(image_data_to_stack)
-        for img, exp_time in zip(imgs_copy, exposure_times):
-            img /= exp_time
-        stacked_image = np.median(imgs_copy, axis=0)
-    else:
-        log.info("Invalid stacking method specified, defaulting to summation...")
-        return None
+    # divide by total exposure time so that pixels are count rates
+    stack_sum = np.sum(image_data_to_stack, axis=0) / exposure_time
 
-    return stacked_image
+    # divide each image by its exposure time for each image to be in count rate, then take median
+    for img, exp_time in zip(image_data_to_stack, exposure_times):
+        img /= exp_time
+    stack_median = np.median(image_data_to_stack, axis=0)
+
+    return stack_sum, stack_median

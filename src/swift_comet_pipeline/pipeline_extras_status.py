@@ -50,9 +50,9 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             continue
 
         rprint(Panel(f"Epoch {epoch_path.stem}:", expand=False))
-        # does the stacked image associated with this stacked epoch exist?
         print("Stacked images:")
         for filter_type, stacking_method in product(filters, stacking_methods):
+            # does the stacked image associated with this stacked epoch exist?
             stack_exists = pipeline_files.exists(
                 PipelineProductType.stacked_image,
                 epoch_id=epoch_id,

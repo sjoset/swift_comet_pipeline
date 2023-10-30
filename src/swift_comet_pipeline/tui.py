@@ -1,12 +1,10 @@
 from itertools import product
-import pathlib
 from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
 
-# from swift_comet_pipeline.pipeline_files import PipelineFiles, EpochProduct
-from swift_comet_pipeline.newpipe import (
+from swift_comet_pipeline.pipeline_files import (
     PipelineFiles,
     PipelineEpochID,
     PipelineProductType,
