@@ -29,15 +29,9 @@ __all__ = [
     "BackgroundDeterminationMethod",
     "BackgroundResult",
     "determine_background",
-    "background_analysis_to_yaml_dict",
-    "yaml_dict_to_background_analysis",
+    "background_result_to_dict",
+    "dict_to_background_result",
 ]
-
-
-@dataclass
-class BackgroundResult:
-    count_rate_per_pixel: CountRatePerPixel
-    params: dict
 
 
 class BackgroundDeterminationMethod(StrEnum):
@@ -47,8 +41,12 @@ class BackgroundDeterminationMethod(StrEnum):
     gui_manual_aperture = auto()
     walking_aperture_ensemble = auto()
 
-    def __str__(self) -> str:
-        return self.name
+
+@dataclass
+class BackgroundResult:
+    count_rate_per_pixel: CountRatePerPixel
+    params: dict
+    method: BackgroundDeterminationMethod
 
 
 def determine_background(
@@ -70,7 +68,9 @@ def determine_background(
 
 
 # TODO: come up with some decent values here
-def bg_swift_constant(_: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
+def bg_swift_constant(
+    img: SwiftUVOTImage, filter_type: SwiftFilter
+) -> BackgroundResult:
     """Return what the background is believed to be based on the published information about the SWIFT instrumentation"""
     if filter_type == SwiftFilter.uvv:
         count_rate_per_pixel = CountRatePerPixel(value=1.0, sigma=1.0)
@@ -80,7 +80,11 @@ def bg_swift_constant(_: SwiftUVOTImage, filter_type: SwiftFilter) -> Background
         count_rate_per_pixel = CountRatePerPixel(value=1.0, sigma=1.0)
 
     params = {}
-    return BackgroundResult(count_rate_per_pixel=count_rate_per_pixel, params=params)
+    return BackgroundResult(
+        count_rate_per_pixel=count_rate_per_pixel,
+        params=params,
+        method=BackgroundDeterminationMethod.swift_constant,
+    )
 
 
 # TODO: sigma clipping?
@@ -134,6 +138,7 @@ def bg_manual_aperture_median(
             value=count_rate_per_pixel, sigma=error_abs
         ),
         params=params,
+        method=BackgroundDeterminationMethod.manual_aperture_median,
     )
 
 
@@ -164,6 +169,7 @@ def bg_manual_aperture_mean(
             value=count_rate_per_pixel, sigma=error_abs
         ),
         params=params,
+        method=BackgroundDeterminationMethod.manual_aperture_mean,
     )
 
 
@@ -172,7 +178,9 @@ def bg_walking_aperture_ensemble(
     img: SwiftUVOTImage,  # pyright: ignore
 ) -> BackgroundResult:
     return BackgroundResult(
-        count_rate_per_pixel=CountRatePerPixel(value=2.0, sigma=2.0), params={}
+        count_rate_per_pixel=CountRatePerPixel(value=2.0, sigma=2.0),
+        params={},
+        method=BackgroundDeterminationMethod.walking_aperture_ensemble,
     )
 
 
@@ -274,50 +282,26 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     )
 
 
-# TODO: write a BackgroundAnalysis class to avoid these dictionary shenanigans if possible
-def background_analysis_to_yaml_dict(
-    method: BackgroundDeterminationMethod,
-    uw1_result: BackgroundResult,
-    uvv_result: BackgroundResult,
+def background_result_to_dict(
+    bg_result: BackgroundResult,
 ) -> dict:
     # yaml serializer doesn't support numpy floats for some reason
-    uw1_result.count_rate_per_pixel.value = float(uw1_result.count_rate_per_pixel.value)
-    uw1_result.count_rate_per_pixel.sigma = float(uw1_result.count_rate_per_pixel.sigma)
-    uvv_result.count_rate_per_pixel.value = float(uvv_result.count_rate_per_pixel.value)
-    uvv_result.count_rate_per_pixel.sigma = float(uvv_result.count_rate_per_pixel.sigma)
+    bg_result.count_rate_per_pixel.value = float(bg_result.count_rate_per_pixel.value)
+    bg_result.count_rate_per_pixel.sigma = float(bg_result.count_rate_per_pixel.sigma)
 
-    uw1_dict = {
-        "params": uw1_result.params,
-        "count_rate_per_pixel": asdict(uw1_result.count_rate_per_pixel),
-    }
-    uvv_dict = {
-        "params": uvv_result.params,
-        "count_rate_per_pixel": asdict(uvv_result.count_rate_per_pixel),
-    }
-    dict_to_write = {
-        filter_to_file_string(SwiftFilter.uw1): uw1_dict,
-        filter_to_file_string(SwiftFilter.uvv): uvv_dict,
-        "method": str(method),
+    bg_dict = {
+        "params": bg_result.params,
+        "count_rate_per_pixel": asdict(bg_result.count_rate_per_pixel),
+        "method": str(bg_result.method),
     }
 
-    return dict_to_write
+    return bg_dict
 
 
-def yaml_dict_to_background_analysis(raw_yaml: dict) -> dict:
+def dict_to_background_result(raw_yaml: dict) -> BackgroundResult:
     bg = SimpleNamespace(**raw_yaml)
-    uw1_dict = bg.uw1
-    uw1_result = BackgroundResult(
-        CountRatePerPixel(**uw1_dict["count_rate_per_pixel"]),
-        params=uw1_dict["params"],
+    return BackgroundResult(
+        CountRatePerPixel(**bg.count_rate_per_pixel),
+        params=bg.params,
+        method=BackgroundDeterminationMethod(bg.method),
     )
-    uvv_dict = bg.uvv
-    uvv_result = BackgroundResult(
-        CountRatePerPixel(**uvv_dict["count_rate_per_pixel"]),
-        params=uvv_dict["params"],
-    )
-
-    return {
-        "method": bg.method,
-        SwiftFilter.uw1: uw1_result,
-        SwiftFilter.uvv: uvv_result,
-    }

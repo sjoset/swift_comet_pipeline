@@ -1,134 +1,106 @@
+from itertools import product
 from rich import print as rprint
 from rich.panel import Panel
 
 from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.pipeline_files import PipelineFiles
 from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.tui import bool_to_x_or_check
+from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.tui import bool_to_x_or_check, wait_for_key
+from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
 def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
+    filters = [SwiftFilter.uw1, SwiftFilter.uvv]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
     print("")
 
     rprint(
         "[orange3]Observation log:[/orange3] ",
-        bool_to_x_or_check(pipeline_files.observation_log.exists()),
+        bool_to_x_or_check(pipeline_files.exists(PipelineProductType.observation_log)),
     )
     rprint(
         "[orange3]Comet orbit data:[/orange3] ",
-        # pipeline_files.comet_orbital_data.product_path,
-        bool_to_x_or_check(pipeline_files.comet_orbital_data.exists()),
+        bool_to_x_or_check(
+            pipeline_files.exists(PipelineProductType.comet_orbital_data)
+        ),
     )
     rprint(
         "[orange3]Earth orbit data:[/orange3] ",
-        # pipeline_files.earth_orbital_data.product_path,
-        bool_to_x_or_check(pipeline_files.earth_orbital_data.exists()),
+        bool_to_x_or_check(
+            pipeline_files.exists(PipelineProductType.earth_orbital_data)
+        ),
     )
 
     print("")
 
-    if pipeline_files.epoch_products is None:
+    epoch_ids = pipeline_files.get_epoch_ids()
+    if epoch_ids is None:
         print("No epochs defined yet!")
+        wait_for_key()
         return
-
-    print("Epochs:")
-    for x in pipeline_files.epoch_products:
-        print(x.product_path.stem)
 
     print("")
-
-    print("Stacked epochs and images:")
-    if pipeline_files.stacked_epoch_products is None:
-        print("No stacked products found!")
-        return
-
-    for epoch_prod in pipeline_files.epoch_products:
-        epoch_path = epoch_prod.product_path
-
-        # # print whether this particular epoch has been stacked by looking for its stacked epoch
-        # ep_prod = pipeline_files.stacked_epoch_products[epoch_path]
-        # print(ep_prod.product_path, bool_to_x_or_check(epoch_path.exists()))
+    for epoch_id in epoch_ids:
+        epoch_path = pipeline_files.get_product_path(
+            PipelineProductType.epoch, epoch_id=epoch_id
+        )
+        if epoch_path is None:
+            continue
 
         rprint(Panel(f"Epoch {epoch_path.stem}:", expand=False))
         # does the stacked image associated with this stacked epoch exist?
-        if pipeline_files.stacked_image_products is not None:
-            uw1_sum = pipeline_files.stacked_image_products[
-                epoch_path, SwiftFilter.uw1, StackingMethod.summation
-            ]
-            uw1_median = pipeline_files.stacked_image_products[
-                epoch_path, SwiftFilter.uw1, StackingMethod.median
-            ]
-            uvv_sum = pipeline_files.stacked_image_products[
-                epoch_path, SwiftFilter.uvv, StackingMethod.summation
-            ]
-            uvv_median = pipeline_files.stacked_image_products[
-                epoch_path, SwiftFilter.uvv, StackingMethod.median
-            ]
-            rprint(
-                "Stacked images: ",
-                f"uw1 sum: {bool_to_x_or_check(uw1_sum.exists())}\t",
-                f"uw1 median: {bool_to_x_or_check(uw1_median.exists())}\t",
-                f"uvv sum: {bool_to_x_or_check(uvv_sum.exists())}\t",
-                f"uvv median: {bool_to_x_or_check(uvv_median.exists())}",
+        print("Stacked images:")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            stack_exists = pipeline_files.exists(
+                PipelineProductType.stacked_image,
+                epoch_id=epoch_id,
+                filter_type=filter_type,
+                stacking_method=stacking_method,
             )
-
-        if pipeline_files.analysis_background_products is not None:
-            bg_prod_sum = pipeline_files.analysis_background_products[
-                epoch_path, StackingMethod.summation
-            ]
-            bg_prod_median = pipeline_files.analysis_background_products[
-                epoch_path, StackingMethod.median
-            ]
-            sum_method = ""
-            median_method = ""
-            if bg_prod_sum.exists():
-                bg_prod_sum.load_product()
-                # print(bg_prod_sum.data_product["method"])
-                sum_method = f" ({str(bg_prod_sum.data_product['method'])})"
-            if bg_prod_median.exists():
-                bg_prod_median.load_product()
-                median_method = f" ({str(bg_prod_median.data_product['method'])})"
             rprint(
-                "Background analysis: ",
-                f"sum: {bool_to_x_or_check(bg_prod_sum.exists())}{sum_method} ",
-                f"median: {bool_to_x_or_check(bg_prod_median.exists())}{median_method}",
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(stack_exists)}\t",
+                end="",
             )
-
-        if pipeline_files.analysis_bg_subtracted_images is not None:
-            uw1_bg_sub = pipeline_files.analysis_bg_subtracted_images[
-                epoch_path, SwiftFilter.uw1, StackingMethod.summation
-            ]
-            uvv_bg_sub = pipeline_files.analysis_bg_subtracted_images[
-                epoch_path, SwiftFilter.uvv, StackingMethod.summation
-            ]
-            rprint(
-                "Background-subtracted images: ",
-                "uw1: ",
-                # uw1_bg_sub.product_path.name,
-                bool_to_x_or_check(uw1_bg_sub.exists()),
-                "uvv: ",
-                # uvv_bg_sub.product_path.name,
-                bool_to_x_or_check(uvv_bg_sub.exists()),
-            )
-            # if uw1_bg_sub.exists():
-            #     uw1_bg_sub.load_product()
-            #     print("Dimensions:", uw1_bg_sub.data_product.data.shape)
-            # if uvv_bg_sub.exists():
-            #     uvv_bg_sub.load_product()
-            #     print("Dimensions:", uvv_bg_sub.data_product.data.shape)
-
-        if pipeline_files.analysis_qh2o_products is not None:
-            q = pipeline_files.analysis_qh2o_products[epoch_path]
-            rprint(
-                "Q vs aperture radius analysis: ",
-                # q.product_path.name,
-                bool_to_x_or_check(q.exists()),
-            )
-            # if q.exists():
-            #     q.load_product()
-            #     print(q.data_product.Q_H2O[0])
-
         print("")
+
+        print("Background analysis:")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            bg_exists = pipeline_files.exists(
+                PipelineProductType.background_analysis,
+                epoch_id=epoch_id,
+                filter_type=filter_type,
+                stacking_method=stacking_method,
+            )
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(bg_exists)}\t",
+                end="",
+            )
+        print("")
+
+        print("Background-subtracted images: ")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            img_exists = pipeline_files.exists(
+                PipelineProductType.background_subtracted_image,
+                epoch_id=epoch_id,
+                filter_type=filter_type,
+                stacking_method=stacking_method,
+            )
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(img_exists)}\t",
+                end="",
+            )
+        print("")
+
+        print("Q vs aperture radius analysis: ")
+        for stacking_method in stacking_methods:
+            q_exists = pipeline_files.exists(
+                PipelineProductType.qh2o_vs_aperture_radius,
+                epoch_id=epoch_id,
+                stacking_method=stacking_method,
+            )
+            rprint(f"{stacking_method} {bool_to_x_or_check(q_exists)}\t", end="")
+        print("\n\n")
+
+    wait_for_key()

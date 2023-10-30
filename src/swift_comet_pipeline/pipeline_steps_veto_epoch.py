@@ -1,10 +1,13 @@
 import pathlib
+from rich import print as rprint
 
 from swift_comet_pipeline.swift_data import SwiftData
 from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.pipeline_files import PipelineFiles
-from swift_comet_pipeline.tui import epoch_menu, get_yes_no
+
+# from swift_comet_pipeline.pipeline_files import PipelineFiles
+from swift_comet_pipeline.tui import epoch_menu, get_yes_no, wait_for_key
 from swift_comet_pipeline.manual_veto import manual_veto
+from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
 __all__ = ["veto_epoch_step"]
@@ -15,26 +18,39 @@ def veto_epoch_step(swift_project_config: SwiftProjectConfig) -> None:
 
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    if pipeline_files.epoch_products is None:
+    num_epoch_ids = pipeline_files.get_epoch_ids()
+    if num_epoch_ids is None:
         print("No epoch files found! Exiting.")
+        wait_for_key()
         return
-    epoch_product = epoch_menu(pipeline_files)
-    if epoch_product is None:
+
+    epoch_id = epoch_menu(pipeline_files)
+    if epoch_id is None:
         print("Could not select epoch, exiting.")
+        wait_for_key()
         return
-    epoch_product.load_product()
-    epoch_pre_veto = epoch_product.data_product
+
+    epoch_pre_veto = pipeline_files.read_pipeline_product(
+        PipelineProductType.epoch, epoch_id=epoch_id
+    )
+    if epoch_pre_veto is None:
+        print("Error reading epoch!")
+        wait_for_key()
+        return
 
     epoch_post_veto = manual_veto(
         swift_data=swift_data,
         epoch=epoch_pre_veto,
-        epoch_title=epoch_product.product_path.stem,
+        epoch_title=epoch_id,
     )
 
-    print("Save epoch?")
+    print("Save changes?")
     save_epoch = get_yes_no()
     if not save_epoch:
         return
 
-    epoch_product.data_product = epoch_post_veto
-    epoch_product.save_product()
+    pipeline_files.write_pipeline_product(
+        PipelineProductType.epoch, data=epoch_post_veto, epoch_id=epoch_id
+    )
+    rprint("[green]Epoch saved.[/green]")
+    wait_for_key()

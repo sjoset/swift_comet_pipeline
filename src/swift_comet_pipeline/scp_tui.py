@@ -37,8 +37,6 @@ class PipelineStepsMenuEntry(StrEnum):
 
     extra_functions = "extra functions"
 
-    # exit_pipeline = "exit"
-
     @classmethod
     def all_pipeline_steps(cls):
         return [x for x in cls]

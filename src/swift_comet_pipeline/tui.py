@@ -1,10 +1,18 @@
+from itertools import product
 import pathlib
 from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
 
-from swift_comet_pipeline.pipeline_files import PipelineFiles, EpochProduct
+# from swift_comet_pipeline.pipeline_files import PipelineFiles, EpochProduct
+from swift_comet_pipeline.newpipe import (
+    PipelineFiles,
+    PipelineEpochID,
+    PipelineProductType,
+)
+from swift_comet_pipeline.stacking import StackingMethod
+from swift_comet_pipeline.swift_filter import SwiftFilter
 
 __all__ = [
     "get_float",
@@ -80,47 +88,67 @@ def get_yes_no() -> bool:
             return False
 
 
-def epoch_menu(pipeline_files: PipelineFiles) -> Optional[EpochProduct]:
+def epoch_menu(pipeline_files: PipelineFiles) -> Optional[PipelineEpochID]:
     """Allows selection of an epoch via a text menu"""
-    if pipeline_files.epoch_products is None:
+    epoch_ids = pipeline_files.get_epoch_ids()
+    if epoch_ids is None:
         print("No epochs available!")
         return None
 
-    epoch_path_list = [x.product_path for x in pipeline_files.epoch_products]
-    selection = get_selection([x.stem for x in epoch_path_list])
+    selection = get_selection(epoch_ids)
     if selection is None:
         return None
 
-    return pipeline_files.epoch_products[selection]
+    return epoch_ids[selection]
 
 
-def stacked_epoch_menu(pipeline_files: PipelineFiles) -> Optional[pathlib.Path]:
+def stacked_epoch_menu(
+    pipeline_files: PipelineFiles, require_background_analysis: bool = False
+) -> Optional[PipelineEpochID]:
     """
     Allows selection of a stacked epoch via a text menu, showing only epochs that have been stacked,
     returning a path to the associated epoch that generated the stack, which is how we find products
     associated with that epoch in PipelineFiles
     """
-    if pipeline_files.epoch_products is None:
+    epoch_ids = pipeline_files.get_epoch_ids()
+    if epoch_ids is None:
+        print("No epochs available!")
         return None
 
-    epoch_paths = [x.product_path for x in pipeline_files.epoch_products]
-    stacked_epoch_paths = [
-        pipeline_files.stacked_epoch_products[x].product_path for x in epoch_paths  # type: ignore
+    filtered_epoch_ids = [
+        epoch_id
+        for epoch_id in epoch_ids
+        if pipeline_files.exists(PipelineProductType.stacked_epoch, epoch_id=epoch_id)
     ]
 
-    # filter epochs out of the list if we haven't stacked it by seeing if the stacked_epoch_path exists or not
-    filtered_epochs = list(
-        filter(lambda x: x[1].exists(), zip(epoch_paths, stacked_epoch_paths))
-    )
+    if require_background_analysis:
+        filters = [SwiftFilter.uw1, SwiftFilter.uvv]
+        stacking_methods = [StackingMethod.summation, StackingMethod.median]
 
-    selectable_epochs = [x[0] for x in filtered_epochs]
-    if len(selectable_epochs) == 0:
+        def all_bgs(x: PipelineEpochID) -> bool:
+            return all(
+                pipeline_files.exists(
+                    PipelineProductType.background_analysis,
+                    epoch_id=x,
+                    filter_type=filter_type,
+                    stacking_method=stacking_method,
+                )
+                for filter_type, stacking_method in product(filters, stacking_methods)
+            )
+
+        filtered_epoch_ids = [
+            epoch_id for epoch_id in filtered_epoch_ids if all_bgs(epoch_id)
+        ]
+
+    if len(filtered_epoch_ids) == 0:
+        print("No stacked epochs available!")
         return None
-    selection = get_selection(selectable_epochs)
+
+    selection = get_selection(filtered_epoch_ids)
     if selection is None:
         return None
 
-    return selectable_epochs[selection]
+    return filtered_epoch_ids[selection]
 
 
 def wait_for_key(prompt: str = "Press enter to continue") -> None:

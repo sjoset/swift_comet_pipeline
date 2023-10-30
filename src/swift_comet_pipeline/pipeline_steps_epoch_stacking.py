@@ -17,34 +17,67 @@ from swift_comet_pipeline.stacking import (
 )
 from swift_comet_pipeline.swift_data import SwiftData
 from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.pipeline_files import PipelineFiles
 from swift_comet_pipeline.swift_filter import (
     SwiftFilter,
     filter_to_file_string,
     filter_to_string,
 )
-from swift_comet_pipeline.tui import bool_to_x_or_check, epoch_menu, get_yes_no
+from swift_comet_pipeline.tui import (
+    bool_to_x_or_check,
+    epoch_menu,
+    get_yes_no,
+    wait_for_key,
+)
 from swift_comet_pipeline.uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
     pad_to_match_sizes,
 )
+from swift_comet_pipeline.pipeline_files import (
+    PipelineEpochID,
+    PipelineFiles,
+    PipelineProductType,
+)
+
+
+# TODO: move this into pipeline_files?
+def is_epoch_fully_stacked(
+    pipeline_files: PipelineFiles, epoch_id: PipelineEpochID
+) -> bool:
+    filters = [SwiftFilter.uw1, SwiftFilter.uvv]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
+
+    # for filter_type, stacking_method in product(filters, stacking_methods):
+    stack_exists = [
+        pipeline_files.exists(
+            PipelineProductType.stacked_image,
+            epoch_id=epoch_id,
+            filter_type=filter_type,
+            stacking_method=stacking_method,
+        )
+        for filter_type, stacking_method in itertools.product(filters, stacking_methods)
+    ]
+
+    return all(stack_exists)
 
 
 def print_stacked_images_summary(
     pipeline_files: PipelineFiles,
-) -> dict[pathlib.Path, bool]:
-    is_epoch_stacked: dict[pathlib.Path, bool] = {}
-    print("Summary of detected stacked images:")
-    # loop through each epoch and look for associated stacked files
-    for x in pipeline_files.epoch_file_paths:  # type: ignore
-        ep_prod = pipeline_files.stacked_epoch_products[x]  # type: ignore
-        rprint(
-            "\t", ep_prod.product_path.stem, "\t", bool_to_x_or_check(ep_prod.exists())
-        )
-        is_epoch_stacked[x] = ep_prod.exists()
+) -> None:
+    epoch_ids = pipeline_files.get_epoch_ids()
+    if epoch_ids is None:
+        return
 
-    return is_epoch_stacked
+    print("Summary of detected stacked images:")
+    for epoch_id in epoch_ids:
+        rprint(
+            "\t",
+            epoch_id,
+            "\t",
+            bool_to_x_or_check(
+                is_epoch_fully_stacked(pipeline_files=pipeline_files, epoch_id=epoch_id)
+            ),
+        )
 
 
 def menu_stack_all_or_selection() -> str:
@@ -59,6 +92,7 @@ def menu_stack_all_or_selection() -> str:
     return user_selection
 
 
+# TODO: move this to pipeline_files?
 def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.ImageHDU:
     hdu = fits.ImageHDU(data=img)
 
@@ -126,16 +160,19 @@ def show_stacked_image_set(stacked_image_set: StackedUVOTImageSet):
     plt.close()
 
 
-# TODO: check if the sum or median exists and skip if so
 def uw1_and_uvv_stacks_from_epoch(
     pipeline_files: PipelineFiles,
     swift_data: SwiftData,
     epoch: Epoch,
-    epoch_path: pathlib.Path,
+    epoch_id: PipelineEpochID,
     do_coincidence_correction: bool,
     ask_to_save_stack: bool,
     show_stacked_images: bool,
 ) -> None:
+    """
+    Produces sum- and median-stacked images for the uw1 and uvv filters - the pipeline will overwrite images if the already exist
+    The stacked images are padded so that the images in uw1 and uvv are the same size, so both must be stacked here
+    """
     # Do both filters with sum and median stacking
     filter_types = [SwiftFilter.uvv, SwiftFilter.uw1]
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
@@ -151,23 +188,17 @@ def uw1_and_uvv_stacks_from_epoch(
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
-        fits_product = pipeline_files.stacked_image_products[  # type: ignore
-            epoch_path, filter_type, stacking_method
-        ]
-        if fits_product.product_path.exists():
-            print(f"Stack {fits_product.product_path} exists! Skipping.")
-            return
         print(
             f"Stacking for filter {filter_to_string(filter_type)}: stacking type {stacking_method} ..."
         )
 
         # now narrow down the data to just one filter at a time
         filter_mask = epoch["FILTER"] == filter_type
-        ml = epoch[filter_mask]
+        stacked_epoch = epoch[filter_mask]
 
         stacked_img = stack_epoch_into_image(
             swift_data=swift_data,
-            epoch=ml,
+            epoch=stacked_epoch,
             stacking_method=stacking_method,
             do_coincidence_correction=do_coincidence_correction,
             pixel_resolution=epoch_pixel_resolution,
@@ -197,63 +228,88 @@ def uw1_and_uvv_stacks_from_epoch(
         if not save_results:
             return
 
-    # get the stacked epoch pipeline product, stuff the epoch in it, and save
-    stacked_epoch_product = pipeline_files.stacked_epoch_products[epoch_path]  # type: ignore
-    stacked_epoch_product.data_product = epoch
-    stacked_epoch_product.save_product()
+    rprint("[green]Writing stacked epoch ...")
+    pipeline_files.write_pipeline_product(
+        PipelineProductType.stacked_epoch, epoch_id=epoch_id, data=stacked_epoch
+    )
 
     # write the stacked images as .FITS files
     for filter_type, stacking_method in itertools.product(
         filter_types, stacking_methods
     ):
-        fits_product = pipeline_files.stacked_image_products[  # type: ignore
-            epoch_path, filter_type, stacking_method
-        ]
-        print(f"Writing to {fits_product.product_path} ...")
         hdu = epoch_stacked_image_to_fits(
             epoch=epoch, img=stacked_images[(filter_type, stacking_method)]
         )
-        fits_product.data_product = hdu
-        fits_product.save_product()
+        rprint(
+            f"[green]Writing stacked image for {epoch_id}, {filter_type} {stacking_method} ..."
+        )
+        pipeline_files.write_pipeline_product(
+            PipelineProductType.stacked_image,
+            epoch_id=epoch_id,
+            filter_type=filter_type,
+            stacking_method=stacking_method,
+            data=hdu,
+        )
 
 
 def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
-
     swift_data = SwiftData(data_path=pathlib.Path(swift_project_config.swift_data_path))
 
-    is_epoch_stacked = print_stacked_images_summary(pipeline_files=pipeline_files)
-    if all(is_epoch_stacked.values()):
+    epoch_ids = pipeline_files.get_epoch_ids()
+    if epoch_ids is None:
+        print("No epochs found!")
+        wait_for_key()
+        return
+
+    print_stacked_images_summary(pipeline_files=pipeline_files)
+
+    fully_stacked = [
+        is_epoch_fully_stacked(pipeline_files=pipeline_files, epoch_id=x)
+        for x in epoch_ids
+    ]
+    if all(fully_stacked):
         print("Everything stacked! Nothing to do.")
+        # TODO: ask to continue anyway
+        wait_for_key()
         return
 
     menu_selection = menu_stack_all_or_selection()
     if menu_selection == "q":
         return
 
-    epochs_to_stack = []
+    # do we stack all of the epochs, or just select one?
+    epoch_ids_to_stack = []
     ask_to_save_stack = True
     show_stacked_images = True
     if menu_selection == "a":
-        epochs_to_stack = pipeline_files.epoch_products
+        epoch_ids_to_stack = pipeline_files.get_epoch_ids()
         ask_to_save_stack = False
         show_stacked_images = False
     elif menu_selection == "s":
-        epoch_selected = epoch_menu(pipeline_files)
-        if epoch_selected is None:
+        epoch_id_selected = epoch_menu(pipeline_files)
+        if epoch_id_selected is None:
             return
-        epochs_to_stack = [epoch_selected]
+        epoch_ids_to_stack = [epoch_id_selected]
 
-    if epochs_to_stack is None:
-        print("Pipeline error! This is a bug with pipeline_files.epoch_products!")
+    if epoch_ids_to_stack is None:
+        print("Pipeline error! This is a bug with epoch_ids_to_stack")
         return
 
-    for epoch_product in epochs_to_stack:
-        if epoch_product is None:
-            print("Error selecting epoch! Exiting.")
-            return
-        epoch_product.load_product()
-        epoch = epoch_product.data_product
+    # for each epoch selected, load the epoch and stack the images in it
+    for epoch_id in epoch_ids_to_stack:
+        epoch = pipeline_files.read_pipeline_product(
+            PipelineProductType.epoch, epoch_id=epoch_id
+        )
+        if epoch is None:
+            print(f"{epoch_id=} could not be loaded, skipping..")
+            continue
+        epoch_path = pipeline_files.get_product_path(
+            PipelineProductType.epoch, epoch_id=epoch_id
+        )
+        if epoch_path is None:
+            print(f"Path associated with {epoch_id=} was not found! This is a bug.")
+            continue
 
         non_vetoed_epoch = epoch[epoch.manual_veto == np.False_]
 
@@ -261,8 +317,10 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_files=pipeline_files,
             swift_data=swift_data,
             epoch=non_vetoed_epoch,
-            epoch_path=epoch_product.product_path,
+            epoch_id=epoch_id,
             do_coincidence_correction=True,
             ask_to_save_stack=ask_to_save_stack,
             show_stacked_images=show_stacked_images,
         )
+
+    wait_for_key()

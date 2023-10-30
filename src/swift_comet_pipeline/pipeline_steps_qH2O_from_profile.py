@@ -1,17 +1,11 @@
 import numpy as np
-import astropy.units as u
-
-from astropy.time import Time
-
 import matplotlib.pyplot as plt
-
+import astropy.units as u
+from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 
 from swift_comet_pipeline.configs import SwiftProjectConfig
 from swift_comet_pipeline.epochs import Epoch
-
-from swift_comet_pipeline.pipeline_files import PipelineFiles
-
 from swift_comet_pipeline.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift_filter import SwiftFilter
 from swift_comet_pipeline.stacking import StackingMethod
@@ -20,19 +14,16 @@ from swift_comet_pipeline.uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
 )
-
 from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
 from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
-from swift_comet_pipeline.tui import get_selection, stacked_epoch_menu
-from swift_comet_pipeline.determine_background import (
-    BackgroundResult,
-    yaml_dict_to_background_analysis,
-)
+from swift_comet_pipeline.tui import get_selection, stacked_epoch_menu, wait_for_key
+from swift_comet_pipeline.determine_background import BackgroundResult
 from swift_comet_pipeline.comet_profile import (
     count_rate_from_comet_radial_profile,
     extract_comet_radial_profile,
 )
+from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
 class RadialProfileSelectionPlot(object):
@@ -245,63 +236,71 @@ def profile_selection_plot(
     pipeline_files: PipelineFiles, stacking_method: StackingMethod
 ) -> None:
     # TODO: change this menu to only show background-subtracted images
-    epoch_path = stacked_epoch_menu(pipeline_files=pipeline_files)
-    if epoch_path is None:
-        return
-    if pipeline_files.analysis_bg_subtracted_images is None:
+    epoch_id = stacked_epoch_menu(
+        pipeline_files=pipeline_files, require_background_analysis=True
+    )
+    if epoch_id is None:
         return
 
-    if pipeline_files.stacked_epoch_products is None:
+    epoch = pipeline_files.read_pipeline_product(
+        PipelineProductType.stacked_epoch, epoch_id=epoch_id
+    )
+    if epoch is None:
+        print("Error reading epoch!")
+        wait_for_key()
         return
-    epoch_prod = pipeline_files.stacked_epoch_products[epoch_path]
-    epoch_prod.load_product()
-    epoch = epoch_prod.data_product
 
-    uw1_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uw1, stacking_method
-    ]
-    if not uw1_prod.product_path.exists():
-        print(f"Could not load background image {uw1_prod.product_path}!")
-        return
-    uw1_prod.load_product()
-    uw1_sum = uw1_prod.data_product.data
+    uw1_sum = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
 
-    uvv_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uvv, stacking_method
-    ]
-    if not uvv_prod.product_path.exists():
-        print(f"Could not load background image {uvv_prod.product_path}!")
+    uvv_sum = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    if uw1_sum is None or uvv_sum is None:
+        print("Error loading background-subtracted images!")
+        wait_for_key()
         return
-    uvv_prod.load_product()
-    uvv_sum = uvv_prod.data_product.data
 
-    if pipeline_files.analysis_background_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_background_products!"
-        )
+    uw1_bg = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_analysis,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    uvv_bg = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_analysis,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    if uw1_bg is None or uvv_bg is None:
+        print("Error loading background analysis!")
+        wait_for_key()
         return
-    bg_prod = pipeline_files.analysis_background_products[epoch_path, stacking_method]
-    if not bg_prod.product_path.exists():
-        print(
-            f"The background analysis for {epoch_path.stem} has not been done! Exiting."
-        )
-        return
-    bg_prod.load_product()
-    bgresults = yaml_dict_to_background_analysis(bg_prod.data_product)
-    uw1_bg = bgresults[SwiftFilter.uw1]
-    uvv_bg = bgresults[SwiftFilter.uvv]
 
     rpsp = RadialProfileSelectionPlot(
         epoch=epoch, uw1_img=uw1_sum, uw1_bg=uw1_bg, uvv_img=uvv_sum, uvv_bg=uvv_bg
     )
     rpsp.show()
 
+    # TODO: save any results from rpsp here
+
 
 def qH2O_from_profile_step(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
-    stacking_method = stacking_methods[get_selection(stacking_methods)]
+    selection = get_selection(stacking_methods)
+    if selection is None:
+        return
+    stacking_method = stacking_methods[selection]
 
     profile_selection_plot(
         pipeline_files=pipeline_files, stacking_method=stacking_method

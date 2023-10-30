@@ -12,7 +12,6 @@ from swift_comet_pipeline.observation_log import (
 
 __all__ = [
     "Epoch",
-    # "file_name_from_epoch",
     "epoch_schema",
     "read_epoch",
     "write_epoch",

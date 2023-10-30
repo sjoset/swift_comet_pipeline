@@ -3,12 +3,11 @@ from astropy.time import Time
 
 import numpy as np
 from swift_comet_pipeline.configs import SwiftProjectConfig
-
 from swift_comet_pipeline.observation_log import get_image_path_from_obs_log_row
-from swift_comet_pipeline.pipeline_files import PipelineFiles
 from swift_comet_pipeline.swift_data import SwiftData
 from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.tui import epoch_menu
+from swift_comet_pipeline.tui import epoch_menu, wait_for_key
+from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
 def pipeline_extra_epoch_summary(
@@ -16,14 +15,18 @@ def pipeline_extra_epoch_summary(
 ) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
     swift_data = SwiftData(swift_project_config.swift_data_path)
+    filters = [SwiftFilter.uw1, SwiftFilter.uvv]
 
-    epoch_product = epoch_menu(pipeline_files)
-    if epoch_product is None:
+    epoch_id = epoch_menu(pipeline_files)
+    epoch = pipeline_files.read_pipeline_product(
+        PipelineProductType.epoch, epoch_id=epoch_id
+    )
+    if epoch is None:
+        print("Error loading epoch!")
+        wait_for_key()
         return
-    epoch_product.load_product()
-    epoch = epoch_product.data_product
 
-    for filter_type in [SwiftFilter.uvv, SwiftFilter.uw1]:
+    for filter_type in filters:
         epoch_mask = epoch.FILTER == filter_type
         filtered_epoch = epoch[epoch_mask]
         print(f"Observations in filter {filter_to_file_string(filter_type)}:")
@@ -55,11 +58,14 @@ def pipeline_extra_latex_table_summary(
 ) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
-    epoch_product = epoch_menu(pipeline_files)
-    if epoch_product is None:
+    epoch_id = epoch_menu(pipeline_files)
+    epoch = pipeline_files.read_pipeline_product(
+        PipelineProductType.epoch, epoch_id=epoch_id
+    )
+    if epoch is None:
+        print("Error loading epoch!")
+        wait_for_key()
         return
-    epoch_product.load_product()
-    epoch = epoch_product.data_product
 
     print("")
     print("Obs Date & Filter & Images & Exposure Time & R_h & delta")
@@ -81,3 +87,5 @@ def pipeline_extra_latex_table_summary(
         print(
             f" & {unique_days_str} & {filter_to_file_string(filter_type)} & {num_images} & {exposure_time:4.0f} & {rh:3.2f} & {delta:3.2f} \\\\"
         )
+
+    wait_for_key()

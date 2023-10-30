@@ -3,18 +3,17 @@ from typing import List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from rich import print as rprint
 from tqdm import tqdm
 
 from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
 from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
-from swift_comet_pipeline.pipeline_files import PipelineFiles
 from swift_comet_pipeline.plateau_detect import plateau_detect
 from swift_comet_pipeline.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift_filter import SwiftFilter
 from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.tui import stacked_epoch_menu
-from swift_comet_pipeline.determine_background import yaml_dict_to_background_analysis
+from swift_comet_pipeline.tui import stacked_epoch_menu, wait_for_key
 from swift_comet_pipeline.comet_signal import (
     comet_manual_aperture,
     compare_comet_center_methods,
@@ -27,6 +26,7 @@ from swift_comet_pipeline.count_rate import (
     magnitude_from_count_rate,
 )
 from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
 def do_comet_photometry_at_img_center(
@@ -233,72 +233,68 @@ def q_vs_aperture_radius(
     return df
 
 
-def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig):
+def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
     # select the epoch we want to process
-    epoch_path = stacked_epoch_menu(pipeline_files=pipeline_files)
-    if epoch_path is None:
-        print("No stacked images found! Exiting.")
-        return 1
-    if pipeline_files.stacked_epoch_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.stacked_epoch_products!"
-        )
-        return 1
+    epoch_id = stacked_epoch_menu(pipeline_files=pipeline_files)
+    if epoch_id is None:
+        return
 
     # load the epoch database
-    pipeline_files.stacked_epoch_products[epoch_path].load_product()
-    epoch = pipeline_files.stacked_epoch_products[epoch_path].data_product
+    epoch = pipeline_files.read_pipeline_product(
+        PipelineProductType.stacked_epoch, epoch_id=epoch_id
+    )
+    epoch_path = pipeline_files.get_product_path(
+        PipelineProductType.stacked_epoch, epoch_id=epoch_id
+    )
+    if epoch is None or epoch_path is None:
+        print("Error loading epoch!")
+        wait_for_key()
+        return
+
     print(
         f"Starting analysis of {epoch_path.stem}: observation at {np.mean(epoch.HELIO)} AU"
     )
 
-    # more sanity checks
-    if pipeline_files.stacked_image_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.stacked_image_products!"
-        )
-        return 1
-    if pipeline_files.analysis_bg_subtracted_images is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_bg_subtracted_images!"
-        )
-        return 1
-
+    # TODO: select which method with menu
     stacking_method = StackingMethod.summation
 
-    # load the background-subtracted images into 'uw1' and 'uvv' as numpy arrays
-    uw1_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uw1, stacking_method
-    ]
-    uvv_prod = pipeline_files.analysis_bg_subtracted_images[
-        epoch_path, SwiftFilter.uvv, stacking_method
-    ]
-    if not uw1_prod.product_path.exists() or not uvv_prod.product_path.exists():
-        print(
-            f"The background-subtracted images for {epoch_path.stem} need to be generated! Exiting."
-        )
-        return 1
-    uw1_prod.load_product()
-    uvv_prod.load_product()
-    uw1 = uw1_prod.data_product.data
-    uvv = uvv_prod.data_product.data
+    # load background-subtracted images
+    uw1 = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    uvv = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    if uw1 is None or uvv is None:
+        print("Error loading background-subtracted images!")
+        wait_for_key()
+        return
 
     # load the background analysis values and uncertainties for error propogation
-    if pipeline_files.analysis_background_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_background_products!"
-        )
-        return 1
-    bg_prod = pipeline_files.analysis_background_products[epoch_path, stacking_method]
-    if not bg_prod.product_path.exists():
-        print(
-            f"The background analysis for {epoch_path.stem} has not been done! Exiting."
-        )
-        return 1
-    bg_prod.load_product()
-    bgresults = yaml_dict_to_background_analysis(bg_prod.data_product)
+    uw1_bg = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_analysis,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    uvv_bg = pipeline_files.read_pipeline_product(
+        PipelineProductType.background_analysis,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    if uw1_bg is None or uvv_bg is None:
+        print("Error loading background analysis!")
+        wait_for_key()
+        return
 
     compare_comet_center_methods(uw1, uvv)
 
@@ -309,8 +305,8 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig):
         dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10, 20, 30, 40]],
         # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10]],
         # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [40]],
-        bguw1=bgresults[SwiftFilter.uw1].count_rate_per_pixel,
-        bguvv=bgresults[SwiftFilter.uvv].count_rate_per_pixel,
+        bguw1=uw1_bg.count_rate_per_pixel,
+        bguvv=uvv_bg.count_rate_per_pixel,
     )
 
     # fit_inverse_r(uw1)
@@ -504,15 +500,19 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig):
     ####
     # save q vs r
     ####
-    if pipeline_files.analysis_qh2o_products is None:
-        print(
-            "Pipeline error! This is a bug with pipeline_files.analysis_qh2o_products!"
-        )
-        return 1
-    q_prod = pipeline_files.analysis_qh2o_products[epoch_path]
-    q_prod.data_product = q_vs_r
-    q_prod.save_product()
+    # q_prod = pipeline_files.analysis_qh2o_products[epoch_path]
+    # q_prod.data_product = q_vs_r
+    # q_prod.save_product()
 
+    rprint("[green]Writing q vs aperture radius results ...[/green]")
+    pipeline_files.write_pipeline_product(
+        PipelineProductType.qh2o_vs_aperture_radius,
+        epoch_id=epoch_id,
+        stacking_method=stacking_method,
+        data=q_vs_r,
+    )
+    rprint("[green]Done[/green]")
+    wait_for_key()
     # next step in pipeline should be to decide redness and aperture radius?
 
     # decide radius --> inform vectorial model about extent of grid?
