@@ -5,6 +5,7 @@ from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 
 from swift_comet_pipeline.configs import SwiftProjectConfig
+from swift_comet_pipeline.count_rate import CountRate
 from swift_comet_pipeline.epochs import Epoch
 from swift_comet_pipeline.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift_filter import SwiftFilter
@@ -58,18 +59,13 @@ class RadialProfileSelectionPlot(object):
         self.uvv_ax = self.axes[1][0]
         self.uw1_profile_ax = self.axes[0][1]
         self.uvv_profile_ax = self.axes[1][1]
-        # plt.subplots_adjust(left=0.20, bottom=0.20)
 
         self.uw1_ax.set_aspect("equal")  # type: ignore
         self.uvv_ax.set_aspect("equal")  # type: ignore
 
         self.uw1_ax.set_title("Select radial profile")  # type: ignore
 
-        # self.radius_slider_ax = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor="orange")
-        # self.radius_slider = Slider(
-        #     self.radius_slider_ax, "r", valmin=1, valmax=100, valstep=1, valinit=50
-        # )
-        # self.radius_slider.on_changed(self.onslider)
+        # TODO: add slider for redness percent
         self.dust_redness = DustReddeningPercent(0.0)
         self.beta_parameter = beta_parameter(self.dust_redness)
 
@@ -157,10 +153,6 @@ class RadialProfileSelectionPlot(object):
             self.uvv_extraction_line.set_xdata([x1, x0])
             self.uvv_extraction_line.set_ydata([y1, y0])
 
-        # self.bg_count_rate = bgresult.count_rate_per_pixel.value
-        # self.count_rate_annotation.set_text(self.count_rate_string())
-        # self.img_plot.set_data(self.original_img - self.bg_count_rate)
-
     def update_profile_plot(self):
         if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
             print(
@@ -177,20 +169,32 @@ class RadialProfileSelectionPlot(object):
         uw1_pix_to_km = self.uw1_radial_profile.profile_axis_xs[1:] * self.km_per_pix
         uvv_pix_to_km = self.uvv_radial_profile.profile_axis_xs[1:] * self.km_per_pix
         self.uw1_profile_plot = self.uw1_profile_ax.plot(
-            # np.log(self.uw1_radial_profile.profile_axis_xs[1:]),
             uw1_pix_to_km,
+            # np.log10(uw1_pix_to_km),
             self.uw1_radial_profile.pixel_values[1:],
+            # np.log10(self.uw1_radial_profile.pixel_values[1:]),
         )
+        # draw horizontal shaded bars for 1, 2, and 3 sigma background levels: overlaying with alpha values will make lower sigmas darker
+        for i in range(1, 4):
+            self.uw1_profile_ax.axhspan(
+                -i * self.uw1_bg.count_rate_per_pixel.sigma,
+                i * self.uw1_bg.count_rate_per_pixel.sigma,
+                color="blue",
+                alpha=0.05,
+            )
         self.uvv_profile_plot = self.uvv_profile_ax.plot(
-            # np.log10(self.uvv_radial_profile.profile_axis_xs[1:]),
             uvv_pix_to_km,
+            # np.log10(uvv_pix_to_km),
             self.uvv_radial_profile.pixel_values[1:],
+            # np.log10(self.uvv_radial_profile.pixel_values[1:]),
         )
-
-    # def onslider(self, new_value):
-    #     self.aperture.set_radius(new_value)
-    #     self.recalc_background()
-    #     self.fig.canvas.draw_idle()  # type: ignore
+        for i in range(1, 4):
+            self.uvv_profile_ax.axhspan(
+                -i * self.uvv_bg.count_rate_per_pixel.sigma,
+                i * self.uvv_bg.count_rate_per_pixel.sigma,
+                color="blue",
+                alpha=0.05,
+            )
 
     def update_q_from_profiles(self):
         if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
@@ -208,8 +212,23 @@ class RadialProfileSelectionPlot(object):
             beta=self.beta_parameter,
         )
 
+        # if we subtract nothing from the uvv filter, this is an absolute upper limit on comet signal
+        self.abs_upper_limit_flux_OH = OH_flux_from_count_rate(
+            uw1=self.uw1_count_rate,
+            uvv=CountRate(value=0.0, sigma=self.uvv_bg.count_rate_per_pixel.sigma),
+            beta=self.beta_parameter,
+        )
+        print(self.abs_upper_limit_flux_OH)
+
         self.num_OH = flux_OH_to_num_OH(
             flux_OH=self.flux_OH,
+            helio_r_au=self.helio_r_au,
+            helio_v_kms=self.helio_v_kms,
+            delta_au=self.delta,
+        )
+
+        self.abs_upper_limit_num_OH = flux_OH_to_num_OH(
+            flux_OH=self.abs_upper_limit_flux_OH,
             helio_r_au=self.helio_r_au,
             helio_v_kms=self.helio_v_kms,
             delta_au=self.delta,
@@ -219,14 +238,18 @@ class RadialProfileSelectionPlot(object):
             helio_r_au=self.helio_r_au, num_OH=self.num_OH
         )
 
+        self.abs_upper_limit_q_h2o = num_OH_to_Q_vectorial(
+            helio_r_au=self.helio_r_au, num_OH=self.abs_upper_limit_num_OH
+        )
+
+        detection_str = ""
         if self.q_h2o.value < 0.0:
-            self.fig.suptitle(
-                f"Q: No detection {self.q_h2o.value:3.2e} +/- {self.q_h2o.sigma:3.2e}\nTime from perihelion: {self.time_from_perihelion.to(u.day)}"
-            )
-        else:
-            self.fig.suptitle(
-                f"Q: {self.q_h2o.value:3.2e} +/- {self.q_h2o.sigma:3.2e}\nTime from perihelion: {self.time_from_perihelion.to(u.day)}"
-            )
+            detection_str = "(No detection)"
+        title_str = (
+            f"{detection_str} Q: {self.q_h2o.value:3.2e} +/- {self.q_h2o.sigma:3.2e}\nTime from perihelion: {self.time_from_perihelion.to(u.day)}\n"
+            + f"Q absolute upper limit: {self.abs_upper_limit_q_h2o.value:3.2e} +/- {self.abs_upper_limit_q_h2o.sigma:3.2e}"
+        )
+        self.fig.suptitle(title_str)
 
     def show(self):
         plt.show()
@@ -237,7 +260,7 @@ def profile_selection_plot(
 ) -> None:
     # TODO: change this menu to only show background-subtracted images
     epoch_id = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis=True
+        pipeline_files=pipeline_files, require_background_analysis_to_be=True
     )
     if epoch_id is None:
         return

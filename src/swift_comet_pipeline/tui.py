@@ -101,12 +101,17 @@ def epoch_menu(pipeline_files: PipelineFiles) -> Optional[PipelineEpochID]:
 
 
 def stacked_epoch_menu(
-    pipeline_files: PipelineFiles, require_background_analysis: bool = False
+    pipeline_files: PipelineFiles,
+    require_background_analysis_to_be: Optional[bool] = None,
 ) -> Optional[PipelineEpochID]:
     """
     Allows selection of a stacked epoch via a text menu, showing only epochs that have been stacked,
     returning a path to the associated epoch that generated the stack, which is how we find products
     associated with that epoch in PipelineFiles
+
+    If require_background_analysis_to_be is set to True, then only epochs with completed background analysis are shown.
+    If it is false, only epochs without background analysis are shown.
+    If it is None, no filtering occurs
     """
     epoch_ids = pipeline_files.get_epoch_ids()
     if epoch_ids is None:
@@ -119,7 +124,7 @@ def stacked_epoch_menu(
         if pipeline_files.exists(PipelineProductType.stacked_epoch, epoch_id=epoch_id)
     ]
 
-    if require_background_analysis:
+    if require_background_analysis_to_be is not None:
         filters = [SwiftFilter.uw1, SwiftFilter.uvv]
         stacking_methods = [StackingMethod.summation, StackingMethod.median]
 
@@ -135,7 +140,9 @@ def stacked_epoch_menu(
             )
 
         filtered_epoch_ids = [
-            epoch_id for epoch_id in filtered_epoch_ids if all_bgs(epoch_id)
+            epoch_id
+            for epoch_id in filtered_epoch_ids
+            if all_bgs(epoch_id) == require_background_analysis_to_be
         ]
 
     if len(filtered_epoch_ids) == 0:

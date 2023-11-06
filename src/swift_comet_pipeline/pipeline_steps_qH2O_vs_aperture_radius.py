@@ -63,7 +63,7 @@ def q_vs_aperture_radius(
     print(f"Guessing radius of 1e5 km or {r_pix} pixels")
 
     aperture_radii, r_step = np.linspace(1, 2 * r_pix, num=5 * r_pix, retstep=True)
-    redness_to_beta = {x.reddening: beta_parameter(x) for x in dust_rednesses}
+    redness_to_beta = {x: beta_parameter(x) for x in dust_rednesses}
 
     count_uw1 = []
     count_uvv = []
@@ -93,7 +93,7 @@ def q_vs_aperture_radius(
         flux_OH = OH_flux_from_count_rate(
             uw1=cuw1,
             uvv=cuvv,
-            beta=redness_to_beta[redness.reddening],
+            beta=redness_to_beta[redness],
         )
         flux.append(flux_OH)
 
@@ -113,7 +113,7 @@ def q_vs_aperture_radius(
     df = pd.DataFrame(
         {
             "aperture_radius": rs,
-            "dust_redness": list(map(lambda x: int(x.reddening), red_list)),
+            "dust_redness": list(map(lambda x: int(x), red_list)),
             "counts_uw1": [x.value for x in count_uw1],
             "sigma_counts_uw1": [x.sigma for x in count_uw1],
             "counts_uvv": [x.value for x in count_uvv],
@@ -238,7 +238,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
 
     # select the epoch we want to process
     epoch_id = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis=True
+        pipeline_files=pipeline_files, require_background_analysis_to_be=True
     )
     if epoch_id is None:
         return
@@ -304,7 +304,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
         epoch=epoch,
         uw1=uw1,
         uvv=uvv,
-        dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10, 20, 30, 40]],
+        dust_rednesses=[DustReddeningPercent(x) for x in [0, 10, 20, 30, 40]],
         # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [0, 10]],
         # dust_rednesses=[DustReddeningPercent(reddening=x) for x in [40]],
         bguw1=uw1_bg.count_rate_per_pixel,

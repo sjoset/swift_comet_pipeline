@@ -52,6 +52,8 @@ def pipeline_extra_epoch_summary(
         )
         print("")
 
+    wait_for_key()
+
 
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,

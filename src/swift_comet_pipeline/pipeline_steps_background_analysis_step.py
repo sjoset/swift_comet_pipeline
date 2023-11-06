@@ -29,7 +29,9 @@ def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundR
 def background_analysis_step(swift_project_config: SwiftProjectConfig):
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 
-    epoch_id = stacked_epoch_menu(pipeline_files=pipeline_files)
+    epoch_id = stacked_epoch_menu(
+        pipeline_files=pipeline_files, require_background_analysis_to_be=False
+    )
     if epoch_id is None:
         wait_for_key()
         return

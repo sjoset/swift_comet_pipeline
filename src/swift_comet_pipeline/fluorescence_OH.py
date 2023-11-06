@@ -26,7 +26,7 @@ class FluorescenceGFactor1AU:
 
 def read_gfactor_1au(fluorescence_file: pathlib.Path) -> FluorescenceGFactor1AU:
     df = pd.read_csv(fluorescence_file)
-    helio_vs = df["heliocentric_v_kms"].values
+    helio_vs = np.array(df["heliocentric_v_kms"].values)
 
     # add up channels and attach units as described by file
     gfactors = ((df["0-0"] + df["1-0"] + df["1-1"]).values) * 1e-16
@@ -48,6 +48,7 @@ def flux_OH_to_num_OH(
             return NumOH(value=0, sigma=0)
         fluorescence_data = read_gfactor_1au(fluorescence_file=spc.oh_fluorescence_path)
 
+    # TODO: cite the source of the g factor data
     g1au_interpolation = interp1d(
         fluorescence_data.helio_vs, fluorescence_data.gfactors, kind="cubic"
     )

@@ -101,12 +101,6 @@ def bg_manual_aperture_stats(
 
     aperture_stats = ApertureStats(img, background_aperture)
 
-    # count_rate_per_pixel = aperture_stats.median[0]
-    # # error of median is a factor larger than sigma
-    # error_abs = 1.2533 * aperture_stats.std[0]
-    #
-    # return CountRatePerPixel(value=count_rate_per_pixel, sigma=error_abs)
-
     return aperture_stats
 
 
@@ -251,7 +245,7 @@ class BackgroundAperturePlacementPlot(object):
         return f"Background: {self.bg_count_rate:07.6f} counts per second per pixel"
 
     def recalc_background(self):
-        bgresult = bg_manual_aperture_median(
+        bgresult = bg_manual_aperture_mean(
             img=self.original_img,
             aperture_x=self.aperture.get_center()[0],
             aperture_y=self.aperture.get_center()[1],
@@ -274,7 +268,7 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     bg = BackgroundAperturePlacementPlot(img, filter_type=filter_type)
     bg.show()
 
-    return bg_manual_aperture_median(
+    return bg_manual_aperture_mean(
         img=img,
         aperture_x=bg.aperture.get_center()[0],
         aperture_y=bg.aperture.get_center()[1],

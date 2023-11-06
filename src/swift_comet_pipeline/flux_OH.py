@@ -67,8 +67,7 @@ def OH_flux_from_count_rate(
     uvv: CountRate,
     beta: float,
 ) -> OHFlux:
-    # TODO: read Lucy's thesis and figure out why the conversion units are 1.275e-12
-    # TODO: start tagging with astropy units to avoid conversion units?
+    # this comes from an OH spectral model in Bodewits et. al 2019
     alpha = 1.2750906353215913e-12
 
     oh_flux = alpha * (uw1.value - beta * uvv.value)

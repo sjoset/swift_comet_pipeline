@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
 import pathlib
-from dataclasses import dataclass
+from typing import TypeAlias
 
 from swift_comet_pipeline.effective_areas import read_effective_area
 
 __all__ = ["reddening_correction", "DustReddeningPercent"]
 
 
-# TODO: this can just be a type alias
-@dataclass
-class DustReddeningPercent:
-    reddening: float
+DustReddeningPercent: TypeAlias = float
 
 
 def reddening_correction(
@@ -46,6 +43,7 @@ def reddening_correction(
         wave_v += uvv_lambdas[i] * uvv_responses[i] * delta_wave_v
         ea_v += uvv_responses[i] * delta_wave_v
     wave_v = wave_v / ea_v
+    # TODO: magic number
     # get reddening correction factor
-    middle_factor = (wave_v - wave_uw1) * dust_redness.reddening / 200000
+    middle_factor = (wave_v - wave_uw1) * dust_redness / 200000
     return (1 - middle_factor) / (1 + middle_factor)

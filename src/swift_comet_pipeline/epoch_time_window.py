@@ -19,7 +19,7 @@ from swift_comet_pipeline.epochs import epoch_from_obs_log
 __all__ = [
     "select_epoch_time_window",
     "epochs_from_time_delta",
-    "time_delta_loop",
+    # "time_delta_loop",
 ]
 
 
@@ -87,67 +87,67 @@ def epochs_from_time_delta(
     return epoch_list
 
 
-def time_delta_loop(obs_log: SwiftObservationLog) -> List[SwiftObservationLog]:
-    epoch_list = []
-
-    finished = False
-    time_units = [u.hour, u.day, u.s]
-
-    num_observations = len(obs_log)
-    print(f"Total number of uw1 or uvv observations in dataset: {num_observations}")
-
-    while finished is False:
-        time_delta_raw = get_float("Enter max time delta: ")
-        time_unit = time_units[get_selection(time_units)]
-        time_delta = time_delta_raw * time_unit
-
-        epoch_list = epochs_from_time_delta(
-            obs_log=obs_log, max_time_between_obs=time_delta
-        )
-        print(f"{len(epoch_list)} epochs identified with time delta of {time_delta}:")
-        for i, epoch in enumerate(epoch_list):
-            epoch_start_raw = Time(np.min(epoch.MID_TIME))
-            epoch_end_raw = Time(np.max(epoch.MID_TIME))
-            epoch_start = epoch_start_raw.ymdhms
-            epoch_end = epoch_end_raw.ymdhms
-            epoch_length = (epoch_end_raw - epoch_start_raw).to(u.hour)
-            observations_in_epoch = len(epoch)
-            uw1_observations = len(epoch[epoch.FILTER == SwiftFilter.uw1])
-            uvv_observations = len(epoch[epoch.FILTER == SwiftFilter.uvv])
-            if i == 0:
-                prev_epoch = epoch_list[0]
-                delta_t_str = ""
-            else:
-                prev_epoch = epoch_list[i - 1]
-                separation_from_prev_epoch = epoch_start_raw - Time(
-                    np.max(prev_epoch.MID_TIME)
-                )
-                delta_t_str = f"\tSeparation from last epoch: {separation_from_prev_epoch.to(u.day):05.1f} ({separation_from_prev_epoch.to(u.hour):07.1f})"
-            print(
-                f"\tStart: {epoch_start.day:2d} {calendar.month_abbr[epoch_start.month]} {epoch_start.year}"
-                + f"\tEnd: {epoch_end.day:2d} {calendar.month_abbr[epoch_end.month]} {epoch_end.year}"
-                + f"\tDuration: {epoch_length:3.2f}"
-                + f"\tObservations: {observations_in_epoch:3d}"
-                + f"\tUW1: {uw1_observations:3d}"
-                + f"\tUVV: {uvv_observations:3d}"
-                + delta_t_str
-            )
-
-        total_in_epochs = sum([len(epoch) for epoch in epoch_list])
-        print(f"Total observations covered by epochs: {total_in_epochs}")
-
-        if total_in_epochs != num_observations:
-            print(
-                f"There are {num_observations - total_in_epochs} observations excluded from epoch list!"
-                + "Try adjusting the timing window."
-            )
-        else:
-            print("All observations accounted for in epoch selection!")
-
-        print("Try new time window?")
-        finished = not get_yes_no()
-
-    return epoch_list
+# def time_delta_loop(obs_log: SwiftObservationLog) -> List[SwiftObservationLog]:
+#     epoch_list = []
+#
+#     finished = False
+#     time_units = [u.hour, u.day, u.s]
+#
+#     num_observations = len(obs_log)
+#     print(f"Total number of uw1 or uvv observations in dataset: {num_observations}")
+#
+#     while finished is False:
+#         time_delta_raw = get_float("Enter max time delta: ")
+#         time_unit = time_units[get_selection(time_units)]
+#         time_delta = time_delta_raw * time_unit
+#
+#         epoch_list = epochs_from_time_delta(
+#             obs_log=obs_log, max_time_between_obs=time_delta
+#         )
+#         print(f"{len(epoch_list)} epochs identified with time delta of {time_delta}:")
+#         for i, epoch in enumerate(epoch_list):
+#             epoch_start_raw = Time(np.min(epoch.MID_TIME))
+#             epoch_end_raw = Time(np.max(epoch.MID_TIME))
+#             epoch_start = epoch_start_raw.ymdhms
+#             epoch_end = epoch_end_raw.ymdhms
+#             epoch_length = (epoch_end_raw - epoch_start_raw).to(u.hour)
+#             observations_in_epoch = len(epoch)
+#             uw1_observations = len(epoch[epoch.FILTER == SwiftFilter.uw1])
+#             uvv_observations = len(epoch[epoch.FILTER == SwiftFilter.uvv])
+#             if i == 0:
+#                 prev_epoch = epoch_list[0]
+#                 delta_t_str = ""
+#             else:
+#                 prev_epoch = epoch_list[i - 1]
+#                 separation_from_prev_epoch = epoch_start_raw - Time(
+#                     np.max(prev_epoch.MID_TIME)
+#                 )
+#                 delta_t_str = f"\tSeparation from last epoch: {separation_from_prev_epoch.to(u.day):05.1f} ({separation_from_prev_epoch.to(u.hour):07.1f})"
+#             print(
+#                 f"\tStart: {epoch_start.day:2d} {calendar.month_abbr[epoch_start.month]} {epoch_start.year}"
+#                 + f"\tEnd: {epoch_end.day:2d} {calendar.month_abbr[epoch_end.month]} {epoch_end.year}"
+#                 + f"\tDuration: {epoch_length:3.2f}"
+#                 + f"\tObservations: {observations_in_epoch:3d}"
+#                 + f"\tUW1: {uw1_observations:3d}"
+#                 + f"\tUVV: {uvv_observations:3d}"
+#                 + delta_t_str
+#             )
+#
+#         total_in_epochs = sum([len(epoch) for epoch in epoch_list])
+#         print(f"Total observations covered by epochs: {total_in_epochs}")
+#
+#         if total_in_epochs != num_observations:
+#             print(
+#                 f"There are {num_observations - total_in_epochs} observations excluded from epoch list!"
+#                 + "Try adjusting the timing window."
+#             )
+#         else:
+#             print("All observations accounted for in epoch selection!")
+#
+#         print("Try new time window?")
+#         finished = not get_yes_no()
+#
+#     return epoch_list
 
 
 class EpochTimeWindowSelect(object):
