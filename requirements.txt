@@ -1,9 +1,0 @@
-astropy
-astroquery
-numpy
-pandas
-scipy
-photutils
-matplotlib
-tqdm
-pyarrow

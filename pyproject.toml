@@ -1,6 +1,30 @@
-[project]
-name = "sushipotato"
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "swift_comet_pipeline"
 version = "0.0.1"
-description = "Pipeline for determining water production rates from the Swift telescope's UVOT images"
-requires-python = ">3.7"
+authors = [ "Shawn Oset" ]
+description = "Data reduction pipeline for determining water production rates from the Swift telescope's UVOT images"
 classifiers = ["Programming Language :: Python :: 3",]
+readme = "README.md"
+license = "LICENSE"
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.13"
+matplotlib = ">=3.8.0"
+numpy = ">=1.26.1"
+scipy = ">=1.11.3"
+astropy = ">=5.3.4"
+astroquery = ">=0.4.6"
+pandas = ">=2.1.1"
+photutils = ">=1.9.0"
+tqdm = ">=4.66.1"
+pyarrow = ">=13.0.0"
+rich = "^13.6.0"
+
+[tool.poetry.scripts]
+scp_tui = 'swift_comet_pipeline.scp_tui:main'
+
+[tool.poetry.dev-dependencies]
