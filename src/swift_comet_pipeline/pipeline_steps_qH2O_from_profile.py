@@ -43,6 +43,7 @@ class RadialProfileSelectionPlot(object):
         self.km_per_pix = np.mean(epoch.KM_PER_PIX)
 
         # TODO: add calculation of perihelion from orbital data or as a given from the user
+        # this is particular to C/2013US10
         self.perihelion = Time("2015-11-15")
         self.time_from_perihelion = Time(np.mean(epoch.MID_TIME)) - self.perihelion
         # print(f"Time to perihelion: {self.time_to_perihelion.to(u.day)}")
@@ -68,6 +69,9 @@ class RadialProfileSelectionPlot(object):
         # TODO: add slider for redness percent
         self.dust_redness = DustReddeningPercent(0.0)
         self.beta_parameter = beta_parameter(self.dust_redness)
+
+        # extract profiles in a cone around the selection from -angle to +angle from the profile selection vector
+        self.profile_extraction_cone_angle = np.pi / 16
 
         # Image coordinates for extracting the profile: start at comet center, and stop at arbitrary point away from center for initialization
         self.profile_begin: PixelCoord = self.image_center
@@ -131,6 +135,16 @@ class RadialProfileSelectionPlot(object):
         r = int(np.round(r))
         theta = np.arctan2(y1 - y0, x1 - x0)
 
+        # lines from comet center to the edges of the extraction cone
+        cone_neg_endpoint: PixelCoord = PixelCoord(
+            x=r * np.cos(theta - self.profile_extraction_cone_angle) + x0,
+            y=r * np.sin(theta - self.profile_extraction_cone_angle) + y0,
+        )
+        cone_pos_endpoint: PixelCoord = PixelCoord(
+            x=r * np.cos(theta + self.profile_extraction_cone_angle) + x0,
+            y=r * np.sin(theta + self.profile_extraction_cone_angle) + y0,
+        )
+
         self.uw1_radial_profile = extract_comet_radial_profile(
             img=self.uw1_img, comet_center=self.image_center, r=r, theta=theta
         )
@@ -145,6 +159,42 @@ class RadialProfileSelectionPlot(object):
             self.uvv_extraction_line = plt.Line2D(
                 xdata=[x1, x0], ydata=[y1, y0], lw=1, color="white", alpha=0.3
             )
+
+            # "left" edge of cone, each graph needs a separate line object
+            self.cone_neg_line_uw1 = plt.Line2D(
+                xdata=[cone_neg_endpoint.x, x0],
+                ydata=[cone_neg_endpoint.y, y0],
+                lw=1,
+                color="black",
+                alpha=0.2,
+            )
+            self.cone_neg_line_uvv = plt.Line2D(
+                xdata=[cone_neg_endpoint.x, x0],
+                ydata=[cone_neg_endpoint.y, y0],
+                lw=1,
+                color="black",
+                alpha=0.2,
+            )
+            self.uw1_ax.add_line(self.cone_neg_line_uw1)
+            self.uvv_ax.add_line(self.cone_neg_line_uvv)
+
+            self.cone_pos_line_uw1 = plt.Line2D(
+                xdata=[cone_pos_endpoint.x, x0],
+                ydata=[cone_pos_endpoint.y, y0],
+                lw=1,
+                color="black",
+                alpha=0.2,
+            )
+            self.cone_pos_line_uvv = plt.Line2D(
+                xdata=[cone_pos_endpoint.x, x0],
+                ydata=[cone_pos_endpoint.y, y0],
+                lw=1,
+                color="black",
+                alpha=0.2,
+            )
+            self.uw1_ax.add_line(self.cone_pos_line_uw1)
+            self.uvv_ax.add_line(self.cone_pos_line_uvv)
+
             self.uw1_ax.add_line(self.uw1_extraction_line)  # type: ignore
             self.uvv_ax.add_line(self.uvv_extraction_line)  # type: ignore
         else:
@@ -152,6 +202,15 @@ class RadialProfileSelectionPlot(object):
             self.uw1_extraction_line.set_ydata([y1, y0])
             self.uvv_extraction_line.set_xdata([x1, x0])
             self.uvv_extraction_line.set_ydata([y1, y0])
+
+            self.cone_neg_line_uw1.set_xdata([cone_neg_endpoint.x, x0])
+            self.cone_neg_line_uvv.set_xdata([cone_neg_endpoint.x, x0])
+            self.cone_neg_line_uw1.set_ydata([cone_neg_endpoint.y, y0])
+            self.cone_neg_line_uvv.set_ydata([cone_neg_endpoint.y, y0])
+            self.cone_pos_line_uw1.set_xdata([cone_pos_endpoint.x, x0])
+            self.cone_pos_line_uvv.set_xdata([cone_pos_endpoint.x, x0])
+            self.cone_pos_line_uw1.set_ydata([cone_pos_endpoint.y, y0])
+            self.cone_pos_line_uvv.set_ydata([cone_pos_endpoint.y, y0])
 
     def update_profile_plot(self):
         if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
