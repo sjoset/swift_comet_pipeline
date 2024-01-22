@@ -213,14 +213,14 @@ class EpochImagePlot(object):
         )
 
     def mark_sources(self):
-        pass
-        # if self.aperture_patches is not None:
-        #     self.ax.patches.clear()  # type: ignore
-        # epoch_row = self.epoch.iloc[self.current_image_index]
-        # if epoch_row.FILTER == SwiftFilter.uvv:
-        #     self.mark_sources_uvv()
-        # else:
-        #     self.mark_sources_uw1()
+        # pass
+        if self.aperture_patches is not None:
+            self.ax.patches.clear()  # type: ignore
+        epoch_row = self.epoch.iloc[self.current_image_index]
+        if epoch_row.FILTER == SwiftFilter.uvv:
+            self.mark_sources_uvv()
+        else:
+            self.mark_sources_uw1()
 
     def mark_sources_uw1(self):
         mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)

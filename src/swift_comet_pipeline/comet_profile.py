@@ -2,13 +2,19 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 
-from astropy.modeling.models import Gaussian1D
+from photutils.aperture import ApertureStats, CircularAnnulus, CircularAperture
 from scipy.integrate import simpson
-from astropy import modeling
-
-from swift_comet_pipeline.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.epochs import Epoch
+from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, OHFlux
+from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.uvot_image import (
+    PixelCoord,
+    SwiftUVOTImage,
+    get_uvot_image_center,
+)
 from swift_comet_pipeline.count_rate import CountRate, CountRatePerPixel
 
 
@@ -18,9 +24,7 @@ __all__ = [
     "extract_comet_radial_profile",
     "count_rate_from_comet_radial_profile",
     "count_rate_from_comet_profile",
-    "fit_comet_profile_gaussian",
-    "plot_fitted_gaussian_profile",
-    "estimate_comet_radius_at_angle",
+    "surface_brightness_profiles",
 ]
 
 
@@ -164,7 +168,7 @@ def count_rate_from_comet_radial_profile(
         profile_sigma**2 + (np.pi * comet_profile._radius**2 * bg.sigma**2)
     )
 
-    return CountRate(value=count_rate, sigma=propogated_sigma)
+    return CountRate(value=float(count_rate), sigma=propogated_sigma)
 
 
 def count_rate_from_comet_profile(
@@ -201,120 +205,400 @@ def count_rate_from_comet_profile(
         + (np.pi * np.max(comet_profile.profile_axis_xs) ** 2 * bg.sigma**2)
     )
 
-    return CountRate(value=count_rate, sigma=propogated_sigma)
+    return CountRate(value=float(count_rate), sigma=propogated_sigma)
 
 
-def fit_comet_profile_gaussian(comet_profile: CometProfile) -> Optional[Gaussian1D]:
-    """Takes a CometRadialProfile and returns a function f(r) generated from the profile's best-fit gaussian"""
-
-    if not comet_profile.center_is_comet_peak:
-        print("This function is intended for profiles centered on the comet peak!")
-        return None
-
-    lsqf = modeling.fitting.LevMarLSQFitter()
-    gaussian = modeling.models.Gaussian1D()
-    fitted_gaussian = lsqf(
-        gaussian, comet_profile.profile_axis_xs, comet_profile.pixel_values
-    )
-
-    return fitted_gaussian
-
-
-def estimate_comet_radius_at_angle(
+def comet_manual_aperture(
     img: SwiftUVOTImage,
-    comet_center: PixelCoord,
-    radius_guess: int,
-    theta: float,
-    sigma_threshold: float = 4.0,
-) -> float:
-    comet_radial_profile = extract_comet_radial_profile(
-        img=img,
-        comet_center=comet_center,
-        theta=theta,
-        r=radius_guess,
+    aperture_x: float,
+    aperture_y: float,
+    aperture_radius: float,
+    bg: CountRatePerPixel,
+) -> CountRate:
+    comet_aperture = CircularAperture((aperture_x, aperture_y), r=aperture_radius)
+    comet_aperture_stats = ApertureStats(img, comet_aperture)
+
+    comet_count_rate = float(comet_aperture_stats.sum)
+    # TODO: this is not a good error calculation but it will have to do for now
+    # TODO: use calc_total_error here
+    comet_count_rate_sigma = comet_aperture_stats.std
+
+    propogated_sigma = np.sqrt(
+        comet_count_rate_sigma**2
+        + (comet_aperture_stats.sum_aper_area.value * bg.sigma**2)
     )
-    comet_profile = CometProfile.from_radial_profile(
-        radial_profile=comet_radial_profile
+
+    return CountRate(value=comet_count_rate, sigma=propogated_sigma)
+
+
+@dataclass
+class SurfaceBrightnessProfiles:
+    r_inner_pix: np.ndarray
+    r_outer_pix: np.ndarray
+
+
+def surface_brightness_profiles(
+    uw1: SwiftUVOTImage, uvv: SwiftUVOTImage, r_max: int
+) -> pd.DataFrame:
+    # fix the annular aperture thickness at one pixel
+    radial_slice_thickness: int = 1
+
+    comet_peak = get_uvot_image_center(uw1)
+    # first slice is a circular aperture centered on the comet, after which we move to annular apertures
+    center_aperture = CircularAperture(
+        positions=(comet_peak.x, comet_peak.y), r=radial_slice_thickness
+    )
+    center_uw1_stats = ApertureStats(data=uw1, aperture=center_aperture)
+    center_uvv_stats = ApertureStats(data=uvv, aperture=center_aperture)
+
+    # construct annular apertures
+    r_inner_max = r_max - radial_slice_thickness
+    num_apertures = r_max - radial_slice_thickness
+    inner_aperture_rs = np.linspace(
+        start=radial_slice_thickness, stop=r_inner_max, endpoint=True, num=num_apertures
+    )
+    annular_apertures = [
+        CircularAnnulus((comet_peak.x, comet_peak.y), r_in=r_inner, r_out=r_inner + 1)
+        for r_inner in inner_aperture_rs
+    ]
+
+    uw1_stats = [ApertureStats(data=uw1, aperture=ap) for ap in annular_apertures]
+    uvv_stats = [ApertureStats(data=uvv, aperture=ap) for ap in annular_apertures]
+
+    # add results to the dataframe, by pasting together the center results with the results from
+    # the aperture list
+    df = pd.DataFrame()
+    df["r_inner_pix"] = np.append(np.array([0]), inner_aperture_rs)
+    df["r_outer_pix"] = df["r_inner_pix"] + 1
+    df["surface_brightness_uw1_median"] = np.append(
+        center_uw1_stats.median, [x.median for x in uw1_stats]
+    )
+    df["surface_brightness_uw1_median_err"] = np.append(
+        center_uw1_stats.std, [1.2533 * x.std for x in uw1_stats]
+    )
+    df["surface_brightness_uw1_mean"] = np.append(
+        center_uw1_stats.mean, [x.mean for x in uw1_stats]
+    )
+    df["surface_brightness_uw1_mean_err"] = np.append(
+        center_uw1_stats.std, [x.std for x in uw1_stats]
+    )
+    df["surface_brightness_uvv_median"] = np.append(
+        center_uvv_stats.median, [x.median for x in uvv_stats]
+    )
+    df["surface_brightness_uvv_median_err"] = np.append(
+        center_uvv_stats.std, [1.2533 * x.std for x in uvv_stats]
+    )
+    df["surface_brightness_uvv_mean"] = np.append(
+        center_uvv_stats.mean, [x.mean for x in uvv_stats]
+    )
+    df["surface_brightness_uvv_mean_err"] = np.append(
+        center_uvv_stats.std, [x.std for x in uvv_stats]
     )
 
-    fitted = fit_comet_profile_gaussian(comet_profile)
-    if fitted is None or fitted.stddev is None or fitted.stddev.value is None:
-        print("Unable to estimate comet radius! Bad fit?")
-        return 0.0
+    df["cumulative_counts_uw1_mean"] = df.surface_brightness_uw1_mean.cumsum()
+    # df["cumulative_counts_uw1_mean_err1"] = df.surface_brightness_uw1_mean_err.cumsum()
+    df["cumulative_counts_uw1_mean_err"] = np.sqrt(
+        np.cumsum(np.square(df.cumulative_counts_uw1_mean))
+    )
+    df["cumulative_counts_uw1_median"] = df.surface_brightness_uw1_median.cumsum()
+    # TODO: finish converting error to quadrature
+    # df[
+    #     "cumulative_counts_uw1_median_err"
+    # ] = df.surface_brightness_uw1_median_err.cumsum()
+    df["cumulative_counts_uw1_median_err"] = np.sqrt(
+        np.cumsum(np.square(df.cumulative_counts_uw1_median))
+    )
+    df["cumulative_counts_uvv_mean"] = df.surface_brightness_uvv_mean.cumsum()
+    # df["cumulative_counts_uvv_mean_err"] = df.surface_brightness_uvv_mean_err.cumsum()
+    df["cumulative_counts_uvv_mean_err"] = np.sqrt(
+        np.cumsum(np.square(df.cumulative_counts_uvv_mean))
+    )
+    df["cumulative_counts_uvv_median"] = df.surface_brightness_uvv_median.cumsum()
+    # df[
+    #     "cumulative_counts_uvv_median_err"
+    # ] = df.surface_brightness_uvv_median_err.cumsum()
+    df["cumulative_counts_uvv_median_err"] = np.sqrt(
+        np.cumsum(np.square(df.cumulative_counts_uvv_median))
+    )
 
-    # go up to a few standard deviations from the center of the comet
-    return sigma_threshold * float(fitted.stddev.value)
+    return df
 
 
-def plot_fitted_gaussian_profile(
-    comet_profile: CometProfile,
-    fitted_model: Gaussian1D,
-    sigma_threshold: float,
-    plot_title: str,
-) -> None:
-    if fitted_model.stddev.value is None:
-        print("Fitted gaussian has no information about standard deviation!")
-    else:
-        plt.vlines(
-            x=[
-                -sigma_threshold * fitted_model.stddev.value,
-                sigma_threshold * fitted_model.stddev.value,
-            ],
-            ymin=0,
-            ymax=np.max(comet_profile.pixel_values),
-            color="r",
+def qh2o_from_surface_brightness_profiles(
+    df: pd.DataFrame, epoch: Epoch, beta: float
+) -> pd.DataFrame:
+    helio_r_au = np.mean(epoch.HELIO)
+    helio_v_kms = np.mean(epoch.HELIO_V)
+    delta = np.mean(epoch.OBS_DIS)
+
+    df["oh_brightness_median"] = (
+        df.surface_brightness_uw1_median - beta * df.surface_brightness_uvv_median
+    )
+    df["oh_brightness_mean"] = (
+        df.surface_brightness_uw1_mean - beta * df.surface_brightness_uvv_mean
+    )
+    df["oh_brightness_running_total_median"] = df.oh_brightness_median.cumsum()
+    df["oh_brightness_running_total_mean"] = df.oh_brightness_mean.cumsum()
+
+    flux_median = []
+    flux_median_err = []
+    flux_median_max = []
+    flux_median_max_err = []
+    for _, row in df.iterrows():
+        uw1cr = CountRate(
+            value=row.cumulative_counts_uw1_median,
+            sigma=row.cumulative_counts_uw1_median_err,
         )
-    plt.scatter(comet_profile.profile_axis_xs, comet_profile.pixel_values)
-    plt.plot(
-        comet_profile.profile_axis_xs,
-        fitted_model(comet_profile.profile_axis_xs),
-    )
-    plt.title(plot_title)
-    plt.show()
+        uvvcr = CountRate(
+            value=row.cumulative_counts_uvv_median,
+            sigma=row.cumulative_counts_uvv_median_err,
+        )
+        flux_OH = OH_flux_from_count_rate(uw1=uw1cr, uvv=uvvcr, beta=beta)
+        flux_median.append(flux_OH.value)
+        flux_median_err.append(flux_OH.sigma)
+
+        flux_max = OH_flux_from_count_rate(
+            uw1=uw1cr, uvv=CountRate(value=0.0, sigma=0.0), beta=beta
+        )
+        flux_median_max.append(flux_max.value)
+        flux_median_max_err.append(flux_max.sigma)
+
+    df["flux_median"] = flux_median
+    df["flux_median_err"] = flux_median_err
+    df["flux_median_max"] = flux_median_max
+    df["flux_median_max_err"] = flux_median_max_err
+
+    flux_mean = []
+    flux_mean_err = []
+    for _, row in df.iterrows():
+        uw1cr = CountRate(
+            value=row.cumulative_counts_uw1_mean,
+            sigma=row.cumulative_counts_uw1_mean_err,
+        )
+        uvvcr = CountRate(
+            value=row.cumulative_counts_uvv_mean,
+            sigma=row.cumulative_counts_uvv_mean_err,
+        )
+        flux_OH = OH_flux_from_count_rate(uw1=uw1cr, uvv=uvvcr, beta=beta)
+        flux_mean.append(flux_OH.value)
+        flux_mean_err.append(flux_OH.sigma)
+
+    df["flux_mean"] = flux_mean
+    df["flux_mean_err"] = flux_mean_err
+
+    num_oh_median = []
+    num_oh_median_err = []
+    qs_median = []
+    qs_median_err = []
+    qs_median_max = []
+    qs_median_max_err = []
+    for _, row in df.iterrows():
+        num_oh = flux_OH_to_num_OH(
+            flux_OH=OHFlux(value=row.flux_median, sigma=row.flux_median_err),
+            helio_r_au=helio_r_au,
+            helio_v_kms=helio_v_kms,
+            delta_au=delta,
+        )
+        num_oh_median.append(num_oh.value)
+        num_oh_median_err.append(num_oh.sigma)
+
+        q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
+        qs_median.append(q.value)
+        qs_median_err.append(q.sigma)
+
+        num_oh_max = flux_OH_to_num_OH(
+            flux_OH=OHFlux(value=row.flux_median_max, sigma=row.flux_median_max_err),
+            helio_r_au=helio_r_au,
+            helio_v_kms=helio_v_kms,
+            delta_au=delta,
+        )
+        q_max = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh_max)
+        qs_median_max.append(q_max.value)
+        qs_median_max_err.append(q_max.sigma)
+
+    df["num_oh_median"] = num_oh_median
+    df["num_oh_median_err"] = num_oh_median_err
+    df["qs_median"] = qs_median
+    df["qs_median_err"] = qs_median_err
+    df["qs_median_max"] = qs_median_max
+    df["qs_median_max_err"] = qs_median_max_err
+
+    return df
 
 
-# def fit_inverse_r(img: SwiftUVOTImage) -> None:
-#     profile_radius = 40
-#
-#     pix_center = get_uvot_image_center(img=img)
-#     search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-#     peak = find_comet_center(
-#         img=img,
-#         method=CometCenterFindingMethod.aperture_peak,
-#         search_aperture=search_aperture,
-#     )
-#     comet_profile = count_rate_profile(
-#         img=img,
-#         comet_center=peak,
-#         theta=0,
-#         r=profile_radius,
+# def _surface_brightness_profile(swift_project_config: SwiftProjectConfig) -> None:
+#     pipeline_files = PipelineFiles(
+#         base_product_save_path=swift_project_config.product_save_path
 #     )
 #
-#     mask = comet_profile.distances_from_center > 0
-#     rs = np.log10(comet_profile.distances_from_center[mask])
-#     pix = comet_profile.pixel_values[mask]
+#     # select the epoch we want to process
+#     epoch_id = stacked_epoch_menu(
+#         pipeline_files=pipeline_files, require_background_analysis_to_be=True
+#     )
+#     if epoch_id is None:
+#         return
 #
-#     def log_dust_profile(r, a, b):
-#         return a * r + b
+#     # load the epoch database
+#     epoch = pipeline_files.read_pipeline_product(
+#         PipelineProductType.stacked_epoch, epoch_id=epoch_id
+#     )
+#     epoch_path = pipeline_files.get_product_path(
+#         PipelineProductType.stacked_epoch, epoch_id=epoch_id
+#     )
+#     if epoch is None or epoch_path is None:
+#         print("Error loading epoch!")
+#         wait_for_key()
+#         return
 #
-#     dust_fit = curve_fit(
-#         log_dust_profile,
-#         rs,
-#         pix,
-#         [-1, 0],
+#     print(
+#         f"Starting analysis of {epoch_path.stem}: observation at {np.mean(epoch.HELIO)} AU"
 #     )
 #
-#     a_fit = dust_fit[0][0]
-#     b_fit = dust_fit[0][1]
+#     stacking_method = StackingMethod.summation
 #
-#     print(f"{a_fit=}, {b_fit=}")
+#     # load background-subtracted images
+#     uw1 = pipeline_files.read_pipeline_product(
+#         PipelineProductType.background_subtracted_image,
+#         epoch_id=epoch_id,
+#         filter_type=SwiftFilter.uw1,
+#         stacking_method=stacking_method,
+#     )
+#     uvv = pipeline_files.read_pipeline_product(
+#         PipelineProductType.background_subtracted_image,
+#         epoch_id=epoch_id,
+#         filter_type=SwiftFilter.uvv,
+#         stacking_method=stacking_method,
+#     )
+#     if uw1 is None or uvv is None:
+#         print("Error loading background-subtracted images!")
+#         wait_for_key()
+#         return
 #
-#     plt.plot(
-#         rs,
-#         log_dust_profile(rs, a_fit, b_fit),
+#     uw1_exposure_time = np.sum(epoch[epoch.FILTER == SwiftFilter.uw1].EXPOSURE)
+#     uvv_exposure_time = np.sum(epoch[epoch.FILTER == SwiftFilter.uvv].EXPOSURE)
+#
+#     comet_peak = get_uvot_image_center(uw1)
+#
+#     center_aperture = CircularAperture(positions=(comet_peak.x, comet_peak.y), r=1)
+#     center_uw1_stats = ApertureStats(data=uw1, aperture=center_aperture)
+#     center_uvv_stats = ApertureStats(data=uvv, aperture=center_aperture)
+#
+#     r_inner_max = 199
+#     inner_aperture_rs = np.linspace(1, r_inner_max, endpoint=True, num=r_inner_max)
+#     # r_kms = inner_aperture_rs * np.mean(epoch.KM_PER_PIX)
+#
+#     annular_apertures = [
+#         CircularAnnulus((comet_peak.x, comet_peak.y), r_in=r_inner, r_out=r_inner + 1)
+#         for r_inner in inner_aperture_rs
+#     ]
+#
+#     uw1_stats = [ApertureStats(data=uw1, aperture=ap) for ap in annular_apertures]
+#     uvv_stats = [ApertureStats(data=uvv, aperture=ap) for ap in annular_apertures]
+#
+#     beta = beta_parameter(DustReddeningPercent(50.0))
+#
+#     # median_d = center_uw1_stats.median - beta * center_uvv_stats.median
+#     # mean_d = center_uw1_stats.mean - beta * center_uvv_stats.mean
+#
+#     # rprint(
+#     #     f"0 to 1\t\t\t[blue]{center_uw1_stats.median}\t{center_uw1_stats.mean}[/blue]\t[purple]{center_uvv_stats.median}\t{center_uvv_stats.mean}[/purple]\t[red]{median_d}\t{mean_d}[/red]",
+#     # )
+#     # for r, r_km, uw1_stat, uvv_stat in zip(
+#     #     inner_aperture_rs, r_kms, uw1_stats, uvv_stats
+#     # ):
+#     #     mean_diff = uw1_stat.mean - beta * uvv_stat.mean
+#     #     median_diff = uw1_stat.median - beta * uvv_stat.median
+#     #     rprint(
+#     #         f"{r=:03.0f} ({r_km:3.2e}) to {r+1:03.0f}\t[blue]{uw1_stat.median}\t{uw1_stat.mean}[/blue]\t[purple]{uvv_stat.median}\t{uvv_stat.mean}[/purple]\t[red]{median_diff}\t{mean_diff}[/red]",
+#     #     )
+#
+#     df = pd.DataFrame()
+#     df["r_inner_pix"] = np.append(np.array([0]), inner_aperture_rs)
+#     df["r_inner_km"] = df.r_inner_pix * np.mean(epoch.KM_PER_PIX)
+#     df["r_outer_pix"] = df["r_inner_pix"] + 1
+#     df["r_outer_km"] = df.r_outer_pix * np.mean(epoch.KM_PER_PIX)
+#     df["r_mid_km"] = (df.r_outer_km + df.r_inner_km) / 2
+#     df["surface_brightness_uw1_median"] = np.append(
+#         center_uw1_stats.median, [x.median for x in uw1_stats]
 #     )
-#     plt.plot(
-#         np.log10(np.abs(comet_profile.distances_from_center)),
-#         comet_profile.pixel_values,
+#     df["surface_brightness_uw1_median_err"] = np.append(
+#         center_uw1_stats.std, [1.2533 * x.std for x in uw1_stats]
 #     )
+#     df["surface_brightness_uw1_mean"] = np.append(
+#         center_uw1_stats.mean, [x.mean for x in uw1_stats]
+#     )
+#     df["surface_brightness_uw1_mean_err"] = np.append(
+#         center_uw1_stats.std, [x.std for x in uw1_stats]
+#     )
+#     df["surface_brightness_uvv_median"] = np.append(
+#         center_uvv_stats.median, [x.median for x in uvv_stats]
+#     )
+#     df["surface_brightness_uvv_median_err"] = np.append(
+#         center_uvv_stats.std, [1.2533 * x.std for x in uvv_stats]
+#     )
+#     df["surface_brightness_uvv_mean"] = np.append(
+#         center_uvv_stats.mean, [x.mean for x in uvv_stats]
+#     )
+#     df["surface_brightness_uvv_mean_err"] = np.append(
+#         center_uvv_stats.std, [x.std for x in uvv_stats]
+#     )
+#     df["cumulative_counts_uw1_mean"] = df.surface_brightness_uw1_mean.cumsum()
+#     df["cumulative_counts_uw1_mean_err"] = df.surface_brightness_uw1_mean_err.cumsum()
+#     df["cumulative_counts_uw1_median"] = df.surface_brightness_uw1_median.cumsum()
+#     df[
+#         "cumulative_counts_uw1_median_err"
+#     ] = df.surface_brightness_uw1_median_err.cumsum()
+#     df["cumulative_counts_uvv_mean"] = df.surface_brightness_uvv_mean.cumsum() * beta
+#     df["cumulative_counts_uvv_mean_err"] = (
+#         df.surface_brightness_uvv_mean_err.cumsum() * beta
+#     )
+#     df["cumulative_counts_uvv_median"] = (
+#         df.surface_brightness_uvv_median.cumsum() * beta
+#     )
+#     df[
+#         "cumulative_counts_uvv_median_err"
+#     ] = df.surface_brightness_uvv_median_err.cumsum()
+#     df["oh_brightness_median"] = (
+#         df.surface_brightness_uw1_median - beta * df.surface_brightness_uvv_median
+#     )
+#     df["oh_brightness_mean"] = (
+#         df.surface_brightness_uw1_mean - beta * df.surface_brightness_uvv_mean
+#     )
+#     df["oh_brightness_running_total_median"] = df.oh_brightness_median.cumsum()
+#     df["oh_brightness_running_total_mean"] = df.oh_brightness_mean.cumsum()
+#
+#     flux_median = []
+#     flux_median_err = []
+#     for _, row in df.iterrows():
+#         uw1cr = CountRate(
+#             value=row.cumulative_counts_uw1_median,
+#             sigma=row.cumulative_counts_uw1_median_err,
+#         )
+#         uvvcr = CountRate(
+#             value=row.cumulative_counts_uvv_median,
+#             sigma=row.cumulative_counts_uvv_median_err,
+#         )
+#         flux_OH = OH_flux_from_count_rate(uw1=uw1cr, uvv=uvvcr, beta=beta)
+#         flux_median.append(flux_OH.value)
+#         flux_median_err.append(flux_OH.sigma)
+#
+#     df["flux_median"] = flux_median
+#     df["flux_median_err"] = flux_median_err
+#     # df["oh_flux_median"] = OH_flux_from_count_rate(
+#     #     uw1=df.cumulative_counts_uw1_median,
+#     #     uvv=df.cumulative_counts_uvv_median,
+#     #     beta=beta,
+#     # )
+#
+#     print(df)
+#
+#     # for c in ["cumulative_counts_uw1_mean", "cumulative_counts_uvv_mean"]:
+#     for c in ["cumulative_counts_uw1_mean"]:
+#         df[c].plot()
 #     plt.show()
+#
+#     for c in ["cumulative_counts_uw1_median", "cumulative_counts_uvv_median"]:
+#         df[c].plot()
+#     plt.show()
+#
+#     wait_for_key()

@@ -22,7 +22,9 @@ def pipeline_extra_orbital_data(swift_project_config: SwiftProjectConfig) -> Non
     # take a time range of a year before the first observation to a year after the last
     time_start = Time(np.min(obs_log["MID_TIME"])) - 1 * u.year  # type: ignore
     time_stop = Time(np.max(obs_log["MID_TIME"])) + 1 * u.year  # type: ignore
-    rprint(f"[blue]{time_start=}[/blue] [yellow]{time_stop=}[/yellow]")
+    rprint(
+        f"Requesting orbit data from [blue]{time_start}[/blue] to [yellow]{time_stop}[/yellow] ..."
+    )
 
     # make our dictionary for the horizons query
     epochs = {"start": time_start.iso, "stop": time_stop.iso, "step": "1d"}
@@ -36,7 +38,7 @@ def pipeline_extra_orbital_data(swift_project_config: SwiftProjectConfig) -> Non
             epochs=epochs,
         )
 
-        rprint("[red]Querying Horizons for comet orbit data ...[/red]")
+        rprint("[blue]Querying Horizons for comet orbit data ...[/blue]")
         # get comet orbital data in a horizons response and put it in a pandas dataframe
         comet_vectors = comet_horizons_response.vectors(closest_apparition=True)  # type: ignore
         comet_df = comet_vectors.to_pandas()
@@ -50,7 +52,7 @@ def pipeline_extra_orbital_data(swift_project_config: SwiftProjectConfig) -> Non
         rprint("[red]Comet orbital data exists, skipping ...")
 
     if not pipeline_files.exists(PipelineProductType.earth_orbital_data):
-        rprint("[red]Querying Horizons for earth orbit data ...[/red]")
+        rprint("[blue]Querying Horizons for earth orbit data ...[/blue]")
         # Same process for earth over the time frame of our comet data
         earth_horizons_response = Horizons(id=399, location=None, epochs=epochs)
         earth_vectors = earth_horizons_response.vectors()  # type: ignore

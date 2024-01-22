@@ -14,10 +14,10 @@ from swift_comet_pipeline.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift_filter import SwiftFilter
 from swift_comet_pipeline.stacking import StackingMethod
 from swift_comet_pipeline.tui import stacked_epoch_menu, wait_for_key
-from swift_comet_pipeline.comet_signal import (
-    comet_manual_aperture,
+from swift_comet_pipeline.comet_center import (
     compare_comet_center_methods,
 )
+from swift_comet_pipeline.comet_profile import comet_manual_aperture
 from swift_comet_pipeline.configs import SwiftProjectConfig
 from swift_comet_pipeline.uvot_image import SwiftUVOTImage, get_uvot_image_center
 from swift_comet_pipeline.count_rate import (

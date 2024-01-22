@@ -1,7 +1,8 @@
 # swift_comet_pipeline
 
 ## Development installation:
-## Install poetry (python-poetry.org)
+## Install poetry
+https://www.python-poetry.org
 
 ## Create conda environment with python
 ```

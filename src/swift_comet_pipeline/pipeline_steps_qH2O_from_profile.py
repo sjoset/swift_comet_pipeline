@@ -212,13 +212,13 @@ class RadialProfileSelectionPlot(object):
             beta=self.beta_parameter,
         )
 
-        # if we subtract nothing from the uvv filter, this is an absolute upper limit on comet signal
+        # if we subtract nothing from the uvv filter, this is an absolute upper limit on the OH present
         self.abs_upper_limit_flux_OH = OH_flux_from_count_rate(
             uw1=self.uw1_count_rate,
             uvv=CountRate(value=0.0, sigma=self.uvv_bg.count_rate_per_pixel.sigma),
             beta=self.beta_parameter,
         )
-        print(self.abs_upper_limit_flux_OH)
+        # print(self.abs_upper_limit_flux_OH)
 
         self.num_OH = flux_OH_to_num_OH(
             flux_OH=self.flux_OH,

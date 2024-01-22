@@ -1,20 +1,13 @@
 import copy
-
-# import pathlib
-# import yaml
 import numpy as np
 
 from dataclasses import dataclass, asdict
 from enum import StrEnum, auto
 from types import SimpleNamespace
 
-# from typing import Optional
-
 from astropy.visualization import ZScaleInterval
-
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-
 from photutils.aperture import (
     CircularAperture,
     ApertureStats,
