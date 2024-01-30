@@ -1,3 +1,4 @@
+from matplotlib.widgets import Slider
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
@@ -21,12 +22,15 @@ from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
 from swift_comet_pipeline.tui import get_selection, stacked_epoch_menu, wait_for_key
 from swift_comet_pipeline.determine_background import BackgroundResult
 from swift_comet_pipeline.comet_profile import (
+    CometRadialProfile,
     count_rate_from_comet_radial_profile,
+    extract_comet_radial_median_profile_from_cone,
     extract_comet_radial_profile,
 )
 from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
 
 
+# TODO: add pixel selection and cone angle to initialization so we can save/restore state
 class RadialProfileSelectionPlot(object):
     def __init__(
         self,
@@ -46,7 +50,6 @@ class RadialProfileSelectionPlot(object):
         # this is particular to C/2013US10
         self.perihelion = Time("2015-11-15")
         self.time_from_perihelion = Time(np.mean(epoch.MID_TIME)) - self.perihelion
-        # print(f"Time to perihelion: {self.time_to_perihelion.to(u.day)}")
 
         self.uw1_img = uw1_img
         self.uw1_bg = uw1_bg
@@ -71,17 +74,24 @@ class RadialProfileSelectionPlot(object):
         self.beta_parameter = beta_parameter(self.dust_redness)
 
         # extract profiles in a cone around the selection from -angle to +angle from the profile selection vector
-        self.profile_extraction_cone_angle = np.pi / 16
+        self.profile_extraction_cone_size_radians = np.pi / 16
+
+        # slider to select cone size
+        self.cone_size_slider_ax = self.fig.add_axes([0.25, 0.05, 0.5, 0.03])  # type: ignore
+        self.profile_extraction_cone_size_slider = Slider(
+            ax=self.cone_size_slider_ax,
+            label="cone size",
+            valmin=0.0,
+            valmax=np.pi,
+            valinit=self.profile_extraction_cone_size_radians,
+        )
+        self.profile_extraction_cone_size_slider.on_changed(self.update_cone_size)
 
         # Image coordinates for extracting the profile: start at comet center, and stop at arbitrary point away from center for initialization
         self.profile_begin: PixelCoord = self.image_center
         self.profile_end: PixelCoord = PixelCoord(
             x=self.image_center.x + 50, y=self.image_center.y + 50
         )
-
-        # holds the line objects that mark the profile we are looking at
-        self.uw1_extraction_line = None
-        self.uvv_extraction_line = None
 
         # holds the extracted profiles
         self.uw1_radial_profile = None
@@ -110,6 +120,8 @@ class RadialProfileSelectionPlot(object):
             cmap=self.colormap,
         )
 
+        self.initialize_profile_extraction_mpl_elements()
+
         self.fig.canvas.mpl_connect("button_press_event", self.onclick)  # type: ignore
         self.update_plots()
 
@@ -122,95 +134,122 @@ class RadialProfileSelectionPlot(object):
         self.profile_end = PixelCoord(x=rounded_x, y=rounded_y)
         self.update_plots()
 
+    def update_cone_size(self, _):
+        self.profile_extraction_cone_size_radians = (
+            self.profile_extraction_cone_size_slider.val
+        )
+        self.update_plots()
+
     def update_plots(self):
         self.update_profile_extraction()
         self.update_profile_plot()
         self.update_q_from_profiles()
         self.fig.canvas.draw_idle()  # type: ignore
 
+    def initialize_profile_extraction_mpl_elements(self):
+        self.uw1_extraction_line = plt.Line2D(
+            xdata=[0, 0], ydata=[0, 0], lw=1, color="white", alpha=0.3
+        )
+        self.uvv_extraction_line = plt.Line2D(
+            xdata=[0, 0], ydata=[0, 0], lw=1, color="white", alpha=0.3
+        )
+
+        # "left" edge of cone, each graph needs a separate line object
+        self.cone_neg_line_uw1 = plt.Line2D(
+            xdata=[0, 0],
+            ydata=[0, 0],
+            lw=1,
+            color="black",
+            alpha=0.2,
+        )
+        self.cone_neg_line_uvv = plt.Line2D(
+            xdata=[0, 0],
+            ydata=[0, 0],
+            lw=1,
+            color="black",
+            alpha=0.2,
+        )
+        self.uw1_ax.add_line(self.cone_neg_line_uw1)
+        self.uvv_ax.add_line(self.cone_neg_line_uvv)
+
+        self.cone_pos_line_uw1 = plt.Line2D(
+            xdata=[0, 0],
+            ydata=[0, 0],
+            lw=1,
+            color="black",
+            alpha=0.2,
+        )
+        self.cone_pos_line_uvv = plt.Line2D(
+            xdata=[0, 0],
+            ydata=[0, 0],
+            lw=1,
+            color="black",
+            alpha=0.2,
+        )
+        self.uw1_ax.add_line(self.cone_pos_line_uw1)
+        self.uvv_ax.add_line(self.cone_pos_line_uvv)
+
+        self.uw1_ax.add_line(self.uw1_extraction_line)  # type: ignore
+        self.uvv_ax.add_line(self.uvv_extraction_line)  # type: ignore
+
     def update_profile_extraction(self):
+        # given our clicked coordinate, figure out the radius and angle direction of the profile
         x0, y0 = self.image_center.x, self.image_center.y
         x1, y1 = self.profile_end.x, self.profile_end.y
         r = np.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
         r = int(np.round(r))
-        theta = np.arctan2(y1 - y0, x1 - x0)
 
-        # lines from comet center to the edges of the extraction cone
-        cone_neg_endpoint: PixelCoord = PixelCoord(
-            x=r * np.cos(theta - self.profile_extraction_cone_angle) + x0,
-            y=r * np.sin(theta - self.profile_extraction_cone_angle) + y0,
+        # figure out the angles of the cone edges and the middle
+        self.extraction_cone_mid_angle = np.arctan2(y1 - y0, x1 - x0)
+        self.extraction_cone_min_angle = (
+            self.extraction_cone_mid_angle - self.profile_extraction_cone_size_radians
         )
-        cone_pos_endpoint: PixelCoord = PixelCoord(
-            x=r * np.cos(theta + self.profile_extraction_cone_angle) + x0,
-            y=r * np.sin(theta + self.profile_extraction_cone_angle) + y0,
+        self.extraction_cone_max_angle = (
+            self.extraction_cone_mid_angle + self.profile_extraction_cone_size_radians
         )
 
-        self.uw1_radial_profile = extract_comet_radial_profile(
-            img=self.uw1_img, comet_center=self.image_center, r=r, theta=theta
+        theta = self.extraction_cone_mid_angle
+        cone_size = self.profile_extraction_cone_size_radians
+
+        # for drawing lines from comet center to the edges of the extraction cone
+        cone_neg_endpoint = PixelCoord(
+            x=r * np.cos(theta - cone_size) + x0,
+            y=r * np.sin(theta - cone_size) + y0,
         )
-        self.uvv_radial_profile = extract_comet_radial_profile(
-            img=self.uvv_img, comet_center=self.image_center, r=r, theta=theta
+        cone_pos_endpoint = PixelCoord(
+            x=r * np.cos(theta + cone_size) + x0,
+            y=r * np.sin(theta + cone_size) + y0,
         )
 
-        if self.uw1_extraction_line is None or self.uvv_extraction_line is None:
-            self.uw1_extraction_line = plt.Line2D(
-                xdata=[x1, x0], ydata=[y1, y0], lw=1, color="white", alpha=0.3
-            )
-            self.uvv_extraction_line = plt.Line2D(
-                xdata=[x1, x0], ydata=[y1, y0], lw=1, color="white", alpha=0.3
-            )
+        # get the median profiles in the cone
+        self.uw1_radial_profile = extract_comet_radial_median_profile_from_cone(
+            img=self.uw1_img,
+            comet_center=self.image_center,
+            r=r,
+            theta=theta,
+            cone_size=cone_size,
+        )
+        self.uvv_radial_profile = extract_comet_radial_median_profile_from_cone(
+            img=self.uvv_img,
+            comet_center=self.image_center,
+            r=r,
+            theta=theta,
+            cone_size=cone_size,
+        )
 
-            # "left" edge of cone, each graph needs a separate line object
-            self.cone_neg_line_uw1 = plt.Line2D(
-                xdata=[cone_neg_endpoint.x, x0],
-                ydata=[cone_neg_endpoint.y, y0],
-                lw=1,
-                color="black",
-                alpha=0.2,
-            )
-            self.cone_neg_line_uvv = plt.Line2D(
-                xdata=[cone_neg_endpoint.x, x0],
-                ydata=[cone_neg_endpoint.y, y0],
-                lw=1,
-                color="black",
-                alpha=0.2,
-            )
-            self.uw1_ax.add_line(self.cone_neg_line_uw1)
-            self.uvv_ax.add_line(self.cone_neg_line_uvv)
+        self.uw1_extraction_line.set_xdata([x1, x0])
+        self.uw1_extraction_line.set_ydata([y1, y0])
+        self.uvv_extraction_line.set_xdata([x1, x0])
+        self.uvv_extraction_line.set_ydata([y1, y0])
 
-            self.cone_pos_line_uw1 = plt.Line2D(
-                xdata=[cone_pos_endpoint.x, x0],
-                ydata=[cone_pos_endpoint.y, y0],
-                lw=1,
-                color="black",
-                alpha=0.2,
-            )
-            self.cone_pos_line_uvv = plt.Line2D(
-                xdata=[cone_pos_endpoint.x, x0],
-                ydata=[cone_pos_endpoint.y, y0],
-                lw=1,
-                color="black",
-                alpha=0.2,
-            )
-            self.uw1_ax.add_line(self.cone_pos_line_uw1)
-            self.uvv_ax.add_line(self.cone_pos_line_uvv)
-
-            self.uw1_ax.add_line(self.uw1_extraction_line)  # type: ignore
-            self.uvv_ax.add_line(self.uvv_extraction_line)  # type: ignore
-        else:
-            self.uw1_extraction_line.set_xdata([x1, x0])
-            self.uw1_extraction_line.set_ydata([y1, y0])
-            self.uvv_extraction_line.set_xdata([x1, x0])
-            self.uvv_extraction_line.set_ydata([y1, y0])
-
-            self.cone_neg_line_uw1.set_xdata([cone_neg_endpoint.x, x0])
-            self.cone_neg_line_uvv.set_xdata([cone_neg_endpoint.x, x0])
-            self.cone_neg_line_uw1.set_ydata([cone_neg_endpoint.y, y0])
-            self.cone_neg_line_uvv.set_ydata([cone_neg_endpoint.y, y0])
-            self.cone_pos_line_uw1.set_xdata([cone_pos_endpoint.x, x0])
-            self.cone_pos_line_uvv.set_xdata([cone_pos_endpoint.x, x0])
-            self.cone_pos_line_uw1.set_ydata([cone_pos_endpoint.y, y0])
-            self.cone_pos_line_uvv.set_ydata([cone_pos_endpoint.y, y0])
+        self.cone_neg_line_uw1.set_xdata([cone_neg_endpoint.x, x0])
+        self.cone_neg_line_uvv.set_xdata([cone_neg_endpoint.x, x0])
+        self.cone_neg_line_uw1.set_ydata([cone_neg_endpoint.y, y0])
+        self.cone_neg_line_uvv.set_ydata([cone_neg_endpoint.y, y0])
+        self.cone_pos_line_uw1.set_xdata([cone_pos_endpoint.x, x0])
+        self.cone_pos_line_uvv.set_xdata([cone_pos_endpoint.x, x0])
+        self.cone_pos_line_uw1.set_ydata([cone_pos_endpoint.y, y0])
+        self.cone_pos_line_uvv.set_ydata([cone_pos_endpoint.y, y0])
 
     def update_profile_plot(self):
         if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
