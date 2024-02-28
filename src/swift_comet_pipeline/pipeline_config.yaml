@@ -5,4 +5,5 @@ effective_area_uvv_path: "../../data/swift_effective_areas/v.arf"
 
 oh_fluorescence_path: "../../data/fluorescence/fluorescence_OH.csv"
 
-vectorial_model_path: "../../data/vectorial_model/r_vs_total_number_huebner_92_water_lifetimes_Q1e28.csv"
+# vectorial_model_path: "../../data/vectorial_model/r_vs_total_number_huebner_92_water_lifetimes_Q1e28.csv"
+vectorial_model_path: "../../data/vectorial_model/output.csv"

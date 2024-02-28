@@ -126,7 +126,6 @@ def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
             "zero_point_err": 0.03,
             "cf": 4.3e-16,
             "cf_err": 2.1e-17,
-            "rf": 0.1375,
         },
         SwiftFilter.um2: {
             "fwhm": 498,

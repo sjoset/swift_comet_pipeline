@@ -47,8 +47,6 @@ def beta_parameter(
         effective_area_path=spc.effective_area_uvv_path,
     )
 
-    # print(f"solar count rate in uw1: {solar_count_rate_in_uw1}")
-    # print(f"solar count rate in uvv: {solar_count_rate_in_uvv}")
     beta_pre_reddening = solar_count_rate_in_uw1 / solar_count_rate_in_uvv
     beta = (
         reddening_correction(

@@ -26,6 +26,7 @@ __all__ = [
     "count_rate_from_comet_radial_profile",
     "count_rate_from_comet_profile",
     "surface_brightness_profiles",
+    "qh2o_from_surface_brightness_profiles",
 ]
 
 
@@ -116,7 +117,7 @@ def extract_comet_radial_profile(
 ) -> CometRadialProfile:
     """
     Extracts the count rate profile along a line starting at the comet center, extending out a distance r at angle theta
-    Takes one sample per unit distance: if r=100, we take 101 samples (to include the center pixel)
+    Takes one pixel sample per unit distance: if r=100, we take 101 pixel samples (to include the center pixel)
     """
     x0 = comet_center.x
     y0 = comet_center.y
@@ -194,8 +195,8 @@ def count_rate_from_comet_radial_profile(
 
     count_rate = (
         simpson(
-            comet_profile.profile_axis_xs * comet_profile.pixel_values,
-            comet_profile.profile_axis_xs,
+            y=comet_profile.profile_axis_xs * comet_profile.pixel_values,
+            x=comet_profile.profile_axis_xs,
         )
         * 2
         * np.pi
@@ -233,6 +234,8 @@ def count_rate_from_comet_profile(
         simpson(
             np.abs(comet_profile.profile_axis_xs) * comet_profile.pixel_values,
             comet_profile.profile_axis_xs,
+            # TODO: test this so the error checker will shut up
+            # x=comet_profile.profile_axis_xs,
         )
         * np.pi
     )
@@ -272,10 +275,11 @@ def comet_manual_aperture(
     return CountRate(value=comet_count_rate, sigma=propogated_sigma)
 
 
-@dataclass
-class SurfaceBrightnessProfiles:
-    r_inner_pix: np.ndarray
-    r_outer_pix: np.ndarray
+# TODO: finish this dataclass to reflect the dataframe returned by surface_brightness_profiles()
+# @dataclass
+# class SurfaceBrightnessProfiles:
+#     r_inner_pix: np.ndarray
+#     r_outer_pix: np.ndarray
 
 
 def surface_brightness_profiles(
@@ -337,27 +341,18 @@ def surface_brightness_profiles(
     )
 
     df["cumulative_counts_uw1_mean"] = df.surface_brightness_uw1_mean.cumsum()
-    # df["cumulative_counts_uw1_mean_err1"] = df.surface_brightness_uw1_mean_err.cumsum()
     df["cumulative_counts_uw1_mean_err"] = np.sqrt(
         np.cumsum(np.square(df.cumulative_counts_uw1_mean))
     )
     df["cumulative_counts_uw1_median"] = df.surface_brightness_uw1_median.cumsum()
-    # TODO: finish converting error to quadrature
-    # df[
-    #     "cumulative_counts_uw1_median_err"
-    # ] = df.surface_brightness_uw1_median_err.cumsum()
     df["cumulative_counts_uw1_median_err"] = np.sqrt(
         np.cumsum(np.square(df.cumulative_counts_uw1_median))
     )
     df["cumulative_counts_uvv_mean"] = df.surface_brightness_uvv_mean.cumsum()
-    # df["cumulative_counts_uvv_mean_err"] = df.surface_brightness_uvv_mean_err.cumsum()
     df["cumulative_counts_uvv_mean_err"] = np.sqrt(
         np.cumsum(np.square(df.cumulative_counts_uvv_mean))
     )
     df["cumulative_counts_uvv_median"] = df.surface_brightness_uvv_median.cumsum()
-    # df[
-    #     "cumulative_counts_uvv_median_err"
-    # ] = df.surface_brightness_uvv_median_err.cumsum()
     df["cumulative_counts_uvv_median_err"] = np.sqrt(
         np.cumsum(np.square(df.cumulative_counts_uvv_median))
     )
@@ -465,3 +460,23 @@ def qh2o_from_surface_brightness_profiles(
     df["qs_median_max_err"] = qs_median_max_err
 
     return df
+
+
+def radial_profile_to_image(
+    profile: CometRadialProfile, distance_from_center_mesh: np.ndarray
+):
+    """
+    The array distance_from_center_mesh is assumed to be a 2d array, whose values express the distance from that pixel to the center of the image, rounded to the nearest integer.
+    To generate the image easily, we zero-pad the comet's radial profile out to the maximum distance specified in this mesh (if necessary)
+    """
+    max_dist = np.max(distance_from_center_mesh)
+
+    num_extra_pixels = max_dist - len(profile.pixel_values) + 1
+    if num_extra_pixels >= 1:
+        extended_profile = np.pad(
+            profile.pixel_values, (0, num_extra_pixels), mode="constant"
+        )
+    else:
+        extended_profile = profile.pixel_values
+    img = extended_profile[distance_from_center_mesh]
+    return img

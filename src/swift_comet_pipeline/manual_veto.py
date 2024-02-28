@@ -223,26 +223,28 @@ class EpochImagePlot(object):
             self.mark_sources_uw1()
 
     def mark_sources_uw1(self):
-        mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
-        daofind = DAOStarFinder(fwhm=7.0, threshold=5.0 * std)
-        sources = daofind(self.current_image - median)
-        if sources is None:
-            self.aperture_patches = None
-            return
-        positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-        apertures = CircularAperture(positions, r=10.0)
-        self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.0, alpha=0.8)
+        # mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
+        # daofind = DAOStarFinder(fwhm=7.0, threshold=5.0 * std)
+        # sources = daofind(self.current_image - median)
+        # if sources is None:
+        #     self.aperture_patches = None
+        #     return
+        # positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
+        # apertures = CircularAperture(positions, r=10.0)
+        # self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.0, alpha=0.8)
+        pass
 
     def mark_sources_uvv(self):
-        mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
-        daofind = DAOStarFinder(fwhm=5.0, threshold=5.0 * std)
-        sources = daofind(self.current_image - median)
-        if sources is None:
-            self.aperture_patches = None
-            return
-        positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-        apertures = CircularAperture(positions, r=10.0)
-        self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.5, alpha=0.5)
+        # mean, median, std = sigma_clipped_stats(self.current_image, sigma=3.0)
+        # daofind = DAOStarFinder(fwhm=5.0, threshold=5.0 * std)
+        # sources = daofind(self.current_image - median)
+        # if sources is None:
+        #     self.aperture_patches = None
+        #     return
+        # positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
+        # apertures = CircularAperture(positions, r=10.0)
+        # self.aperture_patches = apertures.plot(self.ax, color="blue", lw=1.5, alpha=0.5)
+        pass
 
     def redraw_image(self):
         self.do_plot(self.current_image_index)
