@@ -273,13 +273,20 @@ def background_result_to_dict(
     bg_result: BackgroundResult,
 ) -> dict:
     # yaml serializer doesn't support numpy floats for some reason
-    bg_result.count_rate_per_pixel.value = float(bg_result.count_rate_per_pixel.value)
-    bg_result.count_rate_per_pixel.sigma = float(bg_result.count_rate_per_pixel.sigma)
+    serializable_count_rate = CountRatePerPixel(
+        value=float(bg_result.count_rate_per_pixel.value),
+        sigma=float(bg_result.count_rate_per_pixel.sigma),
+    )
 
+    serializable_bg_result = BackgroundResult(
+        count_rate_per_pixel=serializable_count_rate,
+        params=bg_result.params,
+        method=bg_result.method,
+    )
     bg_dict = {
-        "params": bg_result.params,
-        "count_rate_per_pixel": asdict(bg_result.count_rate_per_pixel),
-        "method": str(bg_result.method),
+        "params": serializable_bg_result.params,
+        "count_rate_per_pixel": asdict(serializable_bg_result.count_rate_per_pixel),
+        "method": str(serializable_bg_result.method),
     }
 
     return bg_dict
