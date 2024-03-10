@@ -487,21 +487,6 @@ def profile_selection_plot(
     return rpsp
 
 
-# def fit_subtracted_profiles(
-#     uw1_profile: CometRadialProfile, uvv_profile: CometRadialProfile
-# ) -> None:
-#     # popt, pcov = curve_fit(func, xdata, ydata)
-#     pass
-
-
-def column_density_from_subtraction(
-    uw1_profile: CometRadialProfile,
-    uvv_profile: CometRadialProfile,
-    redness: DustReddeningPercent,
-):
-    pass
-
-
 def arcseconds_to_au(arcseconds, delta):
     return delta * 2 * np.pi * arcseconds / (3600.0 * 360)
 
@@ -535,8 +520,11 @@ def show_subtracted_profile(
     rs = physical_rs[positive_mask]
 
     # print(f"{base_q_per_s=}, running with Q={3*base_q_per_s}")
-    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=base_q_per_s, helio_r_au=rh)
-    vectorial_values = coma.vmr.column_density_interpolation(rs * 1000)
+    model_Q = 1e29
+    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=model_Q, helio_r_au=rh)
+    vectorial_values = (base_q_per_s / model_Q) * coma.vmr.column_density_interpolation(
+        rs * 1000
+    )
 
     # convert pixel signal to column density
     pixel_area_cm2 = (km_per_pix / 1.0e5) ** 2
@@ -564,10 +552,13 @@ def show_subtracted_profile(
     fig, ax = plt.subplots()
     ax.plot(rs, vectorial_values / 10000, label="vect")
     ax.plot(rs, cdens, label="img")
+    # ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.legend()
     plt.show()
 
 
+# TODO
 def show_subtracted_profile_new(
     rpsp: RadialProfileSelectionPlot,
     km_per_pix,
@@ -609,8 +600,11 @@ def show_subtracted_profile_new(
     # df.to_csv("radial_profile.csv")
     # print(f"{km_per_pix=}")
 
-    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=base_q_per_s, helio_r_au=rh)
-    vectorial_values = coma.vmr.column_density_interpolation(rs * 1000)
+    model_Q = 1e29 / u.s
+    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=model_Q, helio_r_au=rh)
+    vectorial_values = (
+        base_q_per_s / model_Q.value
+    ) * coma.vmr.column_density_interpolation(rs * 1000)
     # print(f"{base_q_per_s=}")
 
     # _, coma_two = num_OH_at_r_au_vectorial(base_q_per_s=2 * base_q_per_s, helio_r_au=rh)
