@@ -1,11 +1,14 @@
 import pathlib
 from rich import print as rprint
 
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.tui import get_yes_no, wait_for_key
-from swift_comet_pipeline.observation_log import build_observation_log
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.tui.tui_common import get_yes_no, wait_for_key
+from swift_comet_pipeline.observationlog.observation_log import build_observation_log
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 __all__ = ["observation_log_step"]
 

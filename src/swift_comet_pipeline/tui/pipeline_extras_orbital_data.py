@@ -4,10 +4,13 @@ from astroquery.jplhorizons import Horizons
 import astropy.units as u
 from rich import print as rprint
 
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.tui import wait_for_key
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.tui.tui_common import wait_for_key
 
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def pipeline_extra_orbital_data(swift_project_config: SwiftProjectConfig) -> None:

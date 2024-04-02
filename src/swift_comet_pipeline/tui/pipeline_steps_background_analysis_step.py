@@ -1,18 +1,21 @@
 from itertools import product
 from astropy.io import fits
 
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage
-from swift_comet_pipeline.tui import stacked_epoch_menu, wait_for_key
-from swift_comet_pipeline.determine_background import (
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu, wait_for_key
+from swift_comet_pipeline.pipeline.determine_background import (
     BackgroundDeterminationMethod,
     BackgroundResult,
     background_result_to_dict,
     determine_background,
 )
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:

@@ -6,9 +6,12 @@ import matplotlib.pyplot as plt
 from rich import print as rprint
 from tqdm import tqdm
 
-from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
-from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
-from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.production.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.production.flux_OH import (
+    OH_flux_from_count_rate,
+    beta_parameter,
+)
+from swift_comet_pipeline.production.num_OH_to_Q import num_OH_to_Q_vectorial
 from swift_comet_pipeline.plateau_detect import plateau_detect
 from swift_comet_pipeline.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift_filter import SwiftFilter

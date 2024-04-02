@@ -1,5 +1,6 @@
 import copy
-from functools import partial
+
+# from functools import partial
 from typing import Optional
 from matplotlib.widgets import Slider
 import numpy as np
@@ -7,39 +8,50 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from astropy.time import Time
 from astropy.visualization import ZScaleInterval
-from scipy.interpolate import interp1d
-from scipy.optimize import curve_fit
-import pandas as pd
 
-from swift_comet_pipeline.configs import SwiftProjectConfig, read_swift_pipeline_config
-from swift_comet_pipeline.count_rate import CountRate
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift_filter import SwiftFilter, get_filter_parameters
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.uvot_image import (
+# from scipy.interpolate import interp1d
+# from scipy.optimize import curve_fit
+# import pandas as pd
+
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.swift.count_rate import CountRate
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, get_filter_parameters
+from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
     get_uvot_image_center,
 )
-from swift_comet_pipeline.fluorescence_OH import (
+from swift_comet_pipeline.production.fluorescence_OH import (
     flux_OH_to_num_OH,
     gfactor_1au,
 )
-from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, beta_parameter
-from swift_comet_pipeline.num_OH_to_Q import (
+from swift_comet_pipeline.production.flux_OH import (
+    OH_flux_from_count_rate,
+    beta_parameter,
+)
+from swift_comet_pipeline.production.num_OH_to_Q import (
     num_OH_at_r_au_vectorial,
     num_OH_to_Q_vectorial,
 )
-from swift_comet_pipeline.tui import get_selection, stacked_epoch_menu, wait_for_key
-from swift_comet_pipeline.determine_background import BackgroundResult
-from swift_comet_pipeline.comet_profile import (
+from swift_comet_pipeline.tui.tui_common import (
+    get_selection,
+    stacked_epoch_menu,
+    wait_for_key,
+)
+from swift_comet_pipeline.pipeline.determine_background import BackgroundResult
+from swift_comet_pipeline.comet.comet_profile import (
     CometRadialProfile,
     count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
     radial_profile_to_image,
 )
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 # TODO: add pixel selection and cone angle to initialization so we can save/restore state

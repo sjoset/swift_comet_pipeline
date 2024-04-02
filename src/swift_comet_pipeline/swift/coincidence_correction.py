@@ -2,7 +2,7 @@ import copy
 import math
 import numpy as np
 
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage, SwiftPixelResolution
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, SwiftPixelResolution
 
 
 __all__ = ["coincidence_correction", "CoincidenceCorrection"]

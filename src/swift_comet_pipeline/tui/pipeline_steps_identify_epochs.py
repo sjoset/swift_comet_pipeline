@@ -1,12 +1,16 @@
 from rich import print as rprint
 
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
-from swift_comet_pipeline.pipeline_extras_status import pipeline_extra_status
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.tui import get_yes_no, wait_for_key
-from swift_comet_pipeline.observation_log import includes_uvv_and_uw1_filters
-from swift_comet_pipeline.epoch_time_window import (
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.tui.tui_common import get_yes_no, wait_for_key
+from swift_comet_pipeline.observationlog.observation_log import (
+    includes_uvv_and_uw1_filters,
+)
+from swift_comet_pipeline.pipeline.epoch_time_window import (
     epochs_from_time_delta,
     select_epoch_time_window,
 )

@@ -6,36 +6,39 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from swift_comet_pipeline.comet_profile import (
+from swift_comet_pipeline.comet.comet_profile import (
     qh2o_from_surface_brightness_profiles,
     surface_brightness_profiles,
 )
 
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.flux_OH import beta_parameter
-from swift_comet_pipeline.pipeline_extras_epoch_summary import (
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.production.flux_OH import beta_parameter
+from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
 )
-from swift_comet_pipeline.pipeline_extras_orbital_data import (
+from swift_comet_pipeline.tui.pipeline_extras_orbital_data import (
     pipeline_extra_orbital_data,
 )
-from swift_comet_pipeline.pipeline_extras_status import pipeline_extra_status
-from swift_comet_pipeline.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.swift_filter import (
+from swift_comet_pipeline.tui.pipeline_extras_status import pipeline_extra_status
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.swift.swift_filter import (
     SwiftFilter,
     filter_to_file_string,
 )
-from swift_comet_pipeline.tui import (
+from swift_comet_pipeline.tui.tui_common import (
     clear_screen,
     epoch_menu,
     get_selection,
     stacked_epoch_menu,
     wait_for_key,
 )
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 class PipelineExtrasMenuEntry(StrEnum):

@@ -2,12 +2,17 @@ from functools import reduce
 from astropy.time import Time
 
 import numpy as np
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.observation_log import get_image_path_from_obs_log_row
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.tui import epoch_menu, wait_for_key
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.observationlog.observation_log import (
+    get_image_path_from_obs_log_row,
+)
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.tui.tui_common import epoch_menu, wait_for_key
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def pipeline_extra_epoch_summary(

@@ -2,11 +2,14 @@ from itertools import product
 from rich import print as rprint
 from rich.panel import Panel
 
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.tui import bool_to_x_or_check, wait_for_key
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.tui.tui_common import bool_to_x_or_check, wait_for_key
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:

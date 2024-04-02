@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import copy
 import pathlib
 from typing import Tuple, Optional, List, TypeAlias
 from enum import StrEnum
@@ -12,15 +11,15 @@ from astropy.io import fits
 
 from tqdm import tqdm
 
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.uvot_image import (
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.swift.uvot_image import (
     SwiftUVOTImage,
     PixelCoord,
     SwiftPixelResolution,
 )
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.coincidence_correction import coincidence_correction
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
 
 
 __all__ = [

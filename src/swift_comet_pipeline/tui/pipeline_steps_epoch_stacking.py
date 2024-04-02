@@ -11,31 +11,31 @@ from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.stacking import (
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.stacking.stacking import (
     StackedUVOTImageSet,
     StackingMethod,
     stack_epoch_into_sum_and_median,
 )
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.swift_filter import (
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.swift.swift_filter import (
     SwiftFilter,
     filter_to_file_string,
     filter_to_string,
 )
-from swift_comet_pipeline.tui import (
+from swift_comet_pipeline.tui.tui_common import (
     bool_to_x_or_check,
     epoch_menu,
     get_yes_no,
     wait_for_key,
 )
-from swift_comet_pipeline.uvot_image import (
+from swift_comet_pipeline.swift.uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
     pad_to_match_sizes,
 )
-from swift_comet_pipeline.pipeline_files import (
+from swift_comet_pipeline.pipeline.pipeline_files import (
     PipelineEpochID,
     PipelineFiles,
     PipelineProductType,
