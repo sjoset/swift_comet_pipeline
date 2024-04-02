@@ -4,9 +4,9 @@ from photutils.aperture import CircularAperture, ApertureStats
 
 from typing import Optional
 from enum import StrEnum, auto
-from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 
-from swift_comet_pipeline.uvot_image import (
+from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
     get_uvot_image_center,

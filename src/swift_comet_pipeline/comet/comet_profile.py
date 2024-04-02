@@ -6,16 +6,16 @@ import pandas as pd
 
 from photutils.aperture import ApertureStats, CircularAnnulus, CircularAperture
 from scipy.integrate import simpson
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.fluorescence_OH import flux_OH_to_num_OH
-from swift_comet_pipeline.flux_OH import OH_flux_from_count_rate, OHFlux
-from swift_comet_pipeline.num_OH_to_Q import num_OH_to_Q_vectorial
-from swift_comet_pipeline.uvot_image import (
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.production.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.production.flux_OH import OH_flux_from_count_rate, OHFlux
+from swift_comet_pipeline.production.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
     get_uvot_image_center,
 )
-from swift_comet_pipeline.count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
 
 
 __all__ = [

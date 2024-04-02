@@ -15,18 +15,18 @@ from astroquery.jplhorizons import Horizons
 
 from tqdm import tqdm
 
-from swift_comet_pipeline.swift_data import (
+from swift_comet_pipeline.swift.swift_data import (
     SwiftData,
     SwiftObservationID,
     swift_observation_id_from_int,
     swift_orbit_id_from_obsid,
 )
-from swift_comet_pipeline.swift_filter import (
+from swift_comet_pipeline.swift.swift_filter import (
     SwiftFilter,
     obs_string_to_filter,
     filter_to_obs_string,
 )
-from swift_comet_pipeline.uvot_image import (
+from swift_comet_pipeline.swift.uvot_image import (
     datamode_to_pixel_resolution,
     pixel_resolution_to_datamode,
 )
@@ -105,7 +105,7 @@ def build_observation_log(
         "EXPOSURE",
         "DATAMODE",
     ]
-    obs_log = pd.DataFrame(columns=fits_header_entries_to_read)
+    obs_log = pd.DataFrame(columns=fits_header_entries_to_read)  # type: ignore
 
     # list of every file we need to include in observation log?
     image_path_list = []
@@ -189,7 +189,7 @@ def build_observation_log(
         "DEC": "DEC",
     }
     # make dataframe with columns of the ephemeris_info values
-    horizon_dataframe = pd.DataFrame(columns=list(ephemeris_info.values()))
+    horizon_dataframe = pd.DataFrame(columns=list(ephemeris_info.values()))  # type: ignore
 
     horizons_progress_bar = tqdm(obs_log["MID_TIME"], unit="observations")
 

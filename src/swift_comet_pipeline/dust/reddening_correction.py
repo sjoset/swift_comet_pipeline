@@ -3,7 +3,7 @@
 import pathlib
 from typing import TypeAlias
 
-from swift_comet_pipeline.effective_areas import read_effective_area
+from swift_comet_pipeline.swift.swift_filter import read_effective_area
 
 __all__ = ["reddening_correction", "DustReddeningPercent"]
 

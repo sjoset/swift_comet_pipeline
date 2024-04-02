@@ -12,19 +12,19 @@ import pandas as pd
 from astropy.time import Time
 from astropy.io import fits
 
-from swift_comet_pipeline.determine_background import (
+from swift_comet_pipeline.pipeline.determine_background import (
     BackgroundResult,
     dict_to_background_result,
 )
-from swift_comet_pipeline.epochs import Epoch, read_epoch, write_epoch
-from swift_comet_pipeline.observation_log import (
+from swift_comet_pipeline.observationlog.epochs import Epoch, read_epoch, write_epoch
+from swift_comet_pipeline.observationlog.observation_log import (
     SwiftObservationLog,
     read_observation_log,
     write_observation_log,
 )
-from swift_comet_pipeline.swift_filter import filter_to_file_string, SwiftFilter
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.swift.swift_filter import filter_to_file_string, SwiftFilter
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.stacking.stacking import StackingMethod
 
 
 __all__ = ["PipelineFiles"]

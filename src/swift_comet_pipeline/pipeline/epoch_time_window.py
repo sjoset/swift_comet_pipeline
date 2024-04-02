@@ -1,4 +1,4 @@
-import calendar
+# import calendar
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
@@ -10,10 +10,9 @@ from matplotlib.pyplot import cm
 
 from typing import List
 
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.observation_log import SwiftObservationLog
-from swift_comet_pipeline.tui import get_float, get_selection, get_yes_no
-from swift_comet_pipeline.epochs import epoch_from_obs_log
+# from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
+from swift_comet_pipeline.observationlog.epochs import epoch_from_obs_log
 
 
 __all__ = [
@@ -69,13 +68,13 @@ def epochs_from_time_delta(
 
         # slice a copy of the observation log and convert into an epoch
         epoch = obs_log[time_filter].copy()
-        epoch = epoch_from_obs_log(epoch)
+        epoch = epoch_from_obs_log(epoch)  # type: ignore
         epoch_list.append(epoch.reset_index(drop=True))
         epoch_count += 1
         # print(f"Epoch {epoch_count} --> {len(epoch)} observations")
 
         cutoff_mask = obs_log.MID_TIME > t_end
-        obs_log = obs_log[cutoff_mask]
+        obs_log = obs_log[cutoff_mask]  # type: ignore
 
         # check to see if there is any data left
         if obs_log.empty:
@@ -165,7 +164,7 @@ class EpochTimeWindowSelect(object):
         self.ax.get_yaxis().set_visible(False)  # type: ignore
         self.fig.subplots_adjust(bottom=0.2)
 
-        self.slider_ax = self.fig.add_axes([0.3, 0.1, 0.6, 0.04])
+        self.slider_ax = self.fig.add_axes([0.3, 0.1, 0.6, 0.04])  # type: ignore
         self.slider = Slider(
             ax=self.slider_ax,
             label="Max time between observations (hours)",

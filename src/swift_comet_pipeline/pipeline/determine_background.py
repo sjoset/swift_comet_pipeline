@@ -13,9 +13,9 @@ from photutils.aperture import (
     ApertureStats,
 )
 
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage
-from swift_comet_pipeline.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.count_rate import CountRatePerPixel
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift.count_rate import CountRatePerPixel
 
 
 __all__ = [
@@ -200,13 +200,13 @@ class BackgroundAperturePlacementPlot(object):
             color="orange",
         )
 
-        self.radius_slider_ax = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor="orange")
+        self.radius_slider_ax = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor="orange")  # type: ignore
         self.radius_slider = Slider(
             self.radius_slider_ax, "r", valmin=1, valmax=100, valstep=1, valinit=50
         )
         self.radius_slider.on_changed(self.onslider)
 
-        self.aperture = plt.Circle(
+        self.aperture = plt.Circle(  # type: ignore
             (self.image_center_x, self.image_center_y),
             edgecolor="white",
             fill=False,
@@ -240,8 +240,8 @@ class BackgroundAperturePlacementPlot(object):
     def recalc_background(self):
         bgresult = bg_manual_aperture_mean(
             img=self.original_img,
-            aperture_x=self.aperture.get_center()[0],
-            aperture_y=self.aperture.get_center()[1],
+            aperture_x=self.aperture.get_center()[0],  # type: ignore
+            aperture_y=self.aperture.get_center()[1],  # type: ignore
             aperture_radius=self.aperture.radius,
         )
         self.bg_count_rate = bgresult.count_rate_per_pixel.value
@@ -263,8 +263,8 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
 
     return bg_manual_aperture_mean(
         img=img,
-        aperture_x=bg.aperture.get_center()[0],
-        aperture_y=bg.aperture.get_center()[1],
+        aperture_x=bg.aperture.get_center()[0],  # type: ignore
+        aperture_y=bg.aperture.get_center()[1],  # type: ignore
         aperture_radius=bg.aperture.radius,
     )
 

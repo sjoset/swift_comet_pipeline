@@ -3,19 +3,20 @@
 import numpy as np
 from astropy.io import fits
 from astropy.visualization import ZScaleInterval
-from astropy.stats import sigma_clipped_stats
-from photutils.aperture import CircularAperture
-from photutils.detection import DAOStarFinder
+
+# from astropy.stats import sigma_clipped_stats
+# from photutils.aperture import CircularAperture
+# from photutils.detection import DAOStarFinder
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider
 from matplotlib.patches import Rectangle
 from mpl_toolkits import axes_grid1
 
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.uvot_image import PixelCoord
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.swift.uvot_image import PixelCoord
 
 
 __all__ = ["manual_veto"]
@@ -27,7 +28,7 @@ class EpochImageSlider(Slider):
         self.activecolor = kwargs.pop("activecolor", "b")
         self.fontsize = kwargs.pop("fontsize", 10)
         self.num_images = num_images
-        self.label = "Image"
+        self.label = "Image"  # type: ignore
         initial_image_index = 0
 
         super(EpochImageSlider, self).__init__(
@@ -87,7 +88,7 @@ class EpochImageSlider(Slider):
         self.button_forward.on_clicked(self.next_image)
 
     def _update(self, event):
-        super(EpochImageSlider, self)._update(event)
+        super(EpochImageSlider, self)._update(event)  # type: ignore
         i = int(self.val)
         if i >= self.num_images:
             return
@@ -127,14 +128,14 @@ class EpochImagePlot(object):
 
         self.zscale = ZScaleInterval()
 
-        self.slider_ax = self.fig.add_axes([0.1, 0.1, 0.8, 0.04])
+        self.slider_ax = self.fig.add_axes([0.1, 0.1, 0.8, 0.04])  # type: ignore
         self.slider = EpochImageSlider(
             self.slider_ax, self.num_images, activecolor="orange"
         )
         self.slider.on_changed(self.slider_update)
 
-        self.veto_ax = plt.axes([0.7, 0.025, 0.1, 0.04])
-        self.approve_ax = plt.axes([0.85, 0.025, 0.1, 0.04])
+        self.veto_ax = plt.axes([0.7, 0.025, 0.1, 0.04])  # type: ignore
+        self.approve_ax = plt.axes([0.85, 0.025, 0.1, 0.04])  # type: ignore
 
         self.veto_button = Button(self.veto_ax, "Veto", color="red", hovercolor="0.975")
         self.veto_button.on_clicked(self.veto_current_image)

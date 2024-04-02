@@ -4,11 +4,11 @@ from astropy import modeling
 from astropy.modeling.models import Gaussian1D
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.comet_profile import (
+from swift_comet_pipeline.comet.comet_profile import (
     CometProfile,
     extract_comet_radial_profile,
 )
-from swift_comet_pipeline.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
 
 
 __all__ = [

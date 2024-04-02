@@ -7,9 +7,9 @@ from scipy.interpolate import interp1d
 from dataclasses import dataclass
 from typing import Optional, TypeAlias
 
-from swift_comet_pipeline.configs import read_swift_pipeline_config
-from swift_comet_pipeline.error_propogation import ValueAndStandardDev
-from swift_comet_pipeline.flux_OH import OHFlux
+from swift_comet_pipeline.pipeline.pipeline_config import read_swift_pipeline_config
+from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.production.flux_OH import OHFlux
 
 
 __all__ = [

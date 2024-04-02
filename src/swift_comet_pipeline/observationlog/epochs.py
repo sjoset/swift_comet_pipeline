@@ -4,7 +4,7 @@ import pyarrow as pa
 
 from typing import TypeAlias
 
-from swift_comet_pipeline.observation_log import (
+from swift_comet_pipeline.observationlog.observation_log import (
     read_observation_log,
     write_observation_log,
     SwiftObservationLog,
@@ -31,6 +31,8 @@ Epoch: TypeAlias = pd.DataFrame
 # )
 
 
+# TODO: instead of breaking into smaller epochs, can we just add a column to the observation log with an epoch id, and
+# filter by that after loading?
 # TODO: merge this schema into observation log and just initialize all these possible error values in build_observation_log
 def epoch_schema() -> pa.lib.Schema:
     epoch_schema = pa.schema(
