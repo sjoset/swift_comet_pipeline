@@ -12,7 +12,7 @@ readme = "README.md"
 license = "LICENSE"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.13"
+python = ">=3.11, <3.13"
 matplotlib = ">=3.8.0"
 numpy = ">=1.26.1"
 scipy = ">=1.11.3"
@@ -24,6 +24,7 @@ tqdm = ">=4.66.1"
 pyarrow = ">=13.0.0"
 rich = "^13.6.0"
 sbpy = "^0.4.0"
+pyvectorial-au = "^1.0.5"
 
 [tool.poetry.scripts]
 scp_tui = 'swift_comet_pipeline.scp_tui:main'
