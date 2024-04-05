@@ -27,9 +27,6 @@ from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.stacking.stacking import StackingMethod
 
 
-__all__ = ["PipelineFiles"]
-
-
 class PipelineProductType(StrEnum):
     observation_log = auto()
     comet_orbital_data = auto()

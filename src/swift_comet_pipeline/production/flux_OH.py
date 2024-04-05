@@ -3,21 +3,14 @@ from typing import Optional, TypeAlias
 import numpy as np
 from astropy.time import Time
 
-from swift_comet_pipeline.configs import read_swift_pipeline_config
-from swift_comet_pipeline.solar_spectrum import solar_count_rate_in_filter
-from swift_comet_pipeline.reddening_correction import (
+from swift_comet_pipeline.projects.configs import read_swift_pipeline_config
+from swift_comet_pipeline.spectrum.solar_spectrum import solar_count_rate_in_filter
+from swift_comet_pipeline.dust.reddening_correction import (
     reddening_correction,
     DustReddeningPercent,
 )
-from swift_comet_pipeline.error_propogation import ValueAndStandardDev
-from swift_comet_pipeline.count_rate import CountRate
-
-
-__all__ = [
-    "OHFlux",
-    "beta_parameter",
-    "OH_flux_from_count_rate",
-]
+from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.swift.count_rate import CountRate
 
 OHFlux: TypeAlias = ValueAndStandardDev
 

@@ -11,13 +11,6 @@ from swift_comet_pipeline.comet.comet_profile import (
 from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
 
 
-__all__ = [
-    "fit_comet_profile_gaussian",
-    "plot_fitted_gaussian_profile",
-    "estimate_comet_radius_at_angle",
-]
-
-
 def fit_comet_profile_gaussian(comet_profile: CometProfile) -> Optional[Gaussian1D]:
     """Takes a CometRadialProfile and returns a function f(r) generated from the profile's best-fit gaussian"""
 

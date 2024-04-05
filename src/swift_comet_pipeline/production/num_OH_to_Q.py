@@ -1,20 +1,13 @@
-import numpy as np
 from functools import cache
+from typing import TypeAlias
 
-# import pandas as pd
+import numpy as np
 import sbpy.activity as sba
 from sbpy.data import Phys
 import astropy.units as u
 
-from typing import TypeAlias
-
-# from scipy.interpolate import interp1d
-
-# from swift_comet_pipeline.configs import read_swift_pipeline_config
-from swift_comet_pipeline.error_propogation import ValueAndStandardDev
-from swift_comet_pipeline.fluorescence_OH import NumOH
-
-__all__ = ["num_OH_to_Q_vectorial"]
+from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.production.fluorescence_OH import NumOH
 
 
 NumQH2O: TypeAlias = ValueAndStandardDev
@@ -63,6 +56,7 @@ def num_OH_at_r_au_vectorial(
     }
     # TODO: check fragment tau_T
     fragment_dict = {"v_photo": 1.05 * u.km / u.s, "tau_T": 110000 * helio_r_au_sq * u.s}  # type: ignore
+    # TODO: use pyvectorial to transform these instead of doing it manually with helio_r_au
 
     parent = Phys.from_dict(parent_dict)  # type: ignore
     fragment = Phys.from_dict(fragment_dict)  # type: ignore

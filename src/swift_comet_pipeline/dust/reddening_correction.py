@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
-
 import pathlib
 from typing import TypeAlias
 
 from swift_comet_pipeline.swift.swift_filter import read_effective_area
-
-__all__ = ["reddening_correction", "DustReddeningPercent"]
-
 
 DustReddeningPercent: TypeAlias = float
 

@@ -5,11 +5,6 @@ import logging as log
 from typing import Optional
 from dataclasses import dataclass
 
-__all__ = [
-    "SwiftPipelineConfig",
-    "read_swift_pipeline_config",
-]
-
 
 @dataclass
 class SwiftPipelineConfig:

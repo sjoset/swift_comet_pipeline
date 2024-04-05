@@ -19,9 +19,6 @@ from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import PixelCoord
 
 
-__all__ = ["manual_veto"]
-
-
 class EpochImageSlider(Slider):
     def __init__(self, ax, num_images, valfmt="%1d", **kwargs):
         self.facecolor = kwargs.get("facecolor", "w")

@@ -13,13 +13,6 @@ from swift_comet_pipeline.swift.uvot_image import (
 )
 
 
-__all__ = [
-    "CometCenterFindingMethod",
-    "find_comet_center",
-    "compare_comet_center_methods",
-]
-
-
 class CometCenterFindingMethod(StrEnum):
     pixel_center = auto()
     aperture_centroid = auto()

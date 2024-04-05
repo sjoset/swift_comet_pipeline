@@ -1,4 +1,3 @@
-# import calendar
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
@@ -10,16 +9,8 @@ from matplotlib.pyplot import cm
 
 from typing import List
 
-# from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
 from swift_comet_pipeline.observationlog.epochs import epoch_from_obs_log
-
-
-__all__ = [
-    "select_epoch_time_window",
-    "epochs_from_time_delta",
-    # "time_delta_loop",
-]
 
 
 def epochs_from_time_delta(
