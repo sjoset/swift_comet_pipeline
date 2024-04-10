@@ -16,9 +16,6 @@ from swift_comet_pipeline.pipeline.epoch_time_window import (
 )
 
 
-__all__ = ["identify_epochs_step"]
-
-
 def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.product_save_path)
 

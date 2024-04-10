@@ -10,8 +10,6 @@ from swift_comet_pipeline.pipeline.pipeline_files import (
     PipelineProductType,
 )
 
-__all__ = ["observation_log_step"]
-
 
 def observation_log_step(swift_project_config: SwiftProjectConfig) -> None:
     horizons_id = swift_project_config.jpl_horizons_id

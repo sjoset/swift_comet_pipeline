@@ -12,24 +12,27 @@ from swift_comet_pipeline.production.flux_OH import (
     beta_parameter,
 )
 from swift_comet_pipeline.production.num_OH_to_Q import num_OH_to_Q_vectorial
-from swift_comet_pipeline.plateau_detect import plateau_detect
-from swift_comet_pipeline.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift_filter import SwiftFilter
-from swift_comet_pipeline.stacking import StackingMethod
-from swift_comet_pipeline.tui import stacked_epoch_menu, wait_for_key
-from swift_comet_pipeline.comet_center import (
+from swift_comet_pipeline.comet.plateau_detect import plateau_detect
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu, wait_for_key
+from swift_comet_pipeline.comet.comet_center import (
     compare_comet_center_methods,
 )
-from swift_comet_pipeline.comet_profile import comet_manual_aperture
-from swift_comet_pipeline.configs import SwiftProjectConfig
-from swift_comet_pipeline.uvot_image import SwiftUVOTImage, get_uvot_image_center
-from swift_comet_pipeline.count_rate import (
+from swift_comet_pipeline.comet.comet_profile import comet_manual_aperture
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.swift.count_rate import (
     CountRate,
     CountRatePerPixel,
     magnitude_from_count_rate,
 )
-from swift_comet_pipeline.epochs import Epoch
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
+from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def do_comet_photometry_at_img_center(

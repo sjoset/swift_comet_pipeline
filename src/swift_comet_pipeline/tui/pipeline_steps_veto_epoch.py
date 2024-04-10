@@ -1,16 +1,15 @@
 import pathlib
 from rich import print as rprint
 
-from swift_comet_pipeline.swift_data import SwiftData
-from swift_comet_pipeline.configs import SwiftProjectConfig
+from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 
-# from swift_comet_pipeline.pipeline_files import PipelineFiles
-from swift_comet_pipeline.tui import epoch_menu, get_yes_no, wait_for_key
-from swift_comet_pipeline.manual_veto import manual_veto
-from swift_comet_pipeline.pipeline_files import PipelineFiles, PipelineProductType
-
-
-__all__ = ["veto_epoch_step"]
+from swift_comet_pipeline.tui.tui_common import epoch_menu, get_yes_no, wait_for_key
+from swift_comet_pipeline.pipeline.manual_veto import manual_veto
+from swift_comet_pipeline.pipeline.pipeline_files import (
+    PipelineFiles,
+    PipelineProductType,
+)
 
 
 def veto_epoch_step(swift_project_config: SwiftProjectConfig) -> None:

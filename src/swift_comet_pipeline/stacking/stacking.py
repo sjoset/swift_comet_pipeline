@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import pathlib
 from typing import Tuple, Optional, List, TypeAlias
 from enum import StrEnum
@@ -20,15 +18,6 @@ from swift_comet_pipeline.swift.uvot_image import (
 )
 from swift_comet_pipeline.observationlog.epochs import Epoch
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
-
-
-__all__ = [
-    "StackingMethod",
-    "get_image_dimensions_to_center_comet",
-    "determine_stacking_image_size",
-    "center_image_on_coords",
-    "stack_epoch_into_sum_and_median",
-]
 
 
 class StackingMethod(StrEnum):

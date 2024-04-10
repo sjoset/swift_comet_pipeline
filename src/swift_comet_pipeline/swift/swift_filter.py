@@ -6,17 +6,6 @@ from dataclasses import dataclass
 import numpy as np
 from astropy.io import fits
 
-__all__ = [
-    "SwiftFilter",
-    "filter_to_string",
-    "filter_to_file_string",
-    "file_string_to_filter",
-    "filter_to_obs_string",
-    "obs_string_to_filter",
-    "read_effective_area",
-    "FilterEffectiveArea",
-]
-
 
 class SwiftFilter(StrEnum):
     uuu = auto()

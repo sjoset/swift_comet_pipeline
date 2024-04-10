@@ -5,9 +5,6 @@ from typing import TypeAlias
 from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, get_filter_parameters
 
-__all__ = ["CountRate", "CountRatePerPixel", "magnitude_from_count_rate"]
-
-
 CountRate: TypeAlias = ValueAndStandardDev
 CountRatePerPixel: TypeAlias = ValueAndStandardDev
 Magnitude: TypeAlias = ValueAndStandardDev

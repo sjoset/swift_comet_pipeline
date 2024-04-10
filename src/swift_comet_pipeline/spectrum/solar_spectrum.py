@@ -6,7 +6,7 @@ from astropy.time import Time
 from dataclasses import dataclass
 from scipy.interpolate import interp1d
 
-from swift_comet_pipeline.effective_areas import read_effective_area
+from swift_comet_pipeline.swift.swift_filter import read_effective_area
 
 
 @dataclass
@@ -16,25 +16,18 @@ class SolarSpectrum:
     irradiances: np.ndarray
 
 
-__all__ = [
-    "read_solar_spectrum",
-    "read_solar_spectrum_sorce",
-    "get_sorce_spectrum",
-    "solar_count_rate_in_filter",
-    "SolarSpectrum",
-]
-
-
-def read_solar_spectrum(solar_spectrum_path: pathlib.Path) -> SolarSpectrum:
+def read_fixed_solar_spectrum(solar_spectrum_path: pathlib.Path) -> SolarSpectrum:
     """
     Reads a modeled solar spectrum csv file of the form (lambda, irradiance) and returns a SolarSpectrum
     """
     # load the solar spectrum
     solar_spectrum_df = pd.read_csv(solar_spectrum_path)
 
-    # convert lambda to nanometers
-    solar_lambdas = solar_spectrum_df["wavelength (angstroms)"] / 10
-    solar_irradiances = solar_spectrum_df["irradiance"]
+    # convert lambda from angstroms to nanometers
+    solar_lambdas = (
+        solar_spectrum_df["wavelength (angstroms)"].to_numpy(dtype=float) / 10
+    )
+    solar_irradiances = solar_spectrum_df["irradiance"].to_numpy(dtype=float)
 
     return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
 
@@ -76,20 +69,20 @@ def get_sorce_spectrum(t: Time) -> SolarSpectrum:
     return ss
 
 
-# Convolution of the solar spectrum with a filter effective area
 def solar_count_rate_in_filter(
     solar_spectrum_path: pathlib.Path,
     solar_spectrum_time: Time,
     effective_area_path: pathlib.Path,
 ) -> float:
     """
-    use effective area and theoretical spectra to calculate count rate in a filter duo to solar activity
+    use effective area and theoretical spectra to calculate count rate in a filter due to solar activity
+    through a convolution of the solar spectrum with the filter effective area
     """
     # large enough for beta to converge on its proper value
     num_interpolation_lambdas = 1000
 
     # read each file
-    solar_spectrum = read_solar_spectrum(solar_spectrum_path)
+    solar_spectrum = read_fixed_solar_spectrum(solar_spectrum_path)
     ea_data = read_effective_area(effective_area_path=effective_area_path)
 
     ea_lambdas = ea_data.lambdas

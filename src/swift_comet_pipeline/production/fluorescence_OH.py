@@ -11,7 +11,6 @@ from swift_comet_pipeline.pipeline.pipeline_config import read_swift_pipeline_co
 from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
 from swift_comet_pipeline.production.flux_OH import OHFlux
 
-
 NumOH: TypeAlias = ValueAndStandardDev
 
 

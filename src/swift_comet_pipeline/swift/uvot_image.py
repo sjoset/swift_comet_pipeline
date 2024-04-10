@@ -5,17 +5,6 @@ from enum import Enum, StrEnum
 from dataclasses import dataclass
 from typing import TypeAlias, Tuple
 
-
-__all__ = [
-    "SwiftUVOTImage",
-    "SwiftUVOTImageType",
-    "SwiftPixelResolution",
-    "PixelCoord",
-    "get_uvot_image_center_row_col",
-    "get_uvot_image_center",
-]
-
-
 SwiftUVOTImage: TypeAlias = np.ndarray
 
 

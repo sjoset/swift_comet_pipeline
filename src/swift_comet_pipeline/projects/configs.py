@@ -7,17 +7,8 @@ from dataclasses import asdict, dataclass
 
 from rich import print as rprint
 
-from swift_comet_pipeline.tui import get_yes_no
-from swift_comet_pipeline.swift_data import SwiftData
-
-__all__ = [
-    "SwiftProjectConfig",
-    "SwiftPipelineConfig",
-    "read_swift_project_config",
-    "read_or_create_project_config",
-    "read_swift_pipeline_config",
-    "write_swift_project_config",
-]
+from swift_comet_pipeline.tui.tui_common import get_yes_no
+from swift_comet_pipeline.swift.swift_data import SwiftData
 
 
 @dataclass

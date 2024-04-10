@@ -11,15 +11,6 @@ from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, SwiftUVOTImageType
 
 
-__all__ = [
-    "SwiftData",
-    "SwiftOrbitID",
-    "SwiftObservationID",
-    "swift_orbit_id_from_obsid",
-    "swift_observation_id_from_int",
-]
-
-
 SwiftObservationID: TypeAlias = str
 SwiftOrbitID: TypeAlias = str
 

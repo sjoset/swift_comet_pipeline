@@ -5,9 +5,6 @@ import numpy as np
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, SwiftPixelResolution
 
 
-__all__ = ["coincidence_correction", "CoincidenceCorrection"]
-
-
 class CoincidenceCorrection:
     def __init__(self) -> None:
         # Poole 2008

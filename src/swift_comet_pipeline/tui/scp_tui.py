@@ -10,20 +10,24 @@ from enum import StrEnum
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-from swift_comet_pipeline.configs import read_or_create_project_config
-from swift_comet_pipeline.pipeline_extras import pipeline_extras_menu
-from swift_comet_pipeline.pipeline_steps_background_analysis_step import (
+from swift_comet_pipeline.projects.configs import read_or_create_project_config
+from swift_comet_pipeline.tui.pipeline_extras import pipeline_extras_menu
+from swift_comet_pipeline.tui.pipeline_steps_background_analysis_step import (
     background_analysis_step,
 )
-from swift_comet_pipeline.pipeline_steps_observation_log import observation_log_step
-from swift_comet_pipeline.pipeline_steps_identify_epochs import identify_epochs_step
-from swift_comet_pipeline.pipeline_steps_qH2O_from_profile import qH2O_from_profile_step
-from swift_comet_pipeline.pipeline_steps_qH2O_vs_aperture_radius import (
+from swift_comet_pipeline.tui.pipeline_steps_observation_log import (
+    observation_log_step,
+)
+from swift_comet_pipeline.tui.pipeline_steps_identify_epochs import identify_epochs_step
+from swift_comet_pipeline.tui.pipeline_steps_qH2O_from_profile import (
+    qH2O_from_profile_step,
+)
+from swift_comet_pipeline.tui.pipeline_steps_qH2O_vs_aperture_radius import (
     qH2O_vs_aperture_radius_step,
 )
-from swift_comet_pipeline.pipeline_steps_veto_epoch import veto_epoch_step
-from swift_comet_pipeline.pipeline_steps_epoch_stacking import epoch_stacking_step
-from swift_comet_pipeline.tui import clear_screen, get_selection
+from swift_comet_pipeline.tui.pipeline_steps_veto_epoch import veto_epoch_step
+from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stacking_step
+from swift_comet_pipeline.tui.tui_common import clear_screen, get_selection
 
 
 class PipelineStepsMenuEntry(StrEnum):
