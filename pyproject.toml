@@ -27,6 +27,6 @@ sbpy = "^0.4.0"
 pyvectorial-au = "^1.0.5"
 
 [tool.poetry.scripts]
-scp_tui = 'swift_comet_pipeline.scp_tui:main'
+scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'
 
 [tool.poetry.dev-dependencies]
