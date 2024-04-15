@@ -3,7 +3,7 @@ from typing import Optional, TypeAlias
 import numpy as np
 from astropy.time import Time
 
-from swift_comet_pipeline.projects.configs import read_swift_pipeline_config
+from swift_comet_pipeline.pipeline.pipeline_config import read_swift_pipeline_config
 from swift_comet_pipeline.spectrum.solar_spectrum import solar_count_rate_in_filter
 from swift_comet_pipeline.dust.reddening_correction import (
     reddening_correction,

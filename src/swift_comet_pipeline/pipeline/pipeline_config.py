@@ -12,7 +12,6 @@ class SwiftPipelineConfig:
     effective_area_uw1_path: pathlib.Path
     effective_area_uvv_path: pathlib.Path
     oh_fluorescence_path: pathlib.Path
-    vectorial_model_path: pathlib.Path
 
 
 def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
@@ -43,8 +42,6 @@ def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
         / pathlib.Path(config_yaml["effective_area_uvv_path"]),
         oh_fluorescence_path=script_path
         / pathlib.Path(config_yaml["oh_fluorescence_path"]),
-        vectorial_model_path=script_path
-        / pathlib.Path(config_yaml["vectorial_model_path"]),
     )
 
     return pipeline_config

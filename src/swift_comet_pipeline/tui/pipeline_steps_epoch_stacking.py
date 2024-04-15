@@ -182,8 +182,13 @@ def uw1_and_uvv_stacks_from_epoch(
     if epoch.DATAMODE.nunique() != 1:
         print("Images in the requested stack have mixed data modes!  Exiting.")
         exit(1)
+    else:
+        print(
+            f"All images taken taken with data mode FITS keyword {epoch.DATAMODE[0].value}, stacking..."
+        )
 
-    epoch_pixel_resolution = epoch.DATAMODE[0]
+    # epoch_pixel_resolution = epoch.DATAMODE[0]
+    epoch_pixel_resolution = epoch.PIXEL_RESOLUTION[0]
     stacked_images = StackedUVOTImageSet({})
 
     # do the stacking

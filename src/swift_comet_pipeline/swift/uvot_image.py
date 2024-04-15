@@ -1,17 +1,25 @@
 import copy
-import numpy as np
 
 from enum import Enum, StrEnum
 from dataclasses import dataclass
-from typing import TypeAlias, Tuple
+from typing import TypeAlias, Tuple, Optional
+
+import numpy as np
 
 SwiftUVOTImage: TypeAlias = np.ndarray
 
 
+# Maps the strings in FITS file header under the keyword DATAMODE
+class SwiftImageDataMode(str, Enum):
+    data_mode = "IMAGE"
+    event_mode = "EVENT"
+
+
+# The pixel resolution of the given modes according to the swift documentation
 class SwiftPixelResolution(float, Enum):
     # units of arcseconds per pixel
-    event_mode = 0.502
     data_mode = 1.0
+    event_mode = 0.502
 
 
 class SwiftUVOTImageType(StrEnum):
@@ -25,23 +33,56 @@ class SwiftUVOTImageType(StrEnum):
         return [x for x in cls]
 
 
-def datamode_to_pixel_resolution(datamode: str) -> SwiftPixelResolution:
-    """Takes a string read from the DATAMODE entry of the FITS header of a UVOT image and converts"""
+def datamode_from_fits_keyword_string(datamode: str) -> Optional[SwiftImageDataMode]:
     if datamode == "IMAGE":
-        return SwiftPixelResolution.data_mode
+        return SwiftImageDataMode.data_mode
     elif datamode == "EVENT":
+        return SwiftImageDataMode.event_mode
+    else:
+        return None
+
+
+# TODO: clean all of this old code up
+# def datamode_to_pixel_resolution(datamode: str) -> SwiftPixelResolution:
+#     """Takes a string read from the DATAMODE entry of the FITS header of a UVOT image and converts"""
+#     if datamode == "IMAGE":
+#         return SwiftPixelResolution.data_mode
+#     elif datamode == "EVENT":
+#         return SwiftPixelResolution.event_mode
+#     else:
+#         print(f"Unknown data mode {datamode}! Assuming imaging data mode.")
+#         return SwiftPixelResolution.data_mode
+
+
+def datamode_to_pixel_resolution(datamode: SwiftImageDataMode) -> SwiftPixelResolution:
+    if datamode == SwiftImageDataMode.data_mode:
+        return SwiftPixelResolution.data_mode
+    elif datamode == SwiftImageDataMode.event_mode:
+        return SwiftPixelResolution.event_mode
+
+
+# def pixel_resolution_to_datamode(spr: SwiftPixelResolution) -> str:
+#     """Performs the inverse conversion of datamode_to_pixel_resolution for conversion back to a string"""
+#     if spr == SwiftPixelResolution.event_mode:
+#         return "EVENT"
+#     elif spr == SwiftPixelResolution.data_mode:
+#         return "IMAGE"
+
+
+def pixel_resolution_to_datamode(pixel_res: SwiftPixelResolution) -> SwiftImageDataMode:
+    if pixel_res == SwiftPixelResolution.data_mode:
+        return SwiftImageDataMode.data_mode
+    elif pixel_res == SwiftPixelResolution.event_mode:
+        return SwiftImageDataMode.event_mode
+
+
+def float_to_pixel_resolution(pixel_float: float) -> Optional[SwiftPixelResolution]:
+    if pixel_float == SwiftPixelResolution.data_mode:
+        return SwiftPixelResolution.data_mode
+    elif pixel_float == SwiftPixelResolution.event_mode:
         return SwiftPixelResolution.event_mode
     else:
-        print(f"Unknown data mode {datamode}!")
-        return SwiftPixelResolution.data_mode
-
-
-def pixel_resolution_to_datamode(spr: SwiftPixelResolution) -> str:
-    """Performs the inverse conversion of datamode_to_pixel_resolution for conversion back to a string"""
-    if spr == SwiftPixelResolution.event_mode:
-        return "EVENT"
-    elif spr == SwiftPixelResolution.data_mode:
-        return "IMAGE"
+        return None
 
 
 @dataclass

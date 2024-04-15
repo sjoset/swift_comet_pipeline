@@ -27,6 +27,7 @@ class SwiftPipelineConfig:
     vectorial_model_path: pathlib.Path
 
 
+# TODO: this function is defined multiple times in different files: move it into its own file somewhere
 def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
     """Read YAML file from disk and return dictionary with the contents"""
     with open(filepath, "r") as stream:
@@ -51,27 +52,27 @@ def _path_from_yaml(yaml_dict: dict, key: str) -> Optional[pathlib.Path]:
     return val
 
 
-def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
-    script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
-    config_yaml = _read_yaml(script_path / pathlib.Path("pipeline_config.yaml"))
-
-    if config_yaml is None:
-        return None
-
-    pipeline_config = SwiftPipelineConfig(
-        solar_spectrum_path=script_path
-        / pathlib.Path(config_yaml["solar_spectrum_path"]),
-        effective_area_uw1_path=script_path
-        / pathlib.Path(config_yaml["effective_area_uw1_path"]),
-        effective_area_uvv_path=script_path
-        / pathlib.Path(config_yaml["effective_area_uvv_path"]),
-        oh_fluorescence_path=script_path
-        / pathlib.Path(config_yaml["oh_fluorescence_path"]),
-        vectorial_model_path=script_path
-        / pathlib.Path(config_yaml["vectorial_model_path"]),
-    )
-
-    return pipeline_config
+# def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
+#     script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
+#     config_yaml = _read_yaml(script_path / pathlib.Path("pipeline_config.yaml"))
+#
+#     if config_yaml is None:
+#         return None
+#
+#     pipeline_config = SwiftPipelineConfig(
+#         solar_spectrum_path=script_path
+#         / pathlib.Path(config_yaml["solar_spectrum_path"]),
+#         effective_area_uw1_path=script_path
+#         / pathlib.Path(config_yaml["effective_area_uw1_path"]),
+#         effective_area_uvv_path=script_path
+#         / pathlib.Path(config_yaml["effective_area_uvv_path"]),
+#         oh_fluorescence_path=script_path
+#         / pathlib.Path(config_yaml["oh_fluorescence_path"]),
+#         vectorial_model_path=script_path
+#         / pathlib.Path(config_yaml["vectorial_model_path"]),
+#     )
+#
+#     return pipeline_config
 
 
 def read_swift_project_config(

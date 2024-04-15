@@ -27,8 +27,9 @@ from swift_comet_pipeline.swift.swift_filter import (
     filter_to_obs_string,
 )
 from swift_comet_pipeline.swift.uvot_image import (
+    datamode_from_fits_keyword_string,
     datamode_to_pixel_resolution,
-    pixel_resolution_to_datamode,
+    float_to_pixel_resolution,
 )
 
 
@@ -59,8 +60,10 @@ def observation_log_schema() -> pa.lib.Schema:
             pa.field("PX", pa.float64()),
             pa.field("PY", pa.float64()),
             pa.field("DATAMODE", pa.string()),
+            pa.field("PIXEL_RESOLUTION", pa.float64()),
             pa.field("KM_PER_PIX", pa.float64()),
             pa.field("CREATOR", pa.string()),
+            pa.field("manual_veto", pa.bool_()),
         ]
     )
 
@@ -218,17 +221,27 @@ def build_observation_log(
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
-    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+    obs_log["DATAMODE"] = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
+    obs_log["PIXEL_RESOLUTION"] = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+    print(obs_log.PIXEL_RESOLUTION)
+    print(obs_log.OBS_DIS)
+    print(obs_log.OBS_ID)
 
     # Conversion rate of 1 pixel to km: DATAMODE now holds image resolution in arcseconds/pixel
     obs_log["KM_PER_PIX"] = obs_log.apply(
         lambda row: (
             (
-                ((2 * np.pi) / (3600.0 * 360.0)) * row.DATAMODE * row.OBS_DIS * u.AU
+                ((2 * np.pi) / (3600.0 * 360.0))
+                * row.PIXEL_RESOLUTION
+                * row.OBS_DIS
+                * u.AU
             ).to_value(u.km)
         ),
         axis=1,
     )
+    print(obs_log.KM_PER_PIX)
+
+    obs_log["manual_veto"] = False * len(obs_log.index)
 
     return obs_log
 
@@ -245,16 +258,24 @@ def read_observation_log(
 
     obs_log = pd.read_parquet(obs_log_path, schema=schema)
 
+    # post-processing on the columns to get them into a datatype we want: we have to store these as strings
+    # but datetime objects are much nicer to work with
     obs_log[["DATE_OBS", "DATE_END", "MID_TIME"]] = obs_log[
         ["DATE_OBS", "DATE_END", "MID_TIME"]
     ].apply(pd.to_datetime)
 
+    # filters are stored as strings as well, convert them to SwiftFilter objects
     obs_log["FILTER"] = obs_log["FILTER"].astype(str).map(obs_string_to_filter)
 
+    # observation ID is stored as an int: convert to SwiftObservationID and SwiftOrbitID types
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
-    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
+    # DATAMODE is stored as a string: convert to valid SwiftImageDataMode
+    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
+
+    # PIXEL_RESOLUTION is stored as a float: convert to valid SwiftPixelResolution
+    obs_log.PIXEL_RESOLUTION = obs_log.PIXEL_RESOLUTION.apply(float_to_pixel_resolution)
 
     return obs_log
 
@@ -262,7 +283,7 @@ def read_observation_log(
 def write_observation_log(
     obs_log: SwiftObservationLog,
     obs_log_path: pathlib.Path,
-    additional_schema: pa.lib.Schema = None,
+    # additional_schema: pa.lib.Schema = None,
 ) -> None:
     """
     Copy obs_log and process the columns to data types that fit our schema, then save
@@ -276,11 +297,13 @@ def write_observation_log(
     oc["OBS_ID"] = oc["OBS_ID"].astype(int)
     oc["FILTER"] = oc["FILTER"].map(filter_to_obs_string)
 
-    oc.DATAMODE = oc.DATAMODE.map(pixel_resolution_to_datamode)
+    # oc.DATAMODE = oc.DATAMODE.map(pixel_resolution_to_datamode)
+    oc.DATAMODE = oc.DATAMODE.astype(str)
+    oc.PIXEL_RESOLUTION = oc.PIXEL_RESOLUTION.astype(float)
 
     schema = observation_log_schema()
-    if additional_schema is not None:
-        schema = pa.unify_schemas([schema, additional_schema])
+    # if additional_schema is not None:
+    #     schema = pa.unify_schemas([schema, additional_schema])
 
     oc.to_parquet(obs_log_path, schema=schema)
 
