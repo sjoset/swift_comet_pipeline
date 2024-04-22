@@ -27,6 +27,7 @@ from swift_comet_pipeline.swift.swift_filter import (
     filter_to_obs_string,
 )
 from swift_comet_pipeline.swift.uvot_image import (
+    PixelCoord,
     datamode_from_fits_keyword_string,
     datamode_to_pixel_resolution,
     float_to_pixel_resolution,
@@ -34,6 +35,32 @@ from swift_comet_pipeline.swift.uvot_image import (
 
 
 SwiftObservationLog: TypeAlias = pd.DataFrame
+
+
+def invalid_user_center_value() -> float:
+    return -1
+
+
+def has_valid_user_center_value(row: pd.Series) -> bool:
+
+    if (
+        row.USER_CENTER_X != invalid_user_center_value()
+        and row.USER_CENTER_Y != invalid_user_center_value()
+    ):
+        return True
+    else:
+        return False
+
+
+def get_horizons_comet_center(row: pd.Series) -> PixelCoord:
+    return PixelCoord(x=row.PX, y=row.PY)
+
+
+def get_user_specified_comet_center(row: pd.Series) -> Optional[PixelCoord]:
+    if has_valid_user_center_value(row=row):
+        return PixelCoord(x=row.USER_CENTER_X, y=row.USER_CENTER_Y)
+    else:
+        return None
 
 
 # TODO: add documentation for each of these entries and what they hold
@@ -55,13 +82,26 @@ def observation_log_schema() -> pa.lib.Schema:
             pa.field("HELIO_V", pa.float64()),
             pa.field("OBS_DIS", pa.float64()),
             pa.field("PHASE", pa.float64()),
+            # coordinates given by Horizons for the center of the comet
             pa.field("RA", pa.float64()),
             pa.field("DEC", pa.float64()),
+            # PX, PY: pixel x and y coordinates of comet center after converting RA, DEC using WCS
             pa.field("PX", pa.float64()),
             pa.field("PY", pa.float64()),
+            # x and y coordinates of comet center as selected by user during veto step
+            pa.field("USER_CENTER_X", pa.float64()),
+            pa.field("USER_CENTER_Y", pa.float64()),
+            # string as taken from the FITS header keyword DATAMODE
             pa.field("DATAMODE", pa.string()),
-            pa.field("PIXEL_RESOLUTION", pa.float64()),
+            # how many arcseconds per pixel in this data mode
+            pa.field("ARCSECS_PER_PIXEL", pa.float64()),
+            # conversion from pixels to kilometers, based on the distance of the comet from the observation point
             pa.field("KM_PER_PIX", pa.float64()),
+            # TODO: figure out if we really need to keep these
+            # # number of rows in the image (height)
+            # pa.field("IMAGE_SHAPE_ROWS", pa.int16()),
+            # # number of columns in the image (width)
+            # pa.field("IMAGE_SHAPE_COLS", pa.int16()),
             pa.field("CREATOR", pa.string()),
             pa.field("manual_veto", pa.bool_()),
         ]
@@ -110,6 +150,8 @@ def build_observation_log(
     processed_filname_list = []
     # swift pipeline versions that produced our downloaded data
     creator_list = []
+    # image_shape_row_list = []
+    # image_shape_col_list = []
 
     image_progress_bar = tqdm(obsids, unit="images")
     for k, obsid in enumerate(image_progress_bar):
@@ -139,6 +181,11 @@ def build_observation_log(
                         continue
 
                     header = hdul[ext_id].header  # type: ignore
+
+                    # # pull the numpy shape out of the pixel array
+                    # img_shape = hdul[ext_id].data.shape  # type: ignore
+                    # image_shape_row_list.append(img_shape[0])
+                    # image_shape_col_list.append(img_shape[1])
 
                     # add a row to the dataframe from the header info
                     obs_log.loc[len(obs_log.index)] = [
@@ -172,6 +219,9 @@ def build_observation_log(
     # version of UVOT2FITS
     obs_log["CREATOR"] = creator_list
 
+    # obs_log["IMAGE_SHAPE_ROWS"] = image_shape_row_list
+    # obs_log["IMAGE_SHAPE_COLS"] = image_shape_col_list
+
     # translates horizons results (left) to observation log column names (right)
     ephemeris_info = {
         "r": "HELIO",
@@ -188,19 +238,19 @@ def build_observation_log(
 
     # for each row, query Horizons for our object at 'mid_time' and fill the dataframe with response info
     for k, mid_time in enumerate(horizons_progress_bar):
+        horizons_progress_bar.set_description(
+            f"Horizons querying {obs_log['OBS_ID'][k]} extension {obs_log['EXTENSION'][k]} ..."
+        )
+
         horizons_response = Horizons(
             id=horizons_id, location="@swift", epochs=mid_time.jd, id_type="designation"
         )
         eph = horizons_response.ephemerides(closest_apparition=True)  # type: ignore
-        # append this row of information to our horizon dataframe
+        # append this row of information to our horizons dataframe
         horizon_dataframe.loc[len(horizon_dataframe.index)] = [
             eph[x][0] for x in ephemeris_info.keys()
         ]
         horizons_response._session.close()
-
-        horizons_progress_bar.set_description(
-            f"Horizons querying {obs_log['OBS_ID'][k]} extension {obs_log['EXTENSION'][k]}"
-        )
 
     obs_log = pd.concat([obs_log, horizon_dataframe], axis=1)
 
@@ -222,26 +272,28 @@ def build_observation_log(
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
     obs_log["DATAMODE"] = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
-    obs_log["PIXEL_RESOLUTION"] = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
-    print(obs_log.PIXEL_RESOLUTION)
-    print(obs_log.OBS_DIS)
-    print(obs_log.OBS_ID)
+    obs_log["ARCSECS_PER_PIXEL"] = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
 
     # Conversion rate of 1 pixel to km: DATAMODE now holds image resolution in arcseconds/pixel
     obs_log["KM_PER_PIX"] = obs_log.apply(
         lambda row: (
             (
                 ((2 * np.pi) / (3600.0 * 360.0))
-                * row.PIXEL_RESOLUTION
+                * row.ARCSECS_PER_PIXEL
                 * row.OBS_DIS
                 * u.AU
             ).to_value(u.km)
         ),
         axis=1,
     )
-    print(obs_log.KM_PER_PIX)
 
     obs_log["manual_veto"] = False * len(obs_log.index)
+
+    # initialize these as invalid
+    # obs_log["USER_CENTER_X"] = [-1] * len(obs_log.index)
+    # obs_log["USER_CENTER_Y"] = [-1] * len(obs_log.index)
+    obs_log["USER_CENTER_X"] = [invalid_user_center_value()] * len(obs_log.index)
+    obs_log["USER_CENTER_Y"] = [invalid_user_center_value()] * len(obs_log.index)
 
     return obs_log
 
@@ -265,17 +317,19 @@ def read_observation_log(
     ].apply(pd.to_datetime)
 
     # filters are stored as strings as well, convert them to SwiftFilter objects
-    obs_log["FILTER"] = obs_log["FILTER"].astype(str).map(obs_string_to_filter)
+    obs_log.FILTER = obs_log["FILTER"].astype(str).map(obs_string_to_filter)
 
     # observation ID is stored as an int: convert to SwiftObservationID and SwiftOrbitID types
-    obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
+    obs_log.OBS_ID = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
     # DATAMODE is stored as a string: convert to valid SwiftImageDataMode
     obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
 
-    # PIXEL_RESOLUTION is stored as a float: convert to valid SwiftPixelResolution
-    obs_log.PIXEL_RESOLUTION = obs_log.PIXEL_RESOLUTION.apply(float_to_pixel_resolution)
+    # ARCSECS_PER_PIXEL is stored as a float: convert to valid SwiftPixelResolution
+    obs_log.ARCSECS_PER_PIXEL = obs_log.ARCSECS_PER_PIXEL.apply(
+        float_to_pixel_resolution
+    )
 
     return obs_log
 
@@ -297,9 +351,10 @@ def write_observation_log(
     oc["OBS_ID"] = oc["OBS_ID"].astype(int)
     oc["FILTER"] = oc["FILTER"].map(filter_to_obs_string)
 
-    # oc.DATAMODE = oc.DATAMODE.map(pixel_resolution_to_datamode)
     oc.DATAMODE = oc.DATAMODE.astype(str)
-    oc.PIXEL_RESOLUTION = oc.PIXEL_RESOLUTION.astype(float)
+    oc.ARCSECS_PER_PIXEL = oc.ARCSECS_PER_PIXEL.astype(float)
+
+    # the rest of the column conversions should be taken care of automatically through type hints from the schema
 
     schema = observation_log_schema()
     # if additional_schema is not None:

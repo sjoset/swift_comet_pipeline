@@ -187,8 +187,7 @@ def uw1_and_uvv_stacks_from_epoch(
             f"All images taken taken with data mode FITS keyword {epoch.DATAMODE[0].value}, stacking..."
         )
 
-    # epoch_pixel_resolution = epoch.DATAMODE[0]
-    epoch_pixel_resolution = epoch.PIXEL_RESOLUTION[0]
+    epoch_pixel_resolution = epoch.ARCSECS_PER_PIXEL[0]
     stacked_images = StackedUVOTImageSet({})
 
     # do the stacking

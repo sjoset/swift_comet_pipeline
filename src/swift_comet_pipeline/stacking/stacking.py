@@ -1,14 +1,19 @@
-import pathlib
 from typing import Tuple, Optional, List, TypeAlias
 from enum import StrEnum
 
 import numpy as np
+import pandas as pd
 import logging as log
 
 from astropy.io import fits
 
 from tqdm import tqdm
 
+from swift_comet_pipeline.observationlog.observation_log import (
+    get_horizons_comet_center,
+    get_image_from_obs_log_row,
+    get_user_specified_comet_center,
+)
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import (
@@ -32,6 +37,13 @@ class StackingMethod(StrEnum):
 StackedUVOTImageSet: TypeAlias = dict[
     tuple[SwiftFilter, StackingMethod], SwiftUVOTImage
 ]
+
+
+def get_comet_center_prefer_user_coords(row: pd.Series) -> PixelCoord:
+    comet_center_coords = get_user_specified_comet_center(row=row)
+    if comet_center_coords is None:
+        comet_center_coords = get_horizons_comet_center(row=row)
+    return comet_center_coords
 
 
 def get_image_dimensions_to_center_comet(
@@ -73,15 +85,12 @@ def determine_stacking_image_size(
     image_dimensions_list = []
 
     for _, row in epoch.iterrows():
-        image_dir = swift_data.get_uvot_image_directory(row["OBS_ID"])  # type: ignore
+        image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
 
-        # open file
-        img_file = image_dir / pathlib.Path(str(row["FITS_FILENAME"]))
-        image_data = fits.getdata(img_file, ext=row["EXTENSION"])
-
+        comet_center_coords = get_comet_center_prefer_user_coords(row=row)
         # keep a list of the image sizes
         image_dimensions = get_image_dimensions_to_center_comet(
-            image_data, PixelCoord(x=row["PX"], y=row["PY"])  # type: ignore
+            source_image=image_data, source_coords_to_center=comet_center_coords  # type: ignore
         )
         image_dimensions_list.append(image_dimensions)
 
@@ -182,10 +191,13 @@ def stack_epoch_into_sum_and_median(
         # read the image
         image_data = fits.getdata(image_path, ext=row["EXTENSION"])
 
+        # do we use the horizons data, or did the user manually tell us where the comet is?
+        comet_center_coords = get_comet_center_prefer_user_coords(row=row)
+
         # new image with the comet nucleus centered
         image_data = center_image_on_coords(
             source_image=image_data,  # type: ignore
-            source_coords_to_center=PixelCoord(x=float(row["PX"]), y=float(row["PY"])),
+            source_coords_to_center=comet_center_coords,
             stacking_image_size=stacking_image_size,
         )
 

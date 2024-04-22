@@ -148,16 +148,17 @@ class RadialProfileSelectionPlot(object):
         self.update_plots()
 
     def setup_image_subtraction(self):
+        """create a distance-from-center mesh and plots to hold the subtracted images"""
         img_height, img_width = self.uw1_img.shape
         center_x, center_y = self.image_center.x, self.image_center.y
         xs = np.linspace(0, img_width, num=img_width, endpoint=False)
         ys = np.linspace(0, img_height, num=img_height, endpoint=False)
         x, y = np.meshgrid(xs, ys)
-        # the pixel values in the mesh image are the distance from the center, rounded to the nearest integer
+        # the pixel values in the mesh image are the distance from the center, rounded to the nearest integer, so we can use
+        # these values as an index to create a radially symmetric image from a 1-dimensional profile
         self.distance_from_center_mesh = np.round(
             np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
         ).astype(int)
-        # print(f"{self.distance_from_center_mesh=}")
         self.uw1_subtraction_plot = self.uw1_sub_ax.imshow(  # type: ignore
             self.uw1_img,
             vmin=self.uw1_vmin,
