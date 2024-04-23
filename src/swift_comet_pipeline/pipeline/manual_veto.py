@@ -127,7 +127,9 @@ class EpochImagePlot(object):
         self.zscale = ZScaleInterval()
 
         # TODO: add buttons to select which method and have these as defaults
-        self.comet_center_finding_method_uw1 = CometCenterFindingMethod.aperture_peak
+        self.comet_center_finding_method_uw1 = (
+            CometCenterFindingMethod.aperture_centroid
+        )
         self.comet_center_finding_method_uvv = (
             CometCenterFindingMethod.aperture_centroid
         )
@@ -254,6 +256,9 @@ class EpochImagePlot(object):
 
     def update_image_plot(self):
         self.img_plot.set_data(self.current_image)
+        image_height, image_width = self.current_image.shape  # type: ignore
+        # extent = [left, right, bottom, top]
+        self.img_plot.set_extent(extent=[0, image_width, 0, image_height])
         self.img_plot.set_cmap(self.colormap_by_veto())
         self.img_plot.set_clim(vmin=self.vmin, vmax=self.vmax)
 
@@ -266,7 +271,6 @@ class EpochImagePlot(object):
             self.selected_comet_coords.x,
             self.selected_comet_coords.y,
         )
-        # print(f"{self.selected_comet_patch.center}")
 
     def update_plot_title(self):
         self.ax.set_title(  # type: ignore

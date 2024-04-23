@@ -24,6 +24,9 @@ from swift_comet_pipeline.swift.uvot_image import (
 from swift_comet_pipeline.observationlog.epochs import Epoch
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
 
+# from astropy.visualization import ZScaleInterval
+# import matplotlib.pyplot as plt
+
 
 class StackingMethod(StrEnum):
     summation = "sum"
@@ -151,6 +154,14 @@ def center_image_on_coords(
         shift_column(center_x),
         shift_row(center_y),
     )
+
+    # _, ax = plt.subplots(1, 1, figsize=(20, 20))
+    # zscale = ZScaleInterval()
+    # vmin, vmax = zscale.get_limits(centered_image)
+    # ax.imshow(centered_image, vmin=vmin, vmax=vmax, origin="lower")
+    # ax.axvline(int(np.floor(centered_image.shape[1] / 2)), color="b", alpha=0.1)
+    # ax.axhline(int(np.floor(centered_image.shape[0] / 2)), color="b", alpha=0.1)
+    # plt.show()
 
     return centered_image
 
