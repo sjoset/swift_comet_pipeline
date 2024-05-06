@@ -1,3 +1,4 @@
+import itertools
 from typing import Tuple, Optional, List, TypeAlias
 from enum import StrEnum
 
@@ -6,6 +7,8 @@ import pandas as pd
 import logging as log
 
 from astropy.io import fits
+from astropy.visualization import ZScaleInterval
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 
@@ -15,7 +18,7 @@ from swift_comet_pipeline.observationlog.observation_log import (
     get_user_specified_comet_center,
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.swift.uvot_image import (
     SwiftUVOTImage,
     PixelCoord,
@@ -23,9 +26,6 @@ from swift_comet_pipeline.swift.uvot_image import (
 )
 from swift_comet_pipeline.observationlog.epochs import Epoch
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
-
-# from astropy.visualization import ZScaleInterval
-# import matplotlib.pyplot as plt
 
 
 class StackingMethod(StrEnum):
@@ -238,3 +238,29 @@ def stack_epoch_into_sum_and_median(
     stack_median = np.median(image_data_to_stack, axis=0)
 
     return stack_sum, stack_median
+
+
+def show_stacked_image_set(stacked_image_set: StackedUVOTImageSet, epoch_id: str = ""):
+    _, axes = plt.subplots(2, 2, figsize=(100, 20))
+
+    zscale = ZScaleInterval()
+
+    filter_types = [SwiftFilter.uw1, SwiftFilter.uvv]
+    stacking_methods = [StackingMethod.summation, StackingMethod.median]
+    for i, (filter_type, stacking_method) in enumerate(
+        itertools.product(filter_types, stacking_methods)
+    ):
+        img = stacked_image_set[(filter_type, stacking_method)]
+        vmin, vmax = zscale.get_limits(img)
+        ax = axes[np.unravel_index(i, axes.shape)]
+        ax.imshow(img, vmin=vmin, vmax=vmax, origin="lower")
+        # fig.colorbar(im)
+        # TODO: get center of image from function in uvot
+        ax.axvline(int(np.floor(img.shape[1] / 2)), color="b", alpha=0.1)
+        ax.axhline(int(np.floor(img.shape[0] / 2)), color="b", alpha=0.1)
+        ax.set_title(
+            f"{epoch_id}: filter={filter_to_file_string(filter_type)}, stack type={stacking_method}"
+        )
+
+    plt.show()
+    plt.close()

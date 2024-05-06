@@ -13,7 +13,7 @@ from swift_comet_pipeline.pipeline.pipeline_files import (
 
 
 def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
 
     filters = [SwiftFilter.uw1, SwiftFilter.uvv]
     stacking_methods = [StackingMethod.summation, StackingMethod.median]

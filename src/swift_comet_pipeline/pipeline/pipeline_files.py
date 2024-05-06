@@ -270,9 +270,9 @@ class PipelineFiles:
         epoch_path_list = []
         for i, epoch in enumerate(epoch_list):
             epoch_mid = Time(np.min(epoch.MID_TIME)).ymdhms
-            day = epoch_mid.day
-            month = calendar.month_abbr[epoch_mid.month]
-            year = epoch_mid.year
+            day = epoch_mid.day  # type: ignore
+            month = calendar.month_abbr[epoch_mid.month]  # type: ignore
+            year = epoch_mid.year  # type: ignore
 
             filename = pathlib.Path(f"{i:03d}_{year}_{day:02d}_{month}.parquet")
             epoch_path_list.append(self.epoch_dir_path / filename)

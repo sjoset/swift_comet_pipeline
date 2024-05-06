@@ -25,6 +25,7 @@ pyarrow = ">=13.0.0"
 rich = "^13.6.0"
 sbpy = "^0.4.0"
 pyvectorial-au = "^1.0.5"
+icecream = "^2.1.3"
 
 [tool.poetry.scripts]
 scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'

@@ -1,10 +1,6 @@
 from rich import print as rprint
 
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.pipeline.pipeline_files import (
-    PipelineFiles,
-    PipelineProductType,
-)
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import get_yes_no, wait_for_key
 from swift_comet_pipeline.observationlog.observation_log import (
@@ -14,22 +10,22 @@ from swift_comet_pipeline.pipeline.epoch_time_window import (
     epochs_from_time_delta,
     select_epoch_time_window,
 )
+from swift_comet_pipeline.pipeline.pipeline_products import (
+    DataIngestionFiles,
+)
 
 
 def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+    data_ingestion_files = DataIngestionFiles(
+        project_path=swift_project_config.project_path
+    )
 
-    obs_log = pipeline_files.read_pipeline_product(PipelineProductType.observation_log)
+    data_ingestion_files.observation_log.read()
+    obs_log = data_ingestion_files.observation_log.data
     if obs_log is None:
-        rprint("[red]Observation is missing![/red]")
+        rprint("[red]Observation log is missing![/red]")
         wait_for_key()
         return
-
-    num_epoch_ids = pipeline_files.get_epoch_ids()
-    if num_epoch_ids is not None:
-        epochs_already_exist = True
-    else:
-        epochs_already_exist = False
 
     if not includes_uvv_and_uw1_filters(obs_log=obs_log):
         rprint(
@@ -52,13 +48,13 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     if not save_epochs:
         return
 
-    if epochs_already_exist:
-        print("Previous epochs found!  Delete all epochs and overwrite?")
-        delete_and_overwrite = get_yes_no()
-        if not delete_and_overwrite:
-            return
-        pipeline_files.delete_epochs_and_their_results()
+    if data_ingestion_files.epochs is not None:
+        print("Found previous epochs in project! Delete epochs and their results?")
+        delete_epochs_and_results = get_yes_no()
+        # TODO: delete epochs and all of their results
+        print("ignoring response for now")
 
-    pipeline_files.create_epochs(epoch_list=epoch_list)
+    data_ingestion_files.create_epochs(epoch_list=epoch_list, write_to_disk=True)
+
     rprint("[green]Done writing epochs![/green]")
     wait_for_key()

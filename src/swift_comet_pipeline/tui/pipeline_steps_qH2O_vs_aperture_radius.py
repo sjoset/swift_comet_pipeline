@@ -240,11 +240,11 @@ def q_vs_aperture_radius(
 
 
 def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
 
     # select the epoch we want to process
     epoch_id = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis_to_be=True
+        pipeline_files=pipeline_files, require_background_analysis_to_exist=True
     )
     if epoch_id is None:
         return

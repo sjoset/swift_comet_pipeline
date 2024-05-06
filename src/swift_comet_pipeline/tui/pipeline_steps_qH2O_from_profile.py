@@ -436,7 +436,7 @@ def profile_selection_plot(
 ) -> Optional[RadialProfileSelectionPlot]:
     # TODO: change this menu to only show background-subtracted images
     epoch_id = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis_to_be=True
+        pipeline_files=pipeline_files, require_background_analysis_to_exist=True
     )
     if epoch_id is None:
         return
@@ -679,7 +679,7 @@ def show_subtracted_profile_new(
 def qH2O_from_profile_step(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
 
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
     selection = get_selection(stacking_methods)

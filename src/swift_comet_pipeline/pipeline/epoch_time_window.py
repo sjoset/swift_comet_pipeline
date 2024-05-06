@@ -10,13 +10,12 @@ from matplotlib.pyplot import cm
 from typing import List
 
 from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
-
-# from swift_comet_pipeline.observationlog.epochs import epoch_from_obs_log
+from swift_comet_pipeline.observationlog.epochs import Epoch
 
 
 def epochs_from_time_delta(
     obs_log: SwiftObservationLog, max_time_between_obs: u.Quantity
-) -> List[SwiftObservationLog]:
+) -> List[Epoch]:
     # sort by observations by time, oldest first
     obs_log = obs_log.sort_values(by="MID_TIME", ascending=True).reset_index(drop=True)
 
@@ -60,7 +59,6 @@ def epochs_from_time_delta(
 
         # slice a copy of the observation log and convert into an epoch
         epoch = obs_log[time_filter].copy()
-        # epoch = epoch_from_obs_log(epoch)  # type: ignore
         epoch_list.append(epoch.reset_index(drop=True))
         epoch_count += 1
         # print(f"Epoch {epoch_count} --> {len(epoch)} observations")

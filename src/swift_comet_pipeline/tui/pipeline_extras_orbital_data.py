@@ -15,7 +15,7 @@ from swift_comet_pipeline.pipeline.pipeline_files import (
 
 def pipeline_extra_orbital_data(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(
-        base_product_save_path=swift_project_config.product_save_path
+        base_product_save_path=swift_project_config.project_path
     )
 
     obs_log = pipeline_files.read_pipeline_product(

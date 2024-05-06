@@ -15,7 +15,7 @@ from swift_comet_pipeline.swift.swift_data import SwiftData
 class SwiftProjectConfig:
     swift_data_path: pathlib.Path
     jpl_horizons_id: str
-    product_save_path: pathlib.Path
+    project_path: pathlib.Path
 
 
 @dataclass
@@ -86,10 +86,10 @@ def read_swift_project_config(
         return None
 
     swift_data_path = _path_from_yaml(config_yaml, "swift_data_path")
-    product_save_path = _path_from_yaml(config_yaml, "product_save_path")
-    if swift_data_path is None or product_save_path is None:
+    project_path = _path_from_yaml(config_yaml, "project_path")
+    if swift_data_path is None or project_path is None:
         print(
-            f"Could not find necessary entries: swift_data_path or product_save_path in {config_path}"
+            f"Could not find necessary entries: swift_data_path or project_path in {config_path}"
         )
         return None
     jpl_horizons_id = config_yaml.get("jpl_horizons_id", None)
@@ -100,7 +100,7 @@ def read_swift_project_config(
     project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
-        product_save_path=product_save_path,
+        project_path=project_path,
     )
     return project_config
 
@@ -115,7 +115,7 @@ def write_swift_project_config(
         "product_save_path",
     ]
     # TODO: convert_or_delete is from an older implementation where config values could have been missing,
-    # but the config was re-worked and now we can just convert and assume the value are there without checking and deleting missing values
+    # but the config was re-worked and now we can just convert and assume the values are there without checking and deleting missing values
     for k in path_keys_to_convert:
         convert_or_delete(dict_to_write, k, os.fspath)
 
@@ -181,7 +181,7 @@ def create_swift_project_config_from_input(
             f"Found appropriate data with a total of [green]{num_obsids}[/green] observation IDs"
         )
 
-    product_save_path = pathlib.Path(
+    project_path = pathlib.Path(
         input("Directory to store results and intermediate products: ")
     )
 
@@ -189,8 +189,8 @@ def create_swift_project_config_from_input(
 
     swift_project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
-        product_save_path=product_save_path,
         jpl_horizons_id=jpl_horizons_id,
+        project_path=project_path,
     )
 
     write_swift_project_config(

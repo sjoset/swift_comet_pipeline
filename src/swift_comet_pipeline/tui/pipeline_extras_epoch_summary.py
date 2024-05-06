@@ -8,27 +8,42 @@ from swift_comet_pipeline.observationlog.observation_log import (
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.tui.tui_common import epoch_menu, wait_for_key
-from swift_comet_pipeline.pipeline.pipeline_files import (
-    PipelineFiles,
-    PipelineProductType,
-)
+from swift_comet_pipeline.tui.tui_common import epoch_menu
+
+from swift_comet_pipeline.pipeline.pipeline_products import PipelineFiles
 
 
 def pipeline_extra_epoch_summary(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
-    swift_data = SwiftData(swift_project_config.swift_data_path)
+    pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
+    swift_data = SwiftData(data_path=swift_project_config.swift_data_path)
+
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        # wait_for_key()
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        # wait_for_key()
+        return
+
     filters = [SwiftFilter.uw1, SwiftFilter.uvv]
 
-    epoch_id = epoch_menu(pipeline_files)
-    epoch = pipeline_files.read_pipeline_product(
-        PipelineProductType.epoch, epoch_id=epoch_id
-    )
+    epoch_product = epoch_menu(data_ingestion_files=data_ingestion_files)
+    if epoch_product is None:
+        return
+
+    epoch_product.read()
+    epoch = epoch_product.data
+
     if epoch is None:
         print("Error loading epoch!")
-        wait_for_key()
+        # wait_for_key()
         return
 
     for filter_type in filters:
@@ -57,13 +72,32 @@ def pipeline_extra_epoch_summary(
         )
         print("")
 
-    wait_for_key()
+    epoch_subpipeline_files = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=epoch_product
+    )
+    if epoch_subpipeline_files is None:
+        return
+    stacked_epoch_product = epoch_subpipeline_files.stacked_epoch
+    if stacked_epoch_product is None:
+        return
+
+    if not stacked_epoch_product.exists():
+        return
+    stacked_epoch_product.read()
+    stacked_epoch = stacked_epoch_product.data
+    if stacked_epoch is None:
+        return
+
+    print("-----Stacked epoch-----")
+    print(stacked_epoch)
+
+    # wait_for_key()
 
 
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
 
     epoch_id = epoch_menu(pipeline_files)
     epoch = pipeline_files.read_pipeline_product(
@@ -71,7 +105,7 @@ def pipeline_extra_latex_table_summary(
     )
     if epoch is None:
         print("Error loading epoch!")
-        wait_for_key()
+        # wait_for_key()
         return
 
     print("")
@@ -95,4 +129,4 @@ def pipeline_extra_latex_table_summary(
             f" & {unique_days_str} & {filter_to_file_string(filter_type)} & {num_images} & {exposure_time:4.0f} & {rh:3.2f} & {delta:3.2f} \\\\"
         )
 
-    wait_for_key()
+    # wait_for_key()

@@ -1,16 +1,13 @@
-from itertools import product
 from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
 
-from swift_comet_pipeline.pipeline.pipeline_files import (
+from swift_comet_pipeline.pipeline.pipeline_products import (
+    DataIngestionFiles,
+    EpochProduct,
     PipelineFiles,
-    PipelineEpochID,
-    PipelineProductType,
 )
-from swift_comet_pipeline.stacking.stacking import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 
 
 def get_float(prompt: str) -> float:
@@ -75,74 +72,76 @@ def get_yes_no() -> bool:
             return False
 
 
-def epoch_menu(pipeline_files: PipelineFiles) -> Optional[PipelineEpochID]:
+def epoch_menu(data_ingestion_files: DataIngestionFiles) -> Optional[EpochProduct]:
     """Allows selection of an epoch via a text menu"""
-    epoch_ids = pipeline_files.get_epoch_ids()
-    if epoch_ids is None:
+    if data_ingestion_files.epochs is None:
         print("No epochs available!")
         return None
 
-    selection = get_selection(epoch_ids)
+    selection = get_selection(
+        [x.product_path.stem for x in data_ingestion_files.epochs]
+    )
     if selection is None:
         return None
 
-    return epoch_ids[selection]
+    return data_ingestion_files.epochs[selection]
 
 
 def stacked_epoch_menu(
     pipeline_files: PipelineFiles,
-    require_background_analysis_to_be: Optional[bool] = None,
-) -> Optional[PipelineEpochID]:
+    require_background_analysis_to_exist: bool = False,
+    require_background_analysis_to_not_exist: bool = False,
+) -> Optional[EpochProduct]:
     """
     Allows selection of a stacked epoch via a text menu, showing only epochs that have been stacked,
     returning a path to the associated epoch that generated the stack, which is how we find products
     associated with that epoch in PipelineFiles
 
-    If require_background_analysis_to_be is set to True, then only epochs with completed background analysis are shown.
+    If require_background_analysis_to_exist is set to True, then only epochs with completed background analysis are shown.
     If it is false, only epochs without background analysis are shown.
     If it is None, no filtering occurs
     """
-    epoch_ids = pipeline_files.get_epoch_ids()
-    if epoch_ids is None:
-        print("No epochs available!")
+
+    parent_epochs = pipeline_files.data_ingestion_files.epochs
+    if parent_epochs is None:
         return None
 
-    filtered_epoch_ids = [
-        epoch_id
-        for epoch_id in epoch_ids
-        if pipeline_files.exists(PipelineProductType.stacked_epoch, epoch_id=epoch_id)
-    ]
+    stacked_epochs = []
+    for parent_epoch in parent_epochs:
+        if parent_epoch is None:
+            continue
+        epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+            parent_epoch=parent_epoch
+        )
+        if epoch_subpipeline is None:
+            continue
+        if epoch_subpipeline.all_images_stacked:
+            # stacked images for this epoch exist - do we require the background analysis to be done as well?
+            if (
+                require_background_analysis_to_exist
+                and not epoch_subpipeline.background_analyses_done
+            ):
+                continue
+            if (
+                require_background_analysis_to_not_exist
+                and epoch_subpipeline.background_analyses_done
+            ):
+                continue
 
-    if require_background_analysis_to_be is not None:
-        filters = [SwiftFilter.uw1, SwiftFilter.uvv]
-        stacking_methods = [StackingMethod.summation, StackingMethod.median]
+            stacked_epochs.append(parent_epoch)
 
-        def all_bgs(x: PipelineEpochID) -> bool:
-            return all(
-                pipeline_files.exists(
-                    PipelineProductType.background_analysis,
-                    epoch_id=x,
-                    filter_type=filter_type,
-                    stacking_method=stacking_method,
-                )
-                for filter_type, stacking_method in product(filters, stacking_methods)
-            )
-
-        filtered_epoch_ids = [
-            epoch_id
-            for epoch_id in filtered_epoch_ids
-            if all_bgs(epoch_id) == require_background_analysis_to_be
-        ]
-
-    if len(filtered_epoch_ids) == 0:
-        print("No stacked epochs available!")
+    if len(stacked_epochs) == 0:
+        print("No stacked epochs available that meet the conditions:")
+        print(
+            f"- Stacked images exist\n- {require_background_analysis_to_exist=}\n- {require_background_analysis_to_not_exist=}"
+        )
         return None
 
-    selection = get_selection(filtered_epoch_ids)
+    selection = get_selection([x.product_path.stem for x in stacked_epochs])
     if selection is None:
         return None
 
-    return filtered_epoch_ids[selection]
+    return stacked_epochs[selection]
 
 
 def wait_for_key(prompt: str = "Press enter to continue") -> None:

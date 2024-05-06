@@ -1,20 +1,21 @@
 from itertools import product
 from astropy.io import fits
 
+from icecream import ic
+
+from swift_comet_pipeline.pipeline.pipeline_products import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.stacking.stacking import StackingMethod
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
-from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu, wait_for_key
+from swift_comet_pipeline.tui.tui_common import (
+    stacked_epoch_menu,
+)
 from swift_comet_pipeline.pipeline.determine_background import (
     BackgroundDeterminationMethod,
     BackgroundResult,
     background_result_to_dict,
     determine_background,
-)
-from swift_comet_pipeline.pipeline.pipeline_files import (
-    PipelineFiles,
-    PipelineProductType,
 )
 
 
@@ -29,59 +30,74 @@ def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundR
     return bg_cr
 
 
-def background_analysis_step(swift_project_config: SwiftProjectConfig):
-    pipeline_files = PipelineFiles(swift_project_config.product_save_path)
+def background_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
+    uw1_and_uvv = [SwiftFilter.uw1, SwiftFilter.uvv]
+    sum_and_median = [StackingMethod.summation, StackingMethod.median]
 
-    epoch_id = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis_to_be=False
-    )
-    if epoch_id is None:
-        wait_for_key()
+    pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
+
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
         return
 
-    filters = [SwiftFilter.uw1, SwiftFilter.uvv]
-    stacking_methods = [StackingMethod.summation, StackingMethod.median]
-    for filter_type, stacking_method in product(filters, stacking_methods):
-        img_data = pipeline_files.read_pipeline_product(
-            PipelineProductType.stacked_image,
-            epoch_id=epoch_id,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    selected_parent_epoch = stacked_epoch_menu(
+        pipeline_files=pipeline_files,
+        require_background_analysis_to_exist=False,
+        require_background_analysis_to_not_exist=True,
+    )
+    if selected_parent_epoch is None:
+        print("Could not select parent epoch, exiting.")
+        return
+
+    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=selected_parent_epoch
+    )
+    if epoch_subpipeline is None:
+        ic(f"No subpipeline for epoch {selected_parent_epoch.epoch_id}! This is a bug.")
+        return
+
+    stacked_image_set = epoch_subpipeline.get_stacked_image_set()
+    if stacked_image_set is None:
+        ic(
+            f"Could not load stacked image set for epoch {selected_parent_epoch.epoch_id}!"
         )
-        if img_data is None:
-            print(
-                "Unable to load stacked image of {epoch_id} {filter_to_file_string(filter_type)} {stacking_method}, skipping background analysis ..."
-            )
-            continue
-        img_header = pipeline_files.read_pipeline_product(
-            PipelineProductType.stacked_image_header,
-            epoch_id=epoch_id,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
+        return
+
+    for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
+        img_data = stacked_image_set[filter_type, stacking_method]
+        img_header = epoch_subpipeline.stacked_images[
+            filter_type, stacking_method
+        ].data.header
+
+        bg_result = get_background(img_data, filter_type=filter_type)
+
+        print(f"{epoch_subpipeline.parent_epoch.epoch_id}")
+        print(f"Background count rate: {bg_result.count_rate_per_pixel}")
+
+        epoch_subpipeline.background_analyses[filter_type, stacking_method].data = (
+            background_result_to_dict(bg_result=bg_result)
         )
-
-        bg_results = get_background(img_data, filter_type=filter_type)  # type: ignore
-
-        print(f"Background count rate: {bg_results.count_rate_per_pixel}")
-
-        pipeline_files.write_pipeline_product(
-            PipelineProductType.background_analysis,
-            epoch_id=epoch_id,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
-            data=background_result_to_dict(bg_results),
+        print(background_result_to_dict(bg_result))
+        print(
+            epoch_subpipeline.background_analyses[
+                filter_type, stacking_method
+            ].product_path
         )
+        epoch_subpipeline.background_analyses[filter_type, stacking_method].write()
 
-        bg_corrected_img = img_data - bg_results.count_rate_per_pixel.value
+        bg_corrected_img = img_data - bg_result.count_rate_per_pixel.value
 
         # make a new fits with the background-corrected image, and copy the header information over from the original stacked image
-        bg_hdu = fits.ImageHDU(data=bg_corrected_img)
-        bg_hdu.header = img_header
-
-        pipeline_files.write_pipeline_product(
-            PipelineProductType.background_subtracted_image,
-            epoch_id=epoch_id,
-            filter_type=filter_type,
-            stacking_method=stacking_method,
-            data=bg_hdu,
-        )
+        epoch_subpipeline.background_subtracted_images[
+            filter_type, stacking_method
+        ].data = fits.ImageHDU(data=bg_corrected_img, header=img_header)
+        epoch_subpipeline.background_subtracted_images[
+            filter_type, stacking_method
+        ].write()

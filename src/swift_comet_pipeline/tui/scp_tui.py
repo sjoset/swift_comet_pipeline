@@ -27,7 +27,11 @@ from swift_comet_pipeline.tui.pipeline_steps_qH2O_vs_aperture_radius import (
 )
 from swift_comet_pipeline.tui.pipeline_steps_veto_epoch import veto_epoch_step
 from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stacking_step
-from swift_comet_pipeline.tui.tui_common import clear_screen, get_selection
+from swift_comet_pipeline.tui.tui_common import (
+    clear_screen,
+    get_selection,
+    wait_for_key,
+)
 
 
 class PipelineStepsMenuEntry(StrEnum):
@@ -106,6 +110,7 @@ def main():
             exit_program = True
             continue
         step = pipeline_steps[step_selection]
+        # TODO: could this be a Protocol, and return a value that indicates whether or not to wait for a key after it's done, or just clear the screen and show the menu again?
         if step == PipelineStepsMenuEntry.observation_log:
             observation_log_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.identify_epochs:
@@ -124,6 +129,7 @@ def main():
             pipeline_extras_menu(swift_project_config=swift_project_config)
         else:
             exit_program = True
+        wait_for_key()
 
 
 if __name__ == "__main__":
