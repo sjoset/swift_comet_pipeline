@@ -44,7 +44,7 @@ class SwiftData:
                     image/
                         sw[observation id][filter]_[image type].img.gz
 
-    Then given the observation id, filter, and image type, we can construct the path to this file
+    Then given an observation id, filter, and image type, we can construct the path to this file
     """
 
     def __init__(self, data_path: pathlib.Path):
@@ -94,7 +94,7 @@ class SwiftData:
         image_type: SwiftUVOTImageType = SwiftUVOTImageType.sky_units,
     ) -> Optional[List[pathlib.Path]]:
         """
-        Given an observation ID, filter type, and image type, returns a list of FITS files that match
+        Given an observation ID, filter type, and image type, returns a list of FITS files that match.
         Some observations have multiple files using the same filter, so we have to do it this way
         """
         filter_string = filter_to_file_string(filter_type)
@@ -127,7 +127,7 @@ class SwiftData:
 
     def get_uvot_image_wcs(
         self, obsid: SwiftObservationID, fits_filename: str, fits_extension: int
-    ):
+    ) -> WCS:
         image_path = self.get_uvot_image_directory(obsid=obsid) / pathlib.Path(
             fits_filename
         )

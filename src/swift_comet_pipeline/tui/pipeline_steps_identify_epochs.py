@@ -1,17 +1,17 @@
 from rich import print as rprint
 
+from swift_comet_pipeline.observationlog.gui_observation_log_slicing import (
+    gui_select_epoch_time_window,
+)
+from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
+    epochs_from_time_delta,
+)
+from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import get_yes_no, wait_for_key
 from swift_comet_pipeline.observationlog.observation_log import (
     includes_uvv_and_uw1_filters,
-)
-from swift_comet_pipeline.pipeline.epoch_time_window import (
-    epochs_from_time_delta,
-    select_epoch_time_window,
-)
-from swift_comet_pipeline.pipeline.pipeline_products import (
-    DataIngestionFiles,
 )
 
 
@@ -38,7 +38,7 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     )
     filtered_obs_log = obs_log[filter_mask]
 
-    dt = select_epoch_time_window(obs_log=filtered_obs_log)
+    dt = gui_select_epoch_time_window(obs_log=filtered_obs_log)
     epoch_list = epochs_from_time_delta(
         obs_log=filtered_obs_log, max_time_between_obs=dt
     )

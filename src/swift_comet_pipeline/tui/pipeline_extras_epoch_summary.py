@@ -10,7 +10,7 @@ from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import epoch_menu
 
-from swift_comet_pipeline.pipeline.pipeline_products import PipelineFiles
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 
 
 def pipeline_extra_epoch_summary(
@@ -91,21 +91,21 @@ def pipeline_extra_epoch_summary(
     print("-----Stacked epoch-----")
     print(stacked_epoch)
 
-    # wait_for_key()
-
 
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
     pipeline_files = PipelineFiles(swift_project_config.project_path)
+    data_ingestion_files = pipeline_files.data_ingestion_files
 
-    epoch_id = epoch_menu(pipeline_files)
-    epoch = pipeline_files.read_pipeline_product(
-        PipelineProductType.epoch, epoch_id=epoch_id
-    )
+    epoch_product = epoch_menu(data_ingestion_files=data_ingestion_files)
+    if epoch_product is None:
+        return
+
+    epoch_product.read()
+    epoch = epoch_product.data
     if epoch is None:
         print("Error loading epoch!")
-        # wait_for_key()
         return
 
     print("")
@@ -128,5 +128,3 @@ def pipeline_extra_latex_table_summary(
         print(
             f" & {unique_days_str} & {filter_to_file_string(filter_type)} & {num_images} & {exposure_time:4.0f} & {rh:3.2f} & {delta:3.2f} \\\\"
         )
-
-    # wait_for_key()

@@ -3,19 +3,21 @@ from astropy.io import fits
 
 from icecream import ic
 
-from swift_comet_pipeline.pipeline.pipeline_products import PipelineFiles
+from swift_comet_pipeline.background.background_determination_method import (
+    BackgroundDeterminationMethod,
+)
+from swift_comet_pipeline.background.background_result import (
+    BackgroundResult,
+    background_result_to_dict,
+)
+from swift_comet_pipeline.background.determine_background import determine_background
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.stacking.stacking import StackingMethod
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.tui.tui_common import (
     stacked_epoch_menu,
-)
-from swift_comet_pipeline.pipeline.determine_background import (
-    BackgroundDeterminationMethod,
-    BackgroundResult,
-    background_result_to_dict,
-    determine_background,
 )
 
 
@@ -83,12 +85,6 @@ def background_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
 
         epoch_subpipeline.background_analyses[filter_type, stacking_method].data = (
             background_result_to_dict(bg_result=bg_result)
-        )
-        print(background_result_to_dict(bg_result))
-        print(
-            epoch_subpipeline.background_analyses[
-                filter_type, stacking_method
-            ].product_path
         )
         epoch_subpipeline.background_analyses[filter_type, stacking_method].write()
 

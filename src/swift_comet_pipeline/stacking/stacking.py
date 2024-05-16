@@ -1,169 +1,61 @@
-import itertools
-from typing import Tuple, Optional, List, TypeAlias
-from enum import StrEnum
+from typing import Tuple, Optional, List
 
 import numpy as np
-import pandas as pd
-import logging as log
-
 from astropy.io import fits
-from astropy.visualization import ZScaleInterval
-import matplotlib.pyplot as plt
-
 from tqdm import tqdm
 
+from swift_comet_pipeline.comet.comet_center import get_comet_center_prefer_user_coords
+from swift_comet_pipeline.image_manipulation.image_recenter import (
+    center_image_on_coords,
+    get_image_dimensions_to_center_on_pixel,
+)
 from swift_comet_pipeline.observationlog.observation_log import (
-    get_horizons_comet_center,
     get_image_from_obs_log_row,
-    get_user_specified_comet_center,
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.swift.uvot_image import (
     SwiftUVOTImage,
-    PixelCoord,
     SwiftPixelResolution,
 )
-from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
-
-
-class StackingMethod(StrEnum):
-    summation = "sum"
-    median = "median"
-
-    @classmethod
-    def all_stacking_methods(cls):
-        return [x for x in cls]
-
-
-StackedUVOTImageSet: TypeAlias = dict[
-    tuple[SwiftFilter, StackingMethod], SwiftUVOTImage
-]
-
-
-def get_comet_center_prefer_user_coords(row: pd.Series) -> PixelCoord:
-    comet_center_coords = get_user_specified_comet_center(row=row)
-    if comet_center_coords is None:
-        comet_center_coords = get_horizons_comet_center(row=row)
-    return comet_center_coords
-
-
-def get_image_dimensions_to_center_comet(
-    source_image: SwiftUVOTImage, source_coords_to_center: PixelCoord
-) -> Tuple[float, float]:
-    """
-    If we want to re-center the source_image on source_coords_to_center, we need to figure out the dimensions the new image
-    needs to be to fit the old picture after we shift it over to its new position
-    Returns tuple of (rows, columns) the new image would have to be
-    """
-    num_rows, num_columns = source_image.shape
-    center_row = num_rows / 2.0
-    center_col = num_columns / 2.0
-
-    # distance the image needs to move
-    d_rows = center_row - source_coords_to_center.y
-    d_cols = center_col - source_coords_to_center.x
-
-    # the total padding is twice the distance it needs to move -
-    # extra space for it to move into, and the empty space it would leave behind
-    row_padding = 2 * d_rows
-    col_padding = 2 * d_cols
-
-    new_rows_cols = (
-        np.ceil(source_image.shape[0] + np.abs(row_padding)),
-        np.ceil(source_image.shape[1] + np.abs(col_padding)),
-    )
-
-    return new_rows_cols
 
 
 def determine_stacking_image_size(
     swift_data: SwiftData,
     epoch: Epoch,
 ) -> Optional[Tuple[int, int]]:
-    """Opens every FITS file specified in the given observation log and finds the image size necessary for stacking all of the images"""
+    """
+    Opens every FITS file specified in the given epoch and finds the image size necessary to accommodate
+    the largest image involved in the stack, so we can pad out the smaller images and stack them in one step
+    """
 
-    # how far in pixels each comet image needs to shift
-    image_dimensions_list = []
+    # stores how big each image would need to be if recentered on the comet
+    recentered_image_dimensions = []
 
     for _, row in epoch.iterrows():
         image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
 
         comet_center_coords = get_comet_center_prefer_user_coords(row=row)
         # keep a list of the image sizes
-        image_dimensions = get_image_dimensions_to_center_comet(
-            source_image=image_data, source_coords_to_center=comet_center_coords  # type: ignore
+        image_dimensions = get_image_dimensions_to_center_on_pixel(
+            source_image=image_data, coords_to_center=comet_center_coords
         )
-        image_dimensions_list.append(image_dimensions)
+        recentered_image_dimensions.append(image_dimensions)
 
-    if len(image_dimensions_list) == 0:
+    if len(recentered_image_dimensions) == 0:
         print("No images found in epoch!")
         return None
 
     # now take the largest size so that every image can be stacked without losing pixels
-    max_num_rows = sorted(image_dimensions_list, key=lambda k: k[0], reverse=True)[0][0]
-    max_num_cols = sorted(image_dimensions_list, key=lambda k: k[1], reverse=True)[0][1]
+    max_num_rows = sorted(
+        recentered_image_dimensions, key=lambda k: k[0], reverse=True
+    )[0][0]
+    max_num_cols = sorted(
+        recentered_image_dimensions, key=lambda k: k[1], reverse=True
+    )[0][1]
 
-    # how many extra pixels we need
     return (max_num_rows, max_num_cols)
-
-
-def center_image_on_coords(
-    source_image: SwiftUVOTImage,
-    source_coords_to_center: PixelCoord,
-    stacking_image_size: Tuple[int, int],
-) -> SwiftUVOTImage:
-    """
-    size is the (rows, columns) size of the positive quandrant of the new image
-    """
-
-    center_x, center_y = np.round(source_coords_to_center.x), np.round(
-        source_coords_to_center.y
-    )
-    new_r, new_c = map(lambda x: int(x), np.ceil(stacking_image_size))
-
-    # enforce that we have an odd number of pixels so that the comet can be moved to the center row, center column
-    if new_r % 2 == 0:
-        half_r = new_r / 2
-        new_r = new_r + 1
-    else:
-        half_r = (new_r - 1) / 2
-    if new_c % 2 == 0:
-        half_c = new_c / 2
-        new_c = new_c + 1
-    else:
-        half_c = (new_c - 1) / 2
-
-    # create empty array to hold the new, centered image
-    centered_image = np.zeros((new_r, new_c))
-
-    def shift_row(r):
-        return int(r + half_r + 0 - center_y)
-
-    def shift_column(c):
-        return int(c + half_c + 0 - center_x)
-
-    for r in range(source_image.shape[0]):
-        for c in range(source_image.shape[1]):
-            centered_image[shift_row(r), shift_column(c)] = source_image[r, c]
-
-    log.debug(">> center_image_on_coords: image center at (%s, %s)", half_c, half_r)
-    log.debug(
-        ">> center_image_on_coords: Shifted comet center to coordinates (%s, %s): this should match image center",
-        shift_column(center_x),
-        shift_row(center_y),
-    )
-
-    # _, ax = plt.subplots(1, 1, figsize=(20, 20))
-    # zscale = ZScaleInterval()
-    # vmin, vmax = zscale.get_limits(centered_image)
-    # ax.imshow(centered_image, vmin=vmin, vmax=vmax, origin="lower")
-    # ax.axvline(int(np.floor(centered_image.shape[1] / 2)), color="b", alpha=0.1)
-    # ax.axhline(int(np.floor(centered_image.shape[0] / 2)), color="b", alpha=0.1)
-    # plt.show()
-
-    return centered_image
 
 
 def stack_epoch_into_sum_and_median(
@@ -238,29 +130,3 @@ def stack_epoch_into_sum_and_median(
     stack_median = np.median(image_data_to_stack, axis=0)
 
     return stack_sum, stack_median
-
-
-def show_stacked_image_set(stacked_image_set: StackedUVOTImageSet, epoch_id: str = ""):
-    _, axes = plt.subplots(2, 2, figsize=(100, 20))
-
-    zscale = ZScaleInterval()
-
-    filter_types = [SwiftFilter.uw1, SwiftFilter.uvv]
-    stacking_methods = [StackingMethod.summation, StackingMethod.median]
-    for i, (filter_type, stacking_method) in enumerate(
-        itertools.product(filter_types, stacking_methods)
-    ):
-        img = stacked_image_set[(filter_type, stacking_method)]
-        vmin, vmax = zscale.get_limits(img)
-        ax = axes[np.unravel_index(i, axes.shape)]
-        ax.imshow(img, vmin=vmin, vmax=vmax, origin="lower")
-        # fig.colorbar(im)
-        # TODO: get center of image from function in uvot
-        ax.axvline(int(np.floor(img.shape[1] / 2)), color="b", alpha=0.1)
-        ax.axhline(int(np.floor(img.shape[0] / 2)), color="b", alpha=0.1)
-        ax.set_title(
-            f"{epoch_id}: filter={filter_to_file_string(filter_type)}, stack type={stacking_method}"
-        )
-
-    plt.show()
-    plt.close()

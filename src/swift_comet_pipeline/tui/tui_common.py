@@ -3,10 +3,10 @@ from typing import Optional
 from rich import print as rprint
 from rich.console import Console
 
-from swift_comet_pipeline.pipeline.pipeline_products import (
-    DataIngestionFiles,
+from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
+from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import (
     EpochProduct,
-    PipelineFiles,
 )
 
 
@@ -93,6 +93,8 @@ def stacked_epoch_menu(
     require_background_analysis_to_not_exist: bool = False,
 ) -> Optional[EpochProduct]:
     """
+    The returned EpochProduct is the parent epoch that produced the selected stacked epoch!
+
     Allows selection of a stacked epoch via a text menu, showing only epochs that have been stacked,
     returning a path to the associated epoch that generated the stack, which is how we find products
     associated with that epoch in PipelineFiles

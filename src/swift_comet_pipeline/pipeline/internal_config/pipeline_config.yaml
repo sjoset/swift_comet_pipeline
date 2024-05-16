@@ -1,0 +1,6 @@
+solar_spectrum_path: "../../../../data/solar_spectra/sun_1A.csv"
+
+effective_area_uw1_path: "../../../../data/swift_effective_areas/w1.arf"
+effective_area_uvv_path: "../../../../data/swift_effective_areas/v.arf"
+
+oh_fluorescence_path: "../../../../data/fluorescence/fluorescence_OH.csv"

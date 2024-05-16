@@ -6,10 +6,13 @@ import pandas as pd
 
 from photutils.aperture import ApertureStats, CircularAnnulus, CircularAperture
 from scipy.integrate import simpson
-from swift_comet_pipeline.observationlog.epochs import Epoch
-from swift_comet_pipeline.production.fluorescence_OH import flux_OH_to_num_OH
-from swift_comet_pipeline.production.flux_OH import OH_flux_from_count_rate, OHFlux
-from swift_comet_pipeline.production.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.water_production.flux_OH import (
+    OH_flux_from_count_rate,
+    OHFlux,
+)
+from swift_comet_pipeline.water_production.num_OH_to_Q import num_OH_to_Q_vectorial
 from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
@@ -210,6 +213,7 @@ def count_rate_from_comet_profile(
     from a circular aperture centered on the middle of the comet profile
     Reminder: we need the background count rate to propogate error
     """
+    # TODO: this should take a radial profile, as CometProfile is not necessarily radial
 
     if not comet_profile.center_is_comet_peak:
         print("This function is intended for profiles centered on the comet peak!")

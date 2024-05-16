@@ -45,6 +45,7 @@ def read_solar_spectrum_sorce(
     )
     solar_spectrum = solar_spectrum_df[solar_mask]
 
+    # TODO: put the dataframe columns into an np.array() and test
     solar_lambdas = solar_spectrum["wavelength (nm)"]
     solar_irradiances = solar_spectrum["irradiance (W/m^2/nm)"]
 

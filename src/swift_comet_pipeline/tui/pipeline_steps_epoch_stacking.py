@@ -2,16 +2,15 @@ from rich import print as rprint
 from rich.panel import Panel
 from icecream import ic
 
-from swift_comet_pipeline.stacking.stacking import show_stacked_image_set
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
+from swift_comet_pipeline.stacking.stacked_uvot_image_set import show_stacked_image_set
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.tui.tui_common import (
     bool_to_x_or_check,
     epoch_menu,
     get_yes_no,
-    wait_for_key,
 )
-from swift_comet_pipeline.pipeline.pipeline_products import PipelineFiles
 
 
 def print_stacked_images_summary(
@@ -53,12 +52,10 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
 
     if data_ingestion_files.epochs is None:
         print("No epochs found!")
-        wait_for_key()
         return
 
     if epoch_subpipelines is None:
         print("No epochs available to stack!")
-        wait_for_key()
         return
 
     print_stacked_images_summary(pipeline_files=pipeline_files)
@@ -67,7 +64,6 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     if all(fully_stacked):
         print("Everything stacked! Nothing to do.")
         # TODO: ask to continue anyway
-        wait_for_key()
         return
 
     menu_selection = menu_stack_all_or_selection()
@@ -102,6 +98,7 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     for parent_epoch, is_stacked in zip(parent_epochs_to_stack, fully_stacked):
         # check if the stacked images exist and ask to replace, unless we are stacking all epochs - in that case, skip the stacks we already have
         if is_stacked and skip_if_stacked:
+            print(f"Skipping {parent_epoch.epoch_id} - already stacked")
             continue
 
         epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
@@ -129,5 +126,3 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
                 print("Done.")
         else:
             epoch_subpipeline.write_uw1_and_uvv_stacks()
-
-    wait_for_key()

@@ -13,26 +13,31 @@ from astropy.visualization import ZScaleInterval
 # from scipy.optimize import curve_fit
 # import pandas as pd
 
+from swift_comet_pipeline.background.background_result import (
+    BackgroundResult,
+    dict_to_background_result,
+)
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import CountRate
-from swift_comet_pipeline.observationlog.epochs import Epoch
+from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, get_filter_parameters
-from swift_comet_pipeline.stacking.stacking import StackingMethod
 from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
     get_uvot_image_center,
 )
-from swift_comet_pipeline.production.fluorescence_OH import (
+from swift_comet_pipeline.water_production.fluorescence_OH import (
     flux_OH_to_num_OH,
     gfactor_1au,
 )
-from swift_comet_pipeline.production.flux_OH import (
+from swift_comet_pipeline.water_production.flux_OH import (
     OH_flux_from_count_rate,
     beta_parameter,
 )
-from swift_comet_pipeline.production.num_OH_to_Q import (
+from swift_comet_pipeline.water_production.num_OH_to_Q import (
     num_OH_at_r_au_vectorial,
     num_OH_to_Q_vectorial,
 )
@@ -41,16 +46,11 @@ from swift_comet_pipeline.tui.tui_common import (
     stacked_epoch_menu,
     wait_for_key,
 )
-from swift_comet_pipeline.pipeline.determine_background import BackgroundResult
 from swift_comet_pipeline.comet.comet_profile import (
     CometRadialProfile,
     count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
     radial_profile_to_image,
-)
-from swift_comet_pipeline.pipeline.pipeline_files import (
-    PipelineFiles,
-    PipelineProductType,
 )
 
 
@@ -434,68 +434,83 @@ class RadialProfileSelectionPlot(object):
 def profile_selection_plot(
     pipeline_files: PipelineFiles, stacking_method: StackingMethod
 ) -> Optional[RadialProfileSelectionPlot]:
-    # TODO: change this menu to only show background-subtracted images
-    epoch_id = stacked_epoch_menu(
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    parent_epoch = stacked_epoch_menu(
         pipeline_files=pipeline_files, require_background_analysis_to_exist=True
     )
-    if epoch_id is None:
+    if parent_epoch is None:
         return
 
-    epoch = pipeline_files.read_pipeline_product(
-        PipelineProductType.stacked_epoch, epoch_id=epoch_id
+    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=parent_epoch
     )
-    if epoch is None:
+    if epoch_subpipeline is None:
+        return
+
+    epoch_subpipeline.stacked_epoch.read()
+    stacked_epoch = epoch_subpipeline.stacked_epoch.data
+    if stacked_epoch is None:
         print("Error reading epoch!")
-        wait_for_key()
         return
 
-    uw1_sum = pipeline_files.read_pipeline_product(
-        PipelineProductType.background_subtracted_image,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
-    )
+    epoch_subpipeline.background_subtracted_images[
+        SwiftFilter.uw1, stacking_method
+    ].read()
+    epoch_subpipeline.background_subtracted_images[
+        SwiftFilter.uvv, stacking_method
+    ].read()
 
-    uvv_sum = pipeline_files.read_pipeline_product(
-        PipelineProductType.background_subtracted_image,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
-    )
-    if uw1_sum is None or uvv_sum is None:
+    uw1_img = epoch_subpipeline.background_subtracted_images[
+        SwiftFilter.uw1, stacking_method
+    ].data.data
+    uvv_img = epoch_subpipeline.background_subtracted_images[
+        SwiftFilter.uvv, stacking_method
+    ].data.data
+
+    if uw1_img is None or uvv_img is None:
         print("Error loading background-subtracted images!")
         wait_for_key()
         return
 
-    uw1_bg = pipeline_files.read_pipeline_product(
-        PipelineProductType.background_analysis,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
+    epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].read()
+    epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].read()
+    uw1_bg = dict_to_background_result(
+        epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].data
     )
-    uvv_bg = pipeline_files.read_pipeline_product(
-        PipelineProductType.background_analysis,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
+    uvv_bg = dict_to_background_result(
+        epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].data
     )
+
     if uw1_bg is None or uvv_bg is None:
         print("Error loading background analysis!")
-        wait_for_key()
         return
 
     rpsp = RadialProfileSelectionPlot(
-        epoch=epoch, uw1_img=uw1_sum, uw1_bg=uw1_bg, uvv_img=uvv_sum, uvv_bg=uvv_bg
+        epoch=stacked_epoch,
+        uw1_img=uw1_img,
+        uw1_bg=uw1_bg,
+        uvv_img=uvv_img,
+        uvv_bg=uvv_bg,
     )
     rpsp.show()
 
     show_subtracted_profile(
         rpsp,
-        km_per_pix=np.mean(epoch.KM_PER_PIX),
-        rh=np.mean(epoch.HELIO),
+        km_per_pix=np.mean(stacked_epoch.KM_PER_PIX),
+        rh=np.mean(stacked_epoch.HELIO),
         base_q_per_s=rpsp.q_h2o.value,
-        delta_au=np.mean(epoch.OBS_DIS),
-        helio_v_kms=np.mean(epoch.HELIO_V),
+        delta_au=np.mean(stacked_epoch.OBS_DIS),
+        helio_v_kms=np.mean(stacked_epoch.HELIO_V),
     )
     return rpsp
 
@@ -546,7 +561,7 @@ def show_subtracted_profile(
         arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU
     ).to_value(u.cm)
     pixel_area_cm2 = pixel_side_length_cm**2
-    print(f"{pixel_area_cm2=}")
+    # print(f"{pixel_area_cm2=}")
 
     # surface brightness = count rate per unit area
     surf_brightness = pix / pixel_area_cm2
@@ -559,8 +574,8 @@ def show_subtracted_profile(
     gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh**2
     cdens = lumi / gfactor
 
-    print(cdens / vectorial_values)
-    print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
+    # print(cdens / vectorial_values)
+    # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
 
     fig, ax = plt.subplots()
     ax.plot(rs, vectorial_values / 10000, label="vect")
@@ -588,7 +603,7 @@ def show_subtracted_profile_new(
     uw1_params = get_filter_parameters(SwiftFilter.uw1)
     uvv_params = get_filter_parameters(SwiftFilter.uvv)
 
-    print(uw1_profile.pixel_values - beta * uvv_profile.pixel_values)
+    # print(uw1_profile.pixel_values - beta * uvv_profile.pixel_values)
     # subtracted_pixels = (
     #     uw1_params["cf"] * uw1_params["fwhm"] * uw1_profile.pixel_values
     #     - uvv_params["cf"] * uvv_params["fwhm"] * beta * uvv_profile.pixel_values
@@ -607,7 +622,7 @@ def show_subtracted_profile_new(
 
     pix = subtracted_pixels[positive_mask]
     rs = physical_rs[positive_mask]
-    print(f"{pix=}")
+    # print(f"{pix=}")
 
     # df = pd.DataFrame({"r": rs, "subtracted_pixels": pix})
     # df.to_csv("radial_profile.csv")
@@ -635,7 +650,7 @@ def show_subtracted_profile_new(
     #     (arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU).to_value(u.cm), 2
     # )
     pixel_area_cm2 = pixel_side_length_cm**2
-    print(f"{pixel_area_cm2=}")
+    # print(f"{pixel_area_cm2=}")
 
     # surface brightness = count rate per unit area
     # TODO: the e-16 factor comes from the 'cf' field of the filter data dictionary, adjusted down for loss over time
@@ -652,21 +667,21 @@ def show_subtracted_profile_new(
 
     alpha = 1.2750906353215913e-12
     flux = surf_brightness * alpha
-    print(f"{flux=}")
+    # print(f"{flux=}")
     # delta_in_cm = (delta_au * u.AU).to_value(u.cm)
     delta_in_cm = (delta_au * u.AU).to_value(u.cm)
     # lumi = flux * 4 * np.pi * delta_in_cm**2
     lumi = flux * 4 * np.pi * delta_in_cm**2
-    print(f"{lumi=}")
+    # print(f"{lumi=}")
 
     gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh**2
     cdens = lumi / gfactor
 
-    print((vectorial_values / u.m**2).to_value(1 / u.cm**2))
-    print(cdens)
-    print(cdens / vectorial_values)
+    # print((vectorial_values / u.m**2).to_value(1 / u.cm**2))
+    # print(cdens)
+    # print(cdens / vectorial_values)
     # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
-    print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
+    # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
 
     fig, ax = plt.subplots()
     ax.plot(rs, vectorial_values / 10000, label="vect")

@@ -1,19 +1,28 @@
 from itertools import product
 from rich import print as rprint
 from rich.panel import Panel
+from icecream import ic
 
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking import StackingMethod
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.tui.tui_common import bool_to_x_or_check, wait_for_key
-from swift_comet_pipeline.pipeline.pipeline_files import (
-    PipelineFiles,
-    PipelineProductType,
-)
+from swift_comet_pipeline.tui.tui_common import bool_to_x_or_check
 
 
 def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
+
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
 
     filters = [SwiftFilter.uw1, SwiftFilter.uvv]
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
@@ -21,47 +30,43 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
 
     rprint(
         "[orange3]Observation log:[/orange3] ",
-        bool_to_x_or_check(pipeline_files.exists(PipelineProductType.observation_log)),
+        bool_to_x_or_check(data_ingestion_files.observation_log.exists()),
     )
     rprint(
         "[orange3]Comet orbit data:[/orange3] ",
-        bool_to_x_or_check(
-            pipeline_files.exists(PipelineProductType.comet_orbital_data)
-        ),
+        bool_to_x_or_check(data_ingestion_files.comet_orbital_data.exists()),
     )
     rprint(
         "[orange3]Earth orbit data:[/orange3] ",
-        bool_to_x_or_check(
-            pipeline_files.exists(PipelineProductType.earth_orbital_data)
-        ),
+        bool_to_x_or_check(data_ingestion_files.earth_orbital_data.exists()),
     )
 
     print("")
 
-    epoch_ids = pipeline_files.get_epoch_ids()
-    if epoch_ids is None:
+    # epoch_ids = pipeline_files.get_epoch_ids()
+    epoch_products = data_ingestion_files.epochs
+    if epoch_products is None:
         print("No epochs defined yet!")
-        wait_for_key()
         return
 
     print("")
-    for epoch_id in epoch_ids:
-        epoch_path = pipeline_files.get_product_path(
-            PipelineProductType.epoch, epoch_id=epoch_id
+    for parent_epoch in epoch_products:
+
+        epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+            parent_epoch=parent_epoch
         )
-        if epoch_path is None:
+        if epoch_subpipeline is None:
+            ic(
+                f"Cannot create epoch subpipeline for {parent_epoch.epoch_id}! Skipping."
+            )
             continue
 
-        rprint(Panel(f"Epoch {epoch_path.stem}:", expand=False))
+        rprint(Panel(f"Epoch {parent_epoch.epoch_id}:", expand=False))
         print("Stacked images:")
         for filter_type, stacking_method in product(filters, stacking_methods):
-            # does the stacked image associated with this stacked epoch exist?
-            stack_exists = pipeline_files.exists(
-                PipelineProductType.stacked_image,
-                epoch_id=epoch_id,
-                filter_type=filter_type,
-                stacking_method=stacking_method,
-            )
+            stack_exists = epoch_subpipeline.stacked_images[
+                filter_type, stacking_method
+            ].product_path.exists()
             rprint(
                 f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(stack_exists)}\t",
                 end="",
@@ -70,12 +75,9 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
 
         print("Background analysis:")
         for filter_type, stacking_method in product(filters, stacking_methods):
-            bg_exists = pipeline_files.exists(
-                PipelineProductType.background_analysis,
-                epoch_id=epoch_id,
-                filter_type=filter_type,
-                stacking_method=stacking_method,
-            )
+            bg_exists = epoch_subpipeline.background_analyses[
+                filter_type, stacking_method
+            ].product_path.exists()
             rprint(
                 f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(bg_exists)}\t",
                 end="",
@@ -84,12 +86,9 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
 
         print("Background-subtracted images: ")
         for filter_type, stacking_method in product(filters, stacking_methods):
-            img_exists = pipeline_files.exists(
-                PipelineProductType.background_subtracted_image,
-                epoch_id=epoch_id,
-                filter_type=filter_type,
-                stacking_method=stacking_method,
-            )
+            img_exists = epoch_subpipeline.background_subtracted_images[
+                filter_type, stacking_method
+            ].product_path.exists()
             rprint(
                 f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(img_exists)}\t",
                 end="",
@@ -98,12 +97,11 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
 
         print("Q vs aperture radius analysis: ")
         for stacking_method in stacking_methods:
-            q_exists = pipeline_files.exists(
-                PipelineProductType.qh2o_vs_aperture_radius,
-                epoch_id=epoch_id,
-                stacking_method=stacking_method,
+            q_vs_aperture_exists = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
+                stacking_method
+            ].product_path.exists()
+            rprint(
+                f"{stacking_method} {bool_to_x_or_check(q_vs_aperture_exists)}\t",
+                end="",
             )
-            rprint(f"{stacking_method} {bool_to_x_or_check(q_exists)}\t", end="")
         print("\n\n")
-
-    wait_for_key()
