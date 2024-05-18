@@ -204,44 +204,44 @@ def count_rate_from_comet_radial_profile(
     return CountRate(value=float(count_rate), sigma=propogated_sigma)
 
 
-def count_rate_from_comet_profile(
-    comet_profile: CometProfile,
-    bg: CountRatePerPixel,
-) -> Optional[CountRate]:
-    """
-    Takes a profile and assumes azimuthal symmetry to produce a count rate that would result
-    from a circular aperture centered on the middle of the comet profile
-    Reminder: we need the background count rate to propogate error
-    """
-    # TODO: this should take a radial profile, as CometProfile is not necessarily radial
-
-    if not comet_profile.center_is_comet_peak:
-        print("This function is intended for profiles centered on the comet peak!")
-        return None
-
-    # The factor is normally 2 * np.pi for the angular part of the integral, but
-    # our answer is twice as big because our limits on r run from [-r, ..., r] and not [0, ..., r].
-
-    count_rate = (
-        simpson(
-            np.abs(comet_profile.profile_axis_xs) * comet_profile.pixel_values,
-            comet_profile.profile_axis_xs,
-            # TODO: test this so the error checker will shut up
-            # x=comet_profile.profile_axis_xs,
-        )
-        * np.pi
-    )
-
-    # TODO: find how to properly quantify the error for these pixel values
-    profile_sigma = np.std(comet_profile.pixel_values) * 2 * np.pi
-
-    # pull radius of the aperture from the max distance in the profile
-    propogated_sigma = np.sqrt(
-        profile_sigma**2
-        + (np.pi * np.max(comet_profile.profile_axis_xs) ** 2 * bg.sigma**2)
-    )
-
-    return CountRate(value=float(count_rate), sigma=propogated_sigma)
+# def count_rate_from_comet_profile(
+#     comet_profile: CometProfile,
+#     bg: CountRatePerPixel,
+# ) -> Optional[CountRate]:
+#     """
+#     Takes a profile and assumes azimuthal symmetry to produce a count rate that would result
+#     from a circular aperture centered on the middle of the comet profile
+#     Reminder: we need the background count rate to propogate error
+#     """
+#     # TODO: this should take a radial profile, as CometProfile is not necessarily radial
+#
+#     if not comet_profile.center_is_comet_peak:
+#         print("This function is intended for profiles centered on the comet peak!")
+#         return None
+#
+#     # The factor is normally 2 * np.pi for the angular part of the integral, but
+#     # our answer is twice as big because our limits on r run from [-r, ..., r] and not [0, ..., r].
+#
+#     count_rate = (
+#         simpson(
+#             np.abs(comet_profile.profile_axis_xs) * comet_profile.pixel_values,
+#             comet_profile.profile_axis_xs,
+#             # TODO: test this so the error checker will shut up
+#             # x=comet_profile.profile_axis_xs,
+#         )
+#         * np.pi
+#     )
+#
+#     # TODO: find how to properly quantify the error for these pixel values
+#     profile_sigma = np.std(comet_profile.pixel_values) * 2 * np.pi
+#
+#     # pull radius of the aperture from the max distance in the profile
+#     propogated_sigma = np.sqrt(
+#         profile_sigma**2
+#         + (np.pi * np.max(comet_profile.profile_axis_xs) ** 2 * bg.sigma**2)
+#     )
+#
+#     return CountRate(value=float(count_rate), sigma=propogated_sigma)
 
 
 def comet_manual_aperture(

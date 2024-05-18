@@ -10,6 +10,7 @@ from enum import StrEnum
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
+from swift_comet_pipeline.modeling.vectorial_model import vectorial_model_settings_init
 from swift_comet_pipeline.projects.configs import read_or_create_project_config
 from swift_comet_pipeline.tui.pipeline_extras import pipeline_extras_menu
 from swift_comet_pipeline.tui.pipeline_steps_background_analysis_step import (
@@ -100,6 +101,9 @@ def main():
     if swift_project_config is None:
         print("Could not load a valid configuration! Exiting.")
         return
+
+    # set up the cache db and other stuff
+    vectorial_model_settings_init(swift_project_config=swift_project_config)
 
     exit_program = False
     pipeline_steps = PipelineStepsMenuEntry.all_pipeline_steps()

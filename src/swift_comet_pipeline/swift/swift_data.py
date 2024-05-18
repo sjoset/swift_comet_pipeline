@@ -55,6 +55,8 @@ class SwiftData:
         build a list of folders in the swift data directory, filtering any directories
         that don't match the naming structure of 11 numerical digits, and returns a list of every observation id found
         """
+        # TODO: don't assume the path we're handed is valid and that it exists!
+
         # get a list of everything in the top-level data directory
         file_list = os.listdir(self.base_path)
 

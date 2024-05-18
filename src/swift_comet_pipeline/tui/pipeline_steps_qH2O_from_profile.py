@@ -549,7 +549,7 @@ def show_subtracted_profile(
 
     # print(f"{base_q_per_s=}, running with Q={3*base_q_per_s}")
     model_Q = 1e29
-    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=model_Q, helio_r_au=rh)
+    _, coma = num_OH_at_r_au_vectorial(base_q=model_Q / u.s, helio_r=rh * u.AU)
     vectorial_values = (base_q_per_s / model_Q) * coma.vmr.column_density_interpolation(
         rs * 1000
     )
@@ -587,108 +587,108 @@ def show_subtracted_profile(
 
 
 # TODO
-def show_subtracted_profile_new(
-    rpsp: RadialProfileSelectionPlot,
-    km_per_pix,
-    rh,
-    base_q_per_s,
-    delta_au,
-    helio_v_kms,
-) -> None:
-    uw1_profile: CometRadialProfile = rpsp.uw1_radial_profile
-    uvv_profile: CometRadialProfile = rpsp.uvv_radial_profile
-    redness: DustReddeningPercent = rpsp.dust_redness
-    beta = beta_parameter(redness)
-
-    uw1_params = get_filter_parameters(SwiftFilter.uw1)
-    uvv_params = get_filter_parameters(SwiftFilter.uvv)
-
-    # print(uw1_profile.pixel_values - beta * uvv_profile.pixel_values)
-    # subtracted_pixels = (
-    #     uw1_params["cf"] * uw1_params["fwhm"] * uw1_profile.pixel_values
-    #     - uvv_params["cf"] * uvv_params["fwhm"] * beta * uvv_profile.pixel_values
-    # )
-
-    loss_factor_uw1 = 1.0
-    loss_factor_uvv = 1.0
-
-    # convert from count rate to flux
-    subtracted_pixels = (
-        uw1_params["cf"] * loss_factor_uw1 * uw1_profile.pixel_values
-        - uvv_params["cf"] * loss_factor_uvv * beta * uvv_profile.pixel_values
-    )
-    positive_mask = subtracted_pixels > 0
-    physical_rs = uw1_profile.profile_axis_xs * km_per_pix
-
-    pix = subtracted_pixels[positive_mask]
-    rs = physical_rs[positive_mask]
-    # print(f"{pix=}")
-
-    # df = pd.DataFrame({"r": rs, "subtracted_pixels": pix})
-    # df.to_csv("radial_profile.csv")
-    # print(f"{km_per_pix=}")
-
-    model_Q = 1e29 / u.s
-    _, coma = num_OH_at_r_au_vectorial(base_q_per_s=model_Q, helio_r_au=rh)
-    vectorial_values = (
-        base_q_per_s / model_Q.value
-    ) * coma.vmr.column_density_interpolation(rs * 1000)
-    # print(f"{base_q_per_s=}")
-
-    # _, coma_two = num_OH_at_r_au_vectorial(base_q_per_s=2 * base_q_per_s, helio_r_au=rh)
-    # vectorial_values_two = coma_two.vmr.column_density_interpolation(rs * 1000)
-
-    # convert pixel signal to column density
-    # pixel_area_cm2 = (km_per_pix / 1.0e5) ** 2
-    # pixel_area_cm2 = ((km_per_pix * u.km).to_value(u.cm)) ** 2
-    # pixel_area_cm2 = 4.25e-4
-    # TODO: the 1.0 arcseconds should reflect the mode the image was taken with
-    pixel_side_length_cm = (
-        arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU
-    ).to_value(u.cm)
-    # pixel_area_cm2 = np.power(
-    #     (arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU).to_value(u.cm), 2
-    # )
-    pixel_area_cm2 = pixel_side_length_cm**2
-    # print(f"{pixel_area_cm2=}")
-
-    # surface brightness = count rate per unit area
-    # TODO: the e-16 factor comes from the 'cf' field of the filter data dictionary, adjusted down for loss over time
-    # surf_brightness = (pix / pixel_area_cm2) * 1.0e-16
-    # surf_brightness = (pix / pixel_area_cm2) / (
-    #     2.35e-11**2
-    # )  # 1 arcsecond = 2.35e-11 steradian
-    # surf_brightness = pix / pixel_area_cm2
-
-    # multiply by solid angle to get surface brightness
-    # surf_brightness = pix * pixel_area_m2 * 2.35e-11
-    # surf_brightness = pix * pixel_area_cm2 * 2.35e-11
-    surf_brightness = pix * pixel_area_cm2
-
-    alpha = 1.2750906353215913e-12
-    flux = surf_brightness * alpha
-    # print(f"{flux=}")
-    # delta_in_cm = (delta_au * u.AU).to_value(u.cm)
-    delta_in_cm = (delta_au * u.AU).to_value(u.cm)
-    # lumi = flux * 4 * np.pi * delta_in_cm**2
-    lumi = flux * 4 * np.pi * delta_in_cm**2
-    # print(f"{lumi=}")
-
-    gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh**2
-    cdens = lumi / gfactor
-
-    # print((vectorial_values / u.m**2).to_value(1 / u.cm**2))
-    # print(cdens)
-    # print(cdens / vectorial_values)
-    # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
-    # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
-
-    fig, ax = plt.subplots()
-    ax.plot(rs, vectorial_values / 10000, label="vect")
-    # ax.plot(rs, vectorial_values_two)
-    ax.plot(rs, cdens, label="img")
-    ax.legend()
-    plt.show()
+# def show_subtracted_profile_new(
+#     rpsp: RadialProfileSelectionPlot,
+#     km_per_pix,
+#     rh,
+#     base_q_per_s,
+#     delta_au,
+#     helio_v_kms,
+# ) -> None:
+#     uw1_profile: CometRadialProfile = rpsp.uw1_radial_profile
+#     uvv_profile: CometRadialProfile = rpsp.uvv_radial_profile
+#     redness: DustReddeningPercent = rpsp.dust_redness
+#     beta = beta_parameter(redness)
+#
+#     uw1_params = get_filter_parameters(SwiftFilter.uw1)
+#     uvv_params = get_filter_parameters(SwiftFilter.uvv)
+#
+#     # print(uw1_profile.pixel_values - beta * uvv_profile.pixel_values)
+#     # subtracted_pixels = (
+#     #     uw1_params["cf"] * uw1_params["fwhm"] * uw1_profile.pixel_values
+#     #     - uvv_params["cf"] * uvv_params["fwhm"] * beta * uvv_profile.pixel_values
+#     # )
+#
+#     loss_factor_uw1 = 1.0
+#     loss_factor_uvv = 1.0
+#
+#     # convert from count rate to flux
+#     subtracted_pixels = (
+#         uw1_params["cf"] * loss_factor_uw1 * uw1_profile.pixel_values
+#         - uvv_params["cf"] * loss_factor_uvv * beta * uvv_profile.pixel_values
+#     )
+#     positive_mask = subtracted_pixels > 0
+#     physical_rs = uw1_profile.profile_axis_xs * km_per_pix
+#
+#     pix = subtracted_pixels[positive_mask]
+#     rs = physical_rs[positive_mask]
+#     # print(f"{pix=}")
+#
+#     # df = pd.DataFrame({"r": rs, "subtracted_pixels": pix})
+#     # df.to_csv("radial_profile.csv")
+#     # print(f"{km_per_pix=}")
+#
+#     model_Q = 1e29 / u.s
+#     _, coma = num_OH_at_r_au_vectorial(base_q_per_s=model_Q, helio_r_au=rh)
+#     vectorial_values = (
+#         base_q_per_s / model_Q.value
+#     ) * coma.vmr.column_density_interpolation(rs * 1000)
+#     # print(f"{base_q_per_s=}")
+#
+#     # _, coma_two = num_OH_at_r_au_vectorial(base_q_per_s=2 * base_q_per_s, helio_r_au=rh)
+#     # vectorial_values_two = coma_two.vmr.column_density_interpolation(rs * 1000)
+#
+#     # convert pixel signal to column density
+#     # pixel_area_cm2 = (km_per_pix / 1.0e5) ** 2
+#     # pixel_area_cm2 = ((km_per_pix * u.km).to_value(u.cm)) ** 2
+#     # pixel_area_cm2 = 4.25e-4
+#     # TODO: the 1.0 arcseconds should reflect the mode the image was taken with
+#     pixel_side_length_cm = (
+#         arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU
+#     ).to_value(u.cm)
+#     # pixel_area_cm2 = np.power(
+#     #     (arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU).to_value(u.cm), 2
+#     # )
+#     pixel_area_cm2 = pixel_side_length_cm**2
+#     # print(f"{pixel_area_cm2=}")
+#
+#     # surface brightness = count rate per unit area
+#     # TODO: the e-16 factor comes from the 'cf' field of the filter data dictionary, adjusted down for loss over time
+#     # surf_brightness = (pix / pixel_area_cm2) * 1.0e-16
+#     # surf_brightness = (pix / pixel_area_cm2) / (
+#     #     2.35e-11**2
+#     # )  # 1 arcsecond = 2.35e-11 steradian
+#     # surf_brightness = pix / pixel_area_cm2
+#
+#     # multiply by solid angle to get surface brightness
+#     # surf_brightness = pix * pixel_area_m2 * 2.35e-11
+#     # surf_brightness = pix * pixel_area_cm2 * 2.35e-11
+#     surf_brightness = pix * pixel_area_cm2
+#
+#     alpha = 1.2750906353215913e-12
+#     flux = surf_brightness * alpha
+#     # print(f"{flux=}")
+#     # delta_in_cm = (delta_au * u.AU).to_value(u.cm)
+#     delta_in_cm = (delta_au * u.AU).to_value(u.cm)
+#     # lumi = flux * 4 * np.pi * delta_in_cm**2
+#     lumi = flux * 4 * np.pi * delta_in_cm**2
+#     # print(f"{lumi=}")
+#
+#     gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh**2
+#     cdens = lumi / gfactor
+#
+#     # print((vectorial_values / u.m**2).to_value(1 / u.cm**2))
+#     # print(cdens)
+#     # print(cdens / vectorial_values)
+#     # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
+#     # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
+#
+#     fig, ax = plt.subplots()
+#     ax.plot(rs, vectorial_values / 10000, label="vect")
+#     # ax.plot(rs, vectorial_values_two)
+#     ax.plot(rs, cdens, label="img")
+#     ax.legend()
+#     plt.show()
 
 
 def qH2O_from_profile_step(

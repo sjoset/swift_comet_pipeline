@@ -142,6 +142,7 @@ def build_observation_log(
     # obs_log["IMAGE_SHAPE_ROWS"] = image_shape_row_list
     # obs_log["IMAGE_SHAPE_COLS"] = image_shape_col_list
 
+    # TODO: document expected units on these values from horizons
     # translates horizons results (left) to observation log column names (right)
     ephemeris_info = {
         "r": "HELIO",

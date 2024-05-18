@@ -14,7 +14,7 @@ def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: NumOH) -> NumQH2O:
     base_q = 1.0e29 / u.s
 
     predicted_num_OH, _ = num_OH_at_r_au_vectorial(
-        base_q_per_s=base_q.to_value(1 / u.s), helio_r_au=helio_r_au
+        base_q=base_q, helio_r=helio_r_au * u.AU
     )
     predicted_to_actual = predicted_num_OH / num_OH.value
 

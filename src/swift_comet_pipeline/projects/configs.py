@@ -7,15 +7,18 @@ from dataclasses import asdict, dataclass
 
 from rich import print as rprint
 
+from swift_comet_pipeline.modeling.vectorial_model_grid import VectorialModelGridQuality
 from swift_comet_pipeline.tui.tui_common import get_yes_no
 from swift_comet_pipeline.swift.swift_data import SwiftData
 
 
+# TODO: add vectorial model quality to this somehow
 @dataclass
 class SwiftProjectConfig:
     swift_data_path: pathlib.Path
     jpl_horizons_id: str
     project_path: pathlib.Path
+    vectorial_model_quality: VectorialModelGridQuality
 
 
 @dataclass
@@ -78,6 +81,9 @@ def read_swift_project_config(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
         project_path=project_path,
+        vectorial_model_quality=VectorialModelGridQuality(
+            config_yaml["vectorial_model_quality"]
+        ),
     )
     return project_config
 
@@ -89,12 +95,16 @@ def write_swift_project_config(
 
     path_keys_to_convert = [
         "swift_data_path",
-        "product_save_path",
+        "project_path",
     ]
     # TODO: convert_or_delete is from an older implementation where config values could have been missing,
     # but the config was re-worked and now we can just convert and assume the values are there without checking and deleting missing values
     for k in path_keys_to_convert:
         convert_or_delete(dict_to_write, k, os.fspath)
+
+    dict_to_write["vectorial_model_quality"] = str(
+        dict_to_write["vectorial_model_quality"]
+    )
 
     with open(config_path, "w") as stream:
         try:
@@ -164,10 +174,16 @@ def create_swift_project_config_from_input(
 
     jpl_horizons_id = input("JPL Horizons ID of the comet: ")
 
+    # TODO: this fails on invalid input, make it more robust
+    vm_quality = input(
+        f"Vectorial model quality {VectorialModelGridQuality.all_qualities()}: "
+    )
+
     swift_project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
         project_path=project_path,
+        vectorial_model_quality=VectorialModelGridQuality(vm_quality),
     )
 
     write_swift_project_config(

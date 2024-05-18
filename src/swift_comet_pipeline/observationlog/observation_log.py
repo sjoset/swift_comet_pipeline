@@ -40,7 +40,9 @@ def observation_log_schema() -> pa.lib.Schema:
             pa.field("EXPOSURE", pa.float64()),
             pa.field("EXTENSION", pa.int16()),
             pa.field("FITS_FILENAME", pa.string()),
+            # heliocentric distance at time of observation, in AU
             pa.field("HELIO", pa.float64()),
+            # heliocentric velocity at time of observation, in km/s??  TODO
             pa.field("HELIO_V", pa.float64()),
             pa.field("OBS_DIS", pa.float64()),
             pa.field("PHASE", pa.float64()),
