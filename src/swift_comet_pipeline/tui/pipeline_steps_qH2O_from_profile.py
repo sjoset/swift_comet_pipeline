@@ -50,6 +50,7 @@ from swift_comet_pipeline.comet.comet_profile import (
     CometRadialProfile,
     count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
+    radial_profile_to_dataframe_product,
     radial_profile_to_image,
 )
 
@@ -305,11 +306,13 @@ class RadialProfileSelectionPlot(object):
             cone_size=cone_size,
         )
 
+        # update middle line of cone
         self.uw1_extraction_line.set_xdata([x1, x0])
         self.uw1_extraction_line.set_ydata([y1, y0])
         self.uvv_extraction_line.set_xdata([x1, x0])
         self.uvv_extraction_line.set_ydata([y1, y0])
 
+        # update bounding lines of the cone
         self.cone_neg_line_uw1.set_xdata([cone_neg_endpoint.x, x0])
         self.cone_neg_line_uvv.set_xdata([cone_neg_endpoint.x, x0])
         self.cone_neg_line_uw1.set_ydata([cone_neg_endpoint.y, y0])
@@ -435,14 +438,15 @@ def profile_selection_plot(
     pipeline_files: PipelineFiles, stacking_method: StackingMethod
 ) -> Optional[RadialProfileSelectionPlot]:
     data_ingestion_files = pipeline_files.data_ingestion_files
-    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+    epoch_subpipelines = pipeline_files.epoch_subpipelines
 
     if data_ingestion_files.epochs is None:
         print("No epochs found!")
         return
 
-    if epoch_subpipeline_files is None:
-        print("No epochs available to stack!")
+    if epoch_subpipelines is None:
+        # TODO: better error message
+        print("No epochs ready for this step!")
         return
 
     parent_epoch = stacked_epoch_menu(
@@ -504,14 +508,22 @@ def profile_selection_plot(
     )
     rpsp.show()
 
-    show_subtracted_profile(
-        rpsp,
-        km_per_pix=np.mean(stacked_epoch.KM_PER_PIX),
-        rh=np.mean(stacked_epoch.HELIO),
-        base_q_per_s=rpsp.q_h2o.value,
-        delta_au=np.mean(stacked_epoch.OBS_DIS),
-        helio_v_kms=np.mean(stacked_epoch.HELIO_V),
+    # TODO: ask to save results
+    epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].data = (
+        radial_profile_to_dataframe_product(
+            profile=rpsp.uw1_radial_profile, km_per_pix=rpsp.km_per_pix
+        )
     )
+    epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
+
+    # show_subtracted_profile(
+    #     rpsp,
+    #     km_per_pix=np.mean(stacked_epoch.KM_PER_PIX),
+    #     rh=np.mean(stacked_epoch.HELIO),
+    #     base_q_per_s=rpsp.q_h2o.value,
+    #     delta_au=np.mean(stacked_epoch.OBS_DIS),
+    #     helio_v_kms=np.mean(stacked_epoch.HELIO_V),
+    # )
     return rpsp
 
 
@@ -707,3 +719,5 @@ def qH2O_from_profile_step(
     )
     if rpsp is None:
         return
+
+    # save_rpsp_results(rpsp=rpsp)

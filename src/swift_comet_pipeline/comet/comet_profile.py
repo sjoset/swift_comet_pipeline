@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -25,6 +24,7 @@ from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
 class CometRadialProfile:
     """
     Count rate values along a line extending from the comet center out to radius r at angle theta
+    Theta is measured from the positive x-axis (along a numpy row) counter-clockwise
     One sample is taken of the profile per unit radial distance: If we want a cut of radius 20, we will have 20
     (x, y) pairs sampled.  We will also have the comet center at radius zero for a total of 21 points in the resulting profile.
     """
@@ -472,3 +472,41 @@ def radial_profile_to_image(
         extended_profile = profile.pixel_values
     img = extended_profile[distance_from_center_mesh]
     return img
+
+
+def radial_profile_to_dataframe_product(
+    profile: CometRadialProfile, km_per_pix: float
+) -> pd.DataFrame:
+    df = pd.DataFrame(
+        {
+            "r_pixel": profile.profile_axis_xs,
+            "count_rate": profile.pixel_values,
+            "r_km": profile.profile_axis_xs * km_per_pix,
+            "x_pixel": profile._xs,
+            "y_pixel": profile._ys,
+        }
+    )
+    df.attrs.update(
+        {
+            "radius": profile._radius,
+            "theta": profile._theta,
+            "comet_center_x": profile._comet_center.x,
+            "comet_center_y": profile._comet_center.y,
+        }
+    )
+    return df
+
+
+def radial_profile_from_dataframe_product(df: pd.DataFrame) -> CometRadialProfile:
+
+    return CometRadialProfile(
+        profile_axis_xs=df.r_pixel.values,
+        pixel_values=df.count_rate.values,
+        _xs=df.x_pixel.values,
+        _ys=df.y_pixel.values,
+        _radius=df.attrs["radius"],
+        _theta=df.attrs["theta"],
+        _comet_center=PixelCoord(
+            x=df.attrs["comet_center_x"], y=df.attrs["comet_center_y"]
+        ),
+    )

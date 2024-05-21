@@ -12,6 +12,8 @@ https://www.python-poetry.org
 
 ## Clone this repository
 
+## Insall HDF5 for your platform (TODO: this is a dependency of package 'tables', necessary for HDF5 storage - remove this if we get rid of HDF5 i/o for pandas dataframes)
+
 ## Install package locally
 In the repository's directory:
 ```

@@ -6,15 +6,15 @@ from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import 
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.analysis_step.epoch_subpipeline_analysis_product import (
     EpochSubPipelineAnalysisProduct,
 )
-from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import (
-    CSVDataframePipelineProductIO,
+from swift_comet_pipeline.pipeline.products.product_io_types.hdfs_product import (
+    HDF5DataframePipelineProductIO,
 )
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 
 
 class ExtractedRadialProfile(
-    EpochSubPipelineAnalysisProduct, CSVDataframePipelineProductIO
+    EpochSubPipelineAnalysisProduct, HDF5DataframePipelineProductIO
 ):
     def __init__(
         self,
@@ -33,5 +33,5 @@ class ExtractedRadialProfile(
         )
 
         filter_string = filter_to_file_string(filter_type=filter_type)
-        ep_filename = f"extracted_profile_{filter_string}_{stacking_method}.csv"
+        ep_filename = f"extracted_profile_{filter_string}_{stacking_method}.hdf5"
         self.product_path = self.product_path / pathlib.Path(ep_filename)

@@ -1,6 +1,12 @@
 from enum import StrEnum
 
+from swift_comet_pipeline.comet.comet_profile import (
+    radial_profile_from_dataframe_product,
+)
+from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
@@ -11,6 +17,7 @@ from swift_comet_pipeline.tui.pipeline_extras_orbital_data import (
 from swift_comet_pipeline.tui.pipeline_extras_status import pipeline_extra_status
 from swift_comet_pipeline.tui.tui_common import (
     clear_screen,
+    epoch_menu,
     get_selection,
     wait_for_key,
 )
@@ -21,6 +28,7 @@ class PipelineExtrasMenuEntry(StrEnum):
     epoch_summary = "epoch summary"
     epoch_latex_observation_log = "observation summary in latex format"
     get_orbital_data = "query jpl for comet and earth orbital data"
+    load_hfs_test = "test loading HFS file formats"
 
     surf_brightness_test = "surface brightness test code"
     comet_centers = "Raw images with comet centers marked"
@@ -55,6 +63,8 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_extra_orbital_data(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.load_hfs_test:
+            load_hfs_test(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
@@ -229,3 +239,45 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
     #     progress_bar.set_description(f"Processed {obsid} extension {extension}")
     #
     # print("")
+
+
+def load_hfs_test(swift_project_config: SwiftProjectConfig) -> None:
+
+    pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
+
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    parent_epoch = epoch_menu(data_ingestion_files=data_ingestion_files)
+    if parent_epoch is None:
+        return
+
+    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=parent_epoch
+    )
+
+    epoch_subpipeline.extracted_profiles[
+        SwiftFilter.uw1, StackingMethod.summation
+    ].read()
+    df = epoch_subpipeline.extracted_profiles[
+        SwiftFilter.uw1, StackingMethod.summation
+    ].data
+
+    print(df)
+    print(df.attrs)
+
+    profile = radial_profile_from_dataframe_product(df)
+
+    print(profile)
+    print(profile._comet_center)
+    print(profile.profile_axis_xs)
+    print(type(profile.profile_axis_xs))
+    print(profile.profile_axis_xs.shape)
