@@ -13,14 +13,14 @@ class PipelineProduct(ABC):
 
     def __init__(self, product_path: pathlib.Path):
         self.product_path = product_path
-        self._data: Optional[Any] = None
+        self._data: Any | None = None
 
     @property
-    def data(self) -> Optional[Any]:
+    def data(self) -> Any | None:
         return self._data
 
     @data.setter
-    def data(self, val):
+    def data(self, val: Any | None):
         self._data = val
 
     def exists(self) -> bool:

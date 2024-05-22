@@ -514,7 +514,13 @@ def profile_selection_plot(
             profile=rpsp.uw1_radial_profile, km_per_pix=rpsp.km_per_pix
         )
     )
+    epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].data = (
+        radial_profile_to_dataframe_product(
+            profile=rpsp.uvv_radial_profile, km_per_pix=rpsp.km_per_pix
+        )
+    )
     epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
+    epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].write()
 
     # show_subtracted_profile(
     #     rpsp,

@@ -263,6 +263,8 @@ def load_hfs_test(swift_project_config: SwiftProjectConfig) -> None:
     epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
         parent_epoch=parent_epoch
     )
+    if epoch_subpipeline is None:
+        return
 
     epoch_subpipeline.extracted_profiles[
         SwiftFilter.uw1, StackingMethod.summation
@@ -271,12 +273,13 @@ def load_hfs_test(swift_project_config: SwiftProjectConfig) -> None:
         SwiftFilter.uw1, StackingMethod.summation
     ].data
 
-    print(df)
-    print(df.attrs)
+    print(f"Dataframe:\n{df}")
+    print(f"Metadata:\n{df.attrs}")
 
     profile = radial_profile_from_dataframe_product(df)
 
-    print(profile)
+    # print(profile)
+    print("Reconstructed CometRadialProfile:")
     print(profile._comet_center)
     print(profile.profile_axis_xs)
     print(type(profile.profile_axis_xs))
