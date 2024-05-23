@@ -455,7 +455,9 @@ def qh2o_from_surface_brightness_profiles(
 
 
 def radial_profile_to_image(
-    profile: CometRadialProfile, distance_from_center_mesh: np.ndarray
+    profile: CometRadialProfile,
+    distance_from_center_mesh: np.ndarray,
+    empty_pixel_fill_value: float = 0.0,
 ):
     """
     The array distance_from_center_mesh is assumed to be a 2d array, whose values express the distance from that pixel to the center of the image, rounded to the nearest integer.
@@ -466,7 +468,10 @@ def radial_profile_to_image(
     num_extra_pixels = max_dist - len(profile.pixel_values) + 1
     if num_extra_pixels >= 1:
         extended_profile = np.pad(
-            profile.pixel_values, (0, num_extra_pixels), mode="constant"
+            profile.pixel_values,
+            (0, num_extra_pixels),
+            mode="constant",
+            constant_values=(empty_pixel_fill_value, empty_pixel_fill_value),
         )
     else:
         extended_profile = profile.pixel_values
