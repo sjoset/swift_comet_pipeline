@@ -18,4 +18,4 @@ class ECSVDataframePipelineProductIO(PipelineProduct):
         if self._data is not None:
             t = Table.from_pandas(self._data)
             t.meta = self._data.attrs
-            t.write(self.product_path, format="ascii.ecsv")
+            t.write(self.product_path, format="ascii.ecsv", overwrite=True)

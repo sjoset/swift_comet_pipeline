@@ -21,7 +21,7 @@ from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import CountRate
-from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.observationlog.epoch import Epoch, epoch_stacked_image_to_fits
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, get_filter_parameters
 from swift_comet_pipeline.swift.uvot_image import (
@@ -83,13 +83,15 @@ class RadialProfileSelectionPlot(object):
 
         self.image_center = get_uvot_image_center(self.uw1_img)
 
-        self.fig, self.axes = plt.subplots(2, 3)
+        self.fig, self.axes = plt.subplots(2, 4)
         self.uw1_ax = self.axes[0][0]
         self.uvv_ax = self.axes[1][0]
         self.uw1_profile_ax = self.axes[0][1]
         self.uvv_profile_ax = self.axes[1][1]
         self.uw1_sub_ax = self.axes[0][2]
         self.uvv_sub_ax = self.axes[1][2]
+        self.uw1_div_ax = self.axes[0][3]
+        self.uvv_div_ax = self.axes[1][3]
 
         self.uw1_ax.set_aspect("equal")  # type: ignore
         self.uvv_ax.set_aspect("equal")  # type: ignore
@@ -143,12 +145,18 @@ class RadialProfileSelectionPlot(object):
 
         self.initialize_profile_extraction_mpl_elements()
 
+        self.setup_mesh()
         self.setup_image_subtraction()
+        self.setup_image_division()
 
         self.fig.canvas.mpl_connect("button_press_event", self.onclick)  # type: ignore
         self.update_plots()
 
-    def setup_image_subtraction(self):
+    # TODO: constructor to initialize from a finished analysis
+    # @classmethod
+    # def from_saved_state(self, ...):
+
+    def setup_mesh(self):
         """create a distance-from-center mesh and plots to hold the subtracted images"""
         img_height, img_width = self.uw1_img.shape
         center_x, center_y = self.image_center.x, self.image_center.y
@@ -160,6 +168,9 @@ class RadialProfileSelectionPlot(object):
         self.distance_from_center_mesh = np.round(
             np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
         ).astype(int)
+
+    def setup_image_subtraction(self):
+        """create plots to hold the median-subtracted images"""
         self.uw1_subtraction_plot = self.uw1_sub_ax.imshow(  # type: ignore
             self.uw1_img,
             vmin=self.uw1_vmin,
@@ -171,6 +182,24 @@ class RadialProfileSelectionPlot(object):
             self.uvv_img,
             vmin=self.uvv_vmin,
             vmax=self.uvv_vmax,
+            origin="lower",
+            cmap=self.colormap,
+        )
+
+    def setup_image_division(self):
+        """create plots to hold the median-divided images"""
+        # TODO: magic numbers for the min/max scale
+        self.uw1_division_plot = self.uw1_div_ax.imshow(
+            self.uw1_img,
+            vmin=-0.001,
+            vmax=10,
+            origin="lower",
+            cmap=self.colormap,
+        )
+        self.uvv_division_plot = self.uvv_div_ax.imshow(
+            self.uvv_img,
+            vmin=-0.001,
+            vmax=10,
             origin="lower",
             cmap=self.colormap,
         )
@@ -212,7 +241,8 @@ class RadialProfileSelectionPlot(object):
         self.update_profile_extraction()
         self.update_profile_plot()
         self.update_q_from_profiles()
-        self.update_subtracted_image_plot()
+        self.update_median_subtracted_image_plot()
+        self.update_median_divided_image_plot()
         self.fig.canvas.draw_idle()  # type: ignore
 
     def initialize_profile_extraction_mpl_elements(self):
@@ -359,21 +389,67 @@ class RadialProfileSelectionPlot(object):
                 alpha=0.05,
             )
 
-    def update_subtracted_image_plot(self):
+    def update_median_subtracted_image_plot(self):
         uw1_sub_img = copy.deepcopy(self.uw1_img)
         uvv_sub_img = copy.deepcopy(self.uvv_img)
 
         uw1_median_profile_img = radial_profile_to_image(
             profile=self.uw1_radial_profile,
             distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=0.0,
         )
         uvv_median_profile_img = radial_profile_to_image(
             profile=self.uvv_radial_profile,
             distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=0.0,
         )
 
-        self.uw1_subtraction_plot.set_data(uw1_sub_img - uw1_median_profile_img)
-        self.uvv_subtraction_plot.set_data(uvv_sub_img - uvv_median_profile_img)
+        self.uw1_subtracted_median_image = uw1_sub_img - uw1_median_profile_img
+        self.uvv_subtracted_median_image = uvv_sub_img - uvv_median_profile_img
+
+        uw1_div_img = radial_profile_to_image(
+            profile=self.uw1_radial_profile,
+            distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=1.0,
+        )
+        uvv_div_img = radial_profile_to_image(
+            profile=self.uvv_radial_profile,
+            distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=1.0,
+        )
+        self.uw1_divided_median_image = uw1_sub_img / uw1_div_img
+        self.uvv_divided_median_image = uvv_sub_img / uvv_div_img
+
+        self.uw1_subtraction_plot.set_data(self.uw1_subtracted_median_image)
+        self.uvv_subtraction_plot.set_data(self.uvv_subtracted_median_image)
+
+    def update_median_divided_image_plot(self):
+        uw1_sub_img = copy.deepcopy(self.uw1_img)
+        uvv_sub_img = copy.deepcopy(self.uvv_img)
+
+        # fill non-profile pixels with 1 because we are dividing by this image
+        uw1_div_img = radial_profile_to_image(
+            profile=self.uw1_radial_profile,
+            distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=1.0,
+        )
+        uvv_div_img = radial_profile_to_image(
+            profile=self.uvv_radial_profile,
+            distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=1.0,
+        )
+        self.uw1_divided_median_image = uw1_sub_img / uw1_div_img
+        self.uvv_divided_median_image = uvv_sub_img / uvv_div_img
+
+        # self.uw1_division_plot.norm.vmin, self.uw1_division_plot.norm.vmax = (
+        #     self.zscale.get_limits(self.uw1_divided_median_image)
+        # )
+        # self.uvv_division_plot.norm.vmin, self.uvv_division_plot.norm.vmax = (
+        #     self.zscale.get_limits(self.uvv_divided_median_image)
+        # )
+
+        self.uw1_division_plot.set_data(self.uw1_divided_median_image)
+        self.uvv_division_plot.set_data(self.uvv_divided_median_image)
 
     def update_q_from_profiles(self):
         # if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
@@ -521,6 +597,34 @@ def profile_selection_plot(
     )
     epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].write()
+
+    epoch_subpipeline.median_subtracted_images[
+        SwiftFilter.uw1, stacking_method
+    ].data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uw1_subtracted_median_image
+    )
+    epoch_subpipeline.median_subtracted_images[SwiftFilter.uw1, stacking_method].write()
+
+    epoch_subpipeline.median_subtracted_images[
+        SwiftFilter.uvv, stacking_method
+    ].data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uvv_subtracted_median_image
+    )
+    epoch_subpipeline.median_subtracted_images[SwiftFilter.uvv, stacking_method].write()
+
+    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].data = (
+        epoch_stacked_image_to_fits(
+            epoch=stacked_epoch, img=rpsp.uw1_divided_median_image
+        )
+    )
+    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].write()
+
+    epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].data = (
+        epoch_stacked_image_to_fits(
+            epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
+        )
+    )
+    epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].write()
 
     # show_subtracted_profile(
     #     rpsp,
@@ -725,5 +829,3 @@ def qH2O_from_profile_step(
     )
     if rpsp is None:
         return
-
-    # save_rpsp_results(rpsp=rpsp)

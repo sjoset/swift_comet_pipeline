@@ -222,7 +222,7 @@ class EpochSubpipelineFiles:
         do_coincidence_correction: bool = True,
         remove_vetoed: bool = True,
     ) -> None:
-        # TODO: this doesn't belong here
+        # TODO: this doesn't belong here, right?
         """
         Produces sum- and median-stacked images for the uw1 and uvv filters
         The stacked images are padded so that the images in uw1 and uvv are the same size, so both must be stacked here

@@ -73,13 +73,13 @@ def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.Image
     mid_obs.format = "fits"
     hdr["mid_obs"] = mid_obs.value
 
-    rh_start = first_obs_row.HELIO * u.AU
-    rh_end = last_obs_row.HELIO * u.AU
+    rh_start = first_obs_row.HELIO * u.AU  # type: ignore
+    rh_end = last_obs_row.HELIO * u.AU  # type: ignore
     dr_dt = (rh_end - rh_start) / dt
 
-    ddelta_dt = (last_obs_row.OBS_DIS * u.AU - first_obs_row.OBS_DIS * u.AU) / dt
+    ddelta_dt = (last_obs_row.OBS_DIS * u.AU - first_obs_row.OBS_DIS * u.AU) / dt  # type: ignore
 
-    hdr["drh_dt"] = dr_dt.to_value(u.km / u.s)
-    hdr["ddeltadt"] = ddelta_dt.to_value(u.km / u.s)
+    hdr["drh_dt"] = dr_dt.to_value(u.km / u.s)  # type: ignore
+    hdr["ddeltadt"] = ddelta_dt.to_value(u.km / u.s)  # type: ignore
 
     return hdu

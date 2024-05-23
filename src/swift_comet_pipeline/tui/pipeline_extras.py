@@ -28,7 +28,7 @@ class PipelineExtrasMenuEntry(StrEnum):
     epoch_summary = "epoch summary"
     epoch_latex_observation_log = "observation summary in latex format"
     get_orbital_data = "query jpl for comet and earth orbital data"
-    load_hfs_test = "test loading HFS file formats"
+    load_radial_profile_test = "test loading and reconstructing radial profiles"
 
     surf_brightness_test = "surface brightness test code"
     comet_centers = "Raw images with comet centers marked"
@@ -64,7 +64,7 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.load_hfs_test:
-            load_hfs_test(swift_project_config=swift_project_config)
+            load_radial_profile_test(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
@@ -241,7 +241,7 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
     # print("")
 
 
-def load_hfs_test(swift_project_config: SwiftProjectConfig) -> None:
+def load_radial_profile_test(swift_project_config: SwiftProjectConfig) -> None:
 
     pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
 
