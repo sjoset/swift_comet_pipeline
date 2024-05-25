@@ -110,6 +110,8 @@ def extract_comet_radial_profile(
     Extracts the count rate profile along a line starting at the comet center, extending out a distance r at angle theta
     Takes one pixel sample per unit distance: if r=100, we take 101 pixel samples (to include the center pixel)
     """
+    # TODO: this should validate that we stay inside the image and truncate the xs and ys to stay inside
+    # and return a profile with a smaller r than requested
     x0 = comet_center.x
     y0 = comet_center.y
     x1 = comet_center.x + r * np.cos(theta)
@@ -267,6 +269,7 @@ def comet_manual_aperture(
     return CountRate(value=comet_count_rate, sigma=propogated_sigma)
 
 
+# TODO: move this surface brightness to another file
 # TODO: finish this dataclass to reflect the dataframe returned by surface_brightness_profiles()
 # @dataclass
 # class SurfaceBrightnessProfiles:

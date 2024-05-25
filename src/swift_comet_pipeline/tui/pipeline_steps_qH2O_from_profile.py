@@ -393,19 +393,19 @@ class RadialProfileSelectionPlot(object):
         uw1_sub_img = copy.deepcopy(self.uw1_img)
         uvv_sub_img = copy.deepcopy(self.uvv_img)
 
-        uw1_median_profile_img = radial_profile_to_image(
+        self.uw1_median_profile_img = radial_profile_to_image(
             profile=self.uw1_radial_profile,
             distance_from_center_mesh=self.distance_from_center_mesh,
             empty_pixel_fill_value=0.0,
         )
-        uvv_median_profile_img = radial_profile_to_image(
+        self.uvv_median_profile_img = radial_profile_to_image(
             profile=self.uvv_radial_profile,
             distance_from_center_mesh=self.distance_from_center_mesh,
             empty_pixel_fill_value=0.0,
         )
 
-        self.uw1_subtracted_median_image = uw1_sub_img - uw1_median_profile_img
-        self.uvv_subtracted_median_image = uvv_sub_img - uvv_median_profile_img
+        self.uw1_subtracted_median_image = uw1_sub_img - self.uw1_median_profile_img
+        self.uvv_subtracted_median_image = uvv_sub_img - self.uvv_median_profile_img
 
         uw1_div_img = radial_profile_to_image(
             profile=self.uw1_radial_profile,
@@ -598,18 +598,30 @@ def profile_selection_plot(
     epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].write()
 
+    epoch_subpipeline.extracted_profile_images[
+        SwiftFilter.uw1, stacking_method
+    ].data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uw1_median_profile_img
+    )
+    epoch_subpipeline.extracted_profile_images[
+        SwiftFilter.uvv, stacking_method
+    ].data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uvv_median_profile_img
+    )
+    epoch_subpipeline.extracted_profile_images[SwiftFilter.uw1, stacking_method].write()
+    epoch_subpipeline.extracted_profile_images[SwiftFilter.uvv, stacking_method].write()
+
     epoch_subpipeline.median_subtracted_images[
         SwiftFilter.uw1, stacking_method
     ].data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uw1_subtracted_median_image
     )
-    epoch_subpipeline.median_subtracted_images[SwiftFilter.uw1, stacking_method].write()
-
     epoch_subpipeline.median_subtracted_images[
         SwiftFilter.uvv, stacking_method
     ].data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uvv_subtracted_median_image
     )
+    epoch_subpipeline.median_subtracted_images[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.median_subtracted_images[SwiftFilter.uvv, stacking_method].write()
 
     epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].data = (
@@ -617,14 +629,16 @@ def profile_selection_plot(
             epoch=stacked_epoch, img=rpsp.uw1_divided_median_image
         )
     )
-    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].write()
-
     epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].data = (
         epoch_stacked_image_to_fits(
             epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
         )
     )
+    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].write()
+
+    # TODO: write a dataclass to hold the q_from_profile_extraction and associated to_dict and from_dict for saving/loading if needed
+    # TODO: write the code to fill in this dataclass and save the product
 
     # show_subtracted_profile(
     #     rpsp,
