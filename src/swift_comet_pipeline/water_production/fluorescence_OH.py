@@ -15,7 +15,11 @@ from swift_comet_pipeline.water_production.flux_OH import OHFlux
 
 NumOH: TypeAlias = ValueAndStandardDev
 
+# TODO:
+# https://asteroid.lowell.edu/comet/gfactor
 
+
+# TODO: add entry to identify the molecule this gfactor is describing
 @dataclass
 class FluorescenceGFactor1AU:
     helio_vs: np.ndarray
@@ -32,6 +36,8 @@ def read_gfactor_1au_data(fluorescence_file: pathlib.Path) -> FluorescenceGFacto
     return FluorescenceGFactor1AU(helio_vs, gfactors)
 
 
+# TODO: change helio_v_kms to be an astropy quantity, add decorator to enforce proper input
+# TODO: make rh a parameter and rename function to gfactor: scale the 1AU gfactor data by 1/(rh_in_au)**2
 def gfactor_1au(
     helio_v_kms: float, fluorescence_data: Optional[FluorescenceGFactor1AU] = None
 ) -> float:
@@ -53,6 +59,7 @@ def gfactor_1au(
     return g1au_interpolation(helio_v_kms)
 
 
+# TODO: change helio_v_kms, helio_r_au, delta_au to be an astropy quantity, add decorator to enforce proper input
 def flux_OH_to_num_OH(
     flux_OH: OHFlux,
     helio_r_au: float,

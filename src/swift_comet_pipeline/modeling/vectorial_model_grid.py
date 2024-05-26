@@ -55,31 +55,3 @@ def make_vectorial_model_grid() -> VectorialModelGrid:
         parent_destruction_level=0.99,
         fragment_destruction_level=0.95,
     )
-
-
-# def make_vectorial_model_grid(quality: VectorialModelGridQuality) -> VectorialModelGrid:
-#
-#     if quality == VectorialModelGridQuality.low:
-#         radial_points = 50
-#         angular_points = 30
-#         radial_substeps = 50
-#     elif quality == VectorialModelGridQuality.medium:
-#         radial_points = 100
-#         angular_points = 60
-#         radial_substeps = 75
-#     elif quality == VectorialModelGridQuality.high:
-#         radial_points = 150
-#         angular_points = 100
-#         radial_substeps = 100
-#     elif quality == VectorialModelGridQuality.very_high:
-#         radial_points = 200
-#         angular_points = 120
-#         radial_substeps = 120
-#
-#     return VectorialModelGrid(
-#         radial_points=radial_points,
-#         angular_points=angular_points,
-#         radial_substeps=radial_substeps,
-#         parent_destruction_level=0.99,
-#         fragment_destruction_level=0.95,
-#     )

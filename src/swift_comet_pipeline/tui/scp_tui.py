@@ -26,6 +26,9 @@ from swift_comet_pipeline.tui.pipeline_steps_qH2O_from_profile import (
 from swift_comet_pipeline.tui.pipeline_steps_qH2O_vs_aperture_radius import (
     qH2O_vs_aperture_radius_step,
 )
+from swift_comet_pipeline.tui.pipeline_steps_vectorial_profile_fitting import (
+    vectorial_fitting_step,
+)
 from swift_comet_pipeline.tui.pipeline_steps_veto_epoch import veto_epoch_step
 from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stacking_step
 from swift_comet_pipeline.tui.tui_common import (
@@ -43,6 +46,9 @@ class PipelineStepsMenuEntry(StrEnum):
     background_analysis = "background analysis and subtraction"
     qH2O_vs_aperture_radius = "water production as a function of aperture radius"
     qH2O_from_profile = "water production from a comet profile/slice"
+    vectorial_fitting = (
+        "derive water production from comet profile via fitting to model"
+    )
 
     extra_functions = "extra functions"
 
@@ -129,6 +135,8 @@ def main():
             qH2O_vs_aperture_radius_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.qH2O_from_profile:
             qH2O_from_profile_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.vectorial_fitting:
+            vectorial_fitting_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.extra_functions:
             pipeline_extras_menu(swift_project_config=swift_project_config)
         else:

@@ -90,8 +90,8 @@ def obs_string_to_filter(filter_str: str) -> SwiftFilter:
 
 # TODO: cite these from the swift documentation
 # TODO: look up what 'cf' stands for
-# TODO: Make SwiftFilterParameters a dataclass?
-# TODO: these are all technically a function of time, so we should incorporate that
+# TODO: Make SwiftFilterParameters a dataclass
+# TODO: these are all technically a function of time, so we should incorporate that as an entry in the dataclass
 def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
     filter_params = {
         SwiftFilter.uvv: {

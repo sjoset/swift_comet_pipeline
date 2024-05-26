@@ -54,7 +54,6 @@ def num_OH_at_r_au_vectorial(
     production = CometProduction(base_q_per_s=base_q.to(1 / u.s).value)
     water_parent = make_water_molecule_parent()
     hydroxyl_fragment = make_hydroxyl_fragment()
-    # grid = make_vectorial_model_grid(quality=VectorialModelGridQuality.very_high)
     grid = make_vectorial_model_grid()
     untransformed_vmc = VectorialModelConfig(
         production=production,

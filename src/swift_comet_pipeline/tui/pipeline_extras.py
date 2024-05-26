@@ -242,6 +242,7 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
 
 
 def load_radial_profile_test(swift_project_config: SwiftProjectConfig) -> None:
+    # TODO: seems to be working, remove this from menu
 
     pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
 

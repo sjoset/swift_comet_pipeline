@@ -60,11 +60,13 @@ def q_vs_aperture_radius(
     delta = np.mean(epoch.OBS_DIS)
 
     # TODO: can vectorial model give a better estimate? might be able to borrow the code for grid size here
-    radius_km_guess = 1e5
+    radius_km_guess = 5e5
     r_pix = int(radius_km_guess / np.mean(epoch.KM_PER_PIX))
-    print(f"Guessing radius of 1e5 km or {r_pix} pixels")
+    print(f"Guessing radius of {radius_km_guess} km or {r_pix} pixels")
 
-    aperture_radii, r_step = np.linspace(1, 2 * r_pix, num=5 * r_pix, retstep=True)
+    aperture_radii, r_step = np.linspace(
+        1, r_pix, num=np.round(r_pix / 5).astype(np.int32), retstep=True
+    )
     redness_to_beta = {x: beta_parameter(x) for x in dust_rednesses}
 
     count_uw1 = []
