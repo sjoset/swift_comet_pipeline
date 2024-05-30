@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+from scipy.optimize import curve_fit
 
 from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
@@ -29,7 +30,8 @@ from swift_comet_pipeline.comet.comet_profile import (
 
 def arcseconds_to_au(arcseconds: float, delta: u.Quantity):
     # TODO: document this and explain magic numbers
-    return delta.to(u.AU).value * 2 * np.pi * arcseconds / (3600.0 * 360)  # type: ignore
+    # type: ignore
+    return delta.to(u.AU).value * 2 * np.pi * arcseconds / (3600.0 * 360)
 
 
 # def show_subtracted_profile(
@@ -121,11 +123,6 @@ def subtract_profiles(
     pix = subtracted_pixels
     rs = physical_rs
 
-    # TODO: maybe we should do this?
-    # positive_mask = subtracted_pixels > 0
-    # pix = subtracted_pixels[positive_mask]
-    # rs = physical_rs[positive_mask]
-
     return rs, pix
 
 
@@ -134,7 +131,6 @@ def subtract_profiles(
 def countrate_profile_to_surface_brightness(
     countrate_profile: np.ndarray, km_per_pix: float, delta: u.Quantity
 ) -> np.ndarray:
-
     # convert pixel signal to column density
     pixel_area_cm2 = (km_per_pix / 1.0e5) ** 2
     # TODO: the 1.0 arcseconds should reflect the mode the image was taken with
@@ -159,7 +155,6 @@ def surface_brightness_profile_to_column_density(
     helio_v: u.Quantity,
     helio_r: u.Quantity,
 ) -> np.ndarray:
-
     delta_cm = delta.to(u.cm).value  # type: ignore
     helio_v_kms = helio_v.to(u.km / u.s).value  # type: ignore
     rh_au = helio_r.to(u.AU).value  # type: ignore
@@ -179,7 +174,6 @@ def surface_brightness_profile_to_column_density(
 def show_column_densities(
     rs, comet_column_density, vectorial_model_column_density
 ) -> None:
-
     mask = rs > 5000
 
     # fig, ax = plt.subplots()
@@ -202,8 +196,8 @@ def find_q_at_redness(
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
     dust_redness: DustReddeningPercent,
+    only_fit_beyond_r: u.Quantity = 5000 * u.km,
 ):
-
     km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
     helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
@@ -215,6 +209,11 @@ def find_q_at_redness(
         km_per_pix=km_per_pix,
         dust_redness=dust_redness,
     )
+
+    # limit fitting to r > only_fit_beyond_r
+    ratio_mask = subtracted_profile_rs > only_fit_beyond_r
+    subtracted_profile_rs = subtracted_profile_rs[ratio_mask]
+    subtracted_profile_pixels = subtracted_profile_pixels[ratio_mask]
 
     surface_brightness_profile = countrate_profile_to_surface_brightness(
         countrate_profile=subtracted_profile_pixels, km_per_pix=km_per_pix, delta=delta
@@ -268,7 +267,6 @@ def find_q_at_redness(
 
 
 def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
-
     pipeline_files = PipelineFiles(swift_project_config.project_path)
 
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
@@ -319,9 +317,10 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
 
     rs = {}
     ccds = {}
+    vcds = {}
     dust_rednesses = np.linspace(0.0, 100.0, num=11, endpoint=True)
     for dust_redness in dust_rednesses:
-        rs[dust_redness], ccds[dust_redness], _ = find_q_at_redness(
+        rs[dust_redness], ccds[dust_redness], vcds[dust_redness] = find_q_at_redness(
             stacked_epoch=stacked_epoch,
             uw1_profile=uw1_profile,
             uvv_profile=uvv_profile,
@@ -356,9 +355,104 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
             ccds[dust_redness],
             label=f"cd at {dust_redness=}",
         )
+        ax.plot(rs[dust_redness], vcds[dust_redness], label=f"vcd at {dust_redness}")
     ax.set_xscale("log")
     ax.set_xlabel("distance r from nucleus, km")
     ax.set_yscale("log")
     ax.set_ylabel("fragment column density, 1/cm^2")
+    ax.legend()
+    plt.show()
+
+    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
+
+    # model_Q = 1e29 / u.s  # type: ignore
+    # _, coma = num_OH_at_r_au_vectorial(
+    #     base_q=model_Q, helio_r=helio_r, water_grains=False
+    # )
+    # vectorial_model_column_density = coma.vmr.column_density
+    #
+    # _, grain_coma = num_OH_at_r_au_vectorial(
+    #     base_q=model_Q, helio_r=helio_r, water_grains=True
+    # )
+    # grain_column_density = grain_coma.vmr.column_density
+    #
+    # vcd = vectorial_model_column_density.to(1 / u.cm**2).value
+    # gcd = grain_column_density.to(1 / u.cm**2).value
+    # rs = coma.vmr.column_density_grid
+
+    # _, ax = plt.subplots()
+    # ax.plot(rs, vcd, label="vectorial")
+    # ax.plot(rs, gcd, label="grain")
+    # ax.plot(rs, vcd + gcd, label="grain+vectorial")
+    # ax.set_xscale("log")
+    # ax.set_xlabel("distance r from nucleus, km")
+    # ax.set_yscale("log")
+    # ax.set_ylabel("fragment column density, 1/cm^2")
+    # ax.legend()
+    # plt.show()
+
+    # TODO: pre perihelion, the column density might be linear and modeled by short-lived grains with low v_outflow
+    # fit the profiles and find
+
+    dust_color = dust_rednesses[2]
+    linear_cd_fit(
+        rs_km=rs[dust_color],
+        cds_cm2=ccds[dust_color],
+        within_r=50000 * u.km,
+        helio_r_au=helio_r.to(u.AU).value,
+    )
+
+
+def linear_cd_fit(rs_km, cds_cm2, within_r: u.Quantity, helio_r_au) -> None:
+
+    def lin(x: float, a: float, b: float) -> float:
+        return a * x + b
+
+    def haser_like(x: float, a: float, b: float):
+        return a * x - b * np.log(x)
+
+    r_mask = rs_km < (within_r.to(u.km).value)
+    rs_fit_km = rs_km[r_mask]
+
+    # rs_fit = rs_fit_km
+    rs_fit = np.log(rs_fit_km)
+    cd_fit = np.log(cds_cm2[r_mask])
+
+    # popt, pcov = curve_fit(lin, rs_fit, cd_fit, sigma=rs_fit**2)
+    popt, pcov = curve_fit(lin, rs_fit, cd_fit)
+    lifetime_s = -1 / (popt[0] * np.log(1.05))
+    exp_life = np.exp(lifetime_s)
+    print(
+        f"{popt=}, {pcov=}, {lifetime_s=}, {exp_life=}, {lifetime_s / helio_r_au**2}, {exp_life/helio_r_au**2}"
+    )
+
+    popt_haser, pcov_haser = curve_fit(haser_like, rs_fit, cd_fit)
+    lifetime_s_haser = -1 / (popt_haser[0] * np.log(1.05))
+    exp_life_haser = np.exp(lifetime_s_haser)
+    print(
+        f"{popt_haser=}, {pcov_haser=}, {lifetime_s_haser=}, {exp_life_haser=}, {lifetime_s_haser / helio_r_au**2}, {exp_life_haser/helio_r_au**2}"
+    )
+
+    fit_cds = lin(rs_fit, a=popt[0], b=popt[1])
+    rs_plot_km = np.exp(rs_fit)
+    cd_plot_cm2 = np.exp(fit_cds)
+    cd_extrap = np.exp(lin(np.log(rs_km), a=popt[0], b=popt[1]))
+
+    fit_cds_haser = haser_like(rs_fit, a=popt_haser[0], b=popt_haser[1])
+    cd_plot_haser = np.exp(fit_cds_haser)
+    cd_extrap_haser = np.exp(
+        haser_like(np.log(rs_km), a=popt_haser[0], b=popt_haser[1])
+    )
+
+    _, ax = plt.subplots()
+    ax.plot(rs_km, cds_cm2, label="coldens")
+    ax.plot(rs_plot_km, cd_plot_cm2, label="fit")
+    ax.plot(rs_km, cd_extrap, label="extrapolated fit", alpha=0.5)
+    ax.plot(rs_plot_km, cd_plot_haser, label="haser-like")
+    ax.plot(rs_km, cd_extrap_haser, label="haser-like extrapolated")
+    ax.set_xscale("log")
+    ax.set_xlabel("distance r from nucleus, km")
+    ax.set_yscale("log")
+    ax.set_ylabel("log fragment column density, 1/cm^2")
     ax.legend()
     plt.show()

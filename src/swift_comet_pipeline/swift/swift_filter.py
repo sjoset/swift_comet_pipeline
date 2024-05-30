@@ -140,6 +140,7 @@ def get_filter_parameters(filter_type: SwiftFilter) -> Dict:
     return filter_params[filter_type]
 
 
+# TODO: units!
 @dataclass
 class FilterEffectiveArea:
     lambdas: np.ndarray
@@ -148,9 +149,12 @@ class FilterEffectiveArea:
 
 def read_effective_area(effective_area_path: pathlib.Path) -> FilterEffectiveArea:
     # TODO: tag with astropy units, convert later? too slow?
+    # or rename to ea_lambdas_nm
     filter_fits_hdul = fits.open(effective_area_path)
     filter_ea_data = filter_fits_hdul[1].data  # type: ignore
     ea_lambdas = (filter_ea_data["WAVE_MIN"] + filter_ea_data["WAVE_MAX"]) / 2
+    # wavelengths are given in angstroms
+    # ea_lambdas = ea_lambdas
     # wavelengths are given in angstroms: convert to nm
     ea_lambdas = ea_lambdas / 10
     ea_responses = filter_ea_data["SPECRESP"]

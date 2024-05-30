@@ -2184,6 +2184,17 @@ doc = ["reno", "sphinx"]
 test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
+name = "terminaltexteffects"
+version = "0.10.0"
+description = "A collection of visual effects that can be applied to terminal piped stdin text."
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "terminaltexteffects-0.10.0-py3-none-any.whl", hash = "sha256:f3190e13c682ee22f992daf3632405a2c00394e32ffb8c2b7003bf0243d95c33"},
+    {file = "terminaltexteffects-0.10.0.tar.gz", hash = "sha256:f03b3ae0e094b3d641d972507796024add7fbdfd3eb4af653215afec78213c6b"},
+]
+
+[[package]]
 name = "tqdm"
 version = "4.66.4"
 description = "Fast, Extensible Progress Meter"
@@ -2288,4 +2299,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "440287084cf884155a5c695ae7836594af48933f7be462bbdeacd23cb5f2e16d"
+content-hash = "97a98612e9ee88b1b0d5d9f3a64542164d6c4fab313e48f22271cc67bdb8cc30"

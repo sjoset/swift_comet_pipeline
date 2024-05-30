@@ -32,6 +32,7 @@ def read_fixed_solar_spectrum(solar_spectrum_path: pathlib.Path) -> SolarSpectru
     return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
 
 
+# TODO: test this
 def read_solar_spectrum_sorce(
     solar_spectrum_path: pathlib.Path, solar_spectrum_time: Time
 ) -> SolarSpectrum:
@@ -49,7 +50,9 @@ def read_solar_spectrum_sorce(
     solar_lambdas = solar_spectrum["wavelength (nm)"]
     solar_irradiances = solar_spectrum["irradiance (W/m^2/nm)"]
 
-    return SolarSpectrum(lambdas=solar_lambdas, irradiances=solar_irradiances)
+    return SolarSpectrum(
+        lambdas=np.array(solar_lambdas), irradiances=np.array(solar_irradiances)
+    )
 
 
 # TODO: this is probably broken: make it use the base directory of the code instead of relative path in spectrum_path

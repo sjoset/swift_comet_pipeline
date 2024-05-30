@@ -31,7 +31,7 @@ class EpochImageSlider(Slider):
         self.activecolor = kwargs.pop("activecolor", "b")
         self.fontsize = kwargs.pop("fontsize", 10)
         self.num_images = num_images
-        self.label = "Image"  # type: ignore
+        self.label: str = "Image"
         initial_image_index = 0
 
         super(EpochImageSlider, self).__init__(

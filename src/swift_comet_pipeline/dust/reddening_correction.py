@@ -19,6 +19,7 @@ def reddening_correction(
     ea_data_uw1 = read_effective_area(effective_area_path=effective_area_uw1_path)
     uw1_lambdas = ea_data_uw1.lambdas
     uw1_responses = ea_data_uw1.responses
+
     ea_data_uvv = read_effective_area(effective_area_path=effective_area_uvv_path)
     uvv_lambdas = ea_data_uvv.lambdas
     uvv_responses = ea_data_uvv.responses
@@ -38,7 +39,9 @@ def reddening_correction(
         wave_v += uvv_lambdas[i] * uvv_responses[i] * delta_wave_v
         ea_v += uvv_responses[i] * delta_wave_v
     wave_v = wave_v / ea_v
+
     # TODO: magic number
-    # get reddening correction factor
-    middle_factor = (wave_v - wave_uw1) * dust_redness / 200000
+    # get reddening correction factor: do this with proper units (when EA lambdas are in angstroms, this is 200000)
+    middle_factor = (wave_v - wave_uw1) * dust_redness / 20000
+
     return (1 - middle_factor) / (1 + middle_factor)
