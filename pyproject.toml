@@ -36,4 +36,4 @@ scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'
 [tool.pyright]
 reportAttributeAccessIssue = 'information'
 typeCheckingMode = 'basic'
-ignore = ["deprecated", "src/swift_comet_pipeline/deprecated"]
+ignore = ["deprecated"]

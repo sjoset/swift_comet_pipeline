@@ -30,82 +30,20 @@ from swift_comet_pipeline.comet.comet_profile import (
 
 def arcseconds_to_au(arcseconds: float, delta: u.Quantity):
     # TODO: document this and explain magic numbers
-    # type: ignore
-    return delta.to(u.AU).value * 2 * np.pi * arcseconds / (3600.0 * 360)
-
-
-# def show_subtracted_profile(
-#     uw1_profile: CometRadialProfile,
-#     uvv_profile: CometRadialProfile,
-#     stacked_epoch: Epoch,
-# ) -> None:
-#
-#     # redness: DustReddeningPercent = rpsp.dust_redness
-#     redness = DustReddeningPercent(0.0)
-#     beta = beta_parameter(redness)
-#
-#     uw1_params = get_filter_parameters(SwiftFilter.uw1)
-#     uvv_params = get_filter_parameters(SwiftFilter.uvv)
-#
-#     uvv_to_uw1_cf = uvv_params["cf"] / uw1_params["cf"]
-#
-#     # convert from count rate to flux
-#     subtracted_pixels = (
-#         uw1_profile.pixel_values - beta * uvv_to_uw1_cf * uvv_profile.pixel_values
-#     )
-#     positive_mask = subtracted_pixels > 0
-#     physical_rs = uw1_profile.profile_axis_xs * km_per_pix
-#
-#     pix = subtracted_pixels[positive_mask]
-#     rs = physical_rs[positive_mask]
-#
-#     # print(f"{base_q_per_s=}, running with Q={3*base_q_per_s}")
-#     model_Q = 1e29
-#     _, coma = num_OH_at_r_au_vectorial(base_q=model_Q / u.s, helio_r=rh * u.AU)
-#     vectorial_values = (base_q_per_s / model_Q) * coma.vmr.column_density_interpolation(
-#         rs * 1000
-#     )
-#
-#     # convert pixel signal to column density
-#     pixel_area_cm2 = (km_per_pix / 1.0e5) ** 2
-#     # TODO: the 1.0 arcseconds should reflect the mode the image was taken with
-#     pixel_side_length_cm = (
-#         arcseconds_to_au(arcseconds=1.0, delta=delta_au) * u.AU
-#     ).to_value(u.cm)
-#     pixel_area_cm2 = pixel_side_length_cm**2
-#     # print(f"{pixel_area_cm2=}")
-#
-#     # surface brightness = count rate per unit area
-#     surf_brightness = pix / pixel_area_cm2
-#
-#     alpha = 1.2750906353215913e-12
-#     flux = surf_brightness * alpha
-#     delta_in_cm = (delta_au * u.AU).to_value(u.cm)
-#     lumi = flux * 4 * np.pi * delta_in_cm**2
-#
-#     gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh**2
-#     cdens = lumi / gfactor
-#
-#     # print(cdens / vectorial_values)
-#     # print(f"{delta_au=}\t{delta_in_cm=}\t{gfactor=}\t{rh=}")
-#
-#     fig, ax = plt.subplots()
-#     ax.plot(rs, vectorial_values / 10000, label="vect")
-#     ax.plot(rs, cdens, label="img")
-#     # ax.set_xscale("log")
-#     ax.set_yscale("log")
-#     ax.legend()
-#     plt.show()
+    return delta.to(u.AU).value * 2 * np.pi * arcseconds / (3600.0 * 360)  # type: ignore
 
 
 def subtract_profiles(
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
-    km_per_pix: float,
+    # km_per_pix: float,
     dust_redness: DustReddeningPercent = 0.0,
-):
+) -> CometRadialProfile:
     # function assumes each radial profile is the same length radially
     assert len(uw1_profile.profile_axis_xs) == len(uvv_profile.profile_axis_xs)
+
+    # should all be zero
+    # print(uw1_profile.profile_axis_xs - uvv_profile.profile_axis_xs)
 
     beta = beta_parameter(dust_redness)
 
@@ -118,12 +56,21 @@ def subtract_profiles(
     subtracted_pixels = (
         uw1_profile.pixel_values - beta * uvv_to_uw1_cf * uvv_profile.pixel_values
     )
-    physical_rs = uw1_profile.profile_axis_xs * km_per_pix * u.km  # type: ignore
+    # physical_rs = uw1_profile.profile_axis_xs * km_per_pix * u.km
 
-    pix = subtracted_pixels
-    rs = physical_rs
+    # pix = subtracted_pixels
+    # rs = physical_rs
 
-    return rs, pix
+    # return rs, pix
+    return CometRadialProfile(
+        profile_axis_xs=uw1_profile.profile_axis_xs,
+        pixel_values=subtracted_pixels,
+        _xs=uw1_profile._xs,
+        _ys=uw1_profile._ys,
+        _radius=uw1_profile._radius,
+        _theta=uw1_profile._theta,
+        _comet_center=uw1_profile._comet_center,
+    )
 
 
 # TODO: the return type should be a dataclass
@@ -203,20 +150,22 @@ def find_q_at_redness(
     helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
 
-    subtracted_profile_rs, subtracted_profile_pixels = subtract_profiles(
+    subtracted_profile = subtract_profiles(
         uw1_profile=uw1_profile,
         uvv_profile=uvv_profile,
-        km_per_pix=km_per_pix,
         dust_redness=dust_redness,
     )
 
+    subtracted_profile_rs_km = subtracted_profile.profile_axis_xs * km_per_pix
+
     # limit fitting to r > only_fit_beyond_r
-    ratio_mask = subtracted_profile_rs > only_fit_beyond_r
-    subtracted_profile_rs = subtracted_profile_rs[ratio_mask]
-    subtracted_profile_pixels = subtracted_profile_pixels[ratio_mask]
+    profile_mask = subtracted_profile_rs_km > only_fit_beyond_r.to(u.km).value  # type: ignore
+
+    masked_profile_rs_km = subtracted_profile_rs_km[profile_mask]
+    masked_profile_pixels = subtracted_profile.pixel_values[profile_mask]
 
     surface_brightness_profile = countrate_profile_to_surface_brightness(
-        countrate_profile=subtracted_profile_pixels, km_per_pix=km_per_pix, delta=delta
+        countrate_profile=masked_profile_pixels, km_per_pix=km_per_pix, delta=delta
     )
 
     comet_column_density = surface_brightness_profile_to_column_density(
@@ -229,7 +178,7 @@ def find_q_at_redness(
     model_Q = 1e29 / u.s  # type: ignore
     _, coma = num_OH_at_r_au_vectorial(base_q=model_Q, helio_r=helio_r)
     vectorial_model_column_density = coma.vmr.column_density_interpolation(
-        subtracted_profile_rs.to(u.m).value  # type: ignore
+        (masked_profile_rs_km * u.km).to(u.m).value  # type: ignore
     ) / (
         u.m**2  # type: ignore
     )
@@ -245,9 +194,9 @@ def find_q_at_redness(
     )
     print(f"Estimated comet production: {estimated_comet_q_median}")
 
-    ccd = comet_column_density.to(1 / u.cm**2).value
+    ccd = comet_column_density.to(1 / u.cm**2).value  # type: ignore
     vcd = (
-        vectorial_model_column_density.to(1 / u.cm**2).value
+        vectorial_model_column_density.to(1 / u.cm**2).value  # type: ignore
         / estimated_model_to_comet_q_ratio_with_median
     )
 
@@ -263,7 +212,7 @@ def find_q_at_redness(
     #     / estimated_model_to_comet_q_ratio_with_median,
     # )
 
-    return subtracted_profile_rs.to(u.km).value, ccd, vcd
+    return masked_profile_rs_km, ccd, vcd
 
 
 def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
