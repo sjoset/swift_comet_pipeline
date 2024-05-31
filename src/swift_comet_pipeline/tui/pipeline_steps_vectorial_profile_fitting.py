@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from scipy.optimize import curve_fit
 
+from swift_comet_pipeline.modeling.vectorial_model import (
+    num_OH_from_vectorial_model_result,
+    water_vectorial_model,
+)
 from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
@@ -14,9 +18,6 @@ from swift_comet_pipeline.water_production.fluorescence_OH import (
 )
 from swift_comet_pipeline.water_production.flux_OH import (
     beta_parameter,
-)
-from swift_comet_pipeline.water_production.num_OH_to_Q import (
-    num_OH_at_r_au_vectorial,
 )
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
@@ -74,7 +75,9 @@ def subtract_profiles(
 
 
 # TODO: the return type should be a dataclass
-# TODO: is this really surface brightness at this point or should we call it something else?
+# def countrate_profile_to_surface_brightness(
+#     countrate_profile: np.ndarray, km_per_pix: float, delta: u.Quantity
+# ) -> np.ndarray:
 def countrate_profile_to_surface_brightness(
     countrate_profile: np.ndarray, km_per_pix: float, delta: u.Quantity
 ) -> np.ndarray:
@@ -143,7 +146,7 @@ def find_q_at_redness(
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
     dust_redness: DustReddeningPercent,
-    only_fit_beyond_r: u.Quantity = 5000 * u.km,
+    only_fit_beyond_r: u.Quantity = 5000 * u.km,  # type: ignore
 ):
     km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
@@ -176,8 +179,12 @@ def find_q_at_redness(
     )
 
     model_Q = 1e29 / u.s  # type: ignore
-    _, coma = num_OH_at_r_au_vectorial(base_q=model_Q, helio_r=helio_r)
-    vectorial_model_column_density = coma.vmr.column_density_interpolation(
+
+    vmr = water_vectorial_model(base_q=model_Q, helio_r=helio_r, model_backend="rust")
+    num_oh = num_OH_from_vectorial_model_result(vmr=vmr)
+    print(f"Inside fitting: {num_oh=}")
+
+    vectorial_model_column_density = vmr.column_density_interpolation(
         (masked_profile_rs_km * u.km).to(u.m).value  # type: ignore
     ) / (
         u.m**2  # type: ignore
