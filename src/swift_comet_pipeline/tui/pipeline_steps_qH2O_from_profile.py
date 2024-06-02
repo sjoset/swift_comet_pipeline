@@ -40,6 +40,7 @@ from swift_comet_pipeline.tui.tui_common import (
     wait_for_key,
 )
 from swift_comet_pipeline.comet.comet_profile import (
+    calculate_distance_from_center_mesh,
     count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
     radial_profile_to_dataframe_product,
@@ -149,17 +150,12 @@ class RadialProfileSelectionPlot(object):
     # def from_saved_state(self, ...):
 
     def setup_mesh(self):
-        """create a distance-from-center mesh and plots to hold the subtracted images"""
-        img_height, img_width = self.uw1_img.shape
-        center_x, center_y = self.image_center.x, self.image_center.y
-        xs = np.linspace(0, img_width, num=img_width, endpoint=False)
-        ys = np.linspace(0, img_height, num=img_height, endpoint=False)
-        x, y = np.meshgrid(xs, ys)
-        # the pixel values in the mesh image are the distance from the center, rounded to the nearest integer, so we can use
-        # these values as an index to create a radially symmetric image from a 1-dimensional profile
-        self.distance_from_center_mesh = np.round(
-            np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
-        ).astype(int)
+        """
+        Create a distance-from-center mesh we can calculate once and store because the images do not change size
+        """
+        self.distance_from_center_mesh = calculate_distance_from_center_mesh(
+            img=self.uw1_img
+        )
 
     def setup_image_subtraction(self):
         """create plots to hold the median-subtracted images"""

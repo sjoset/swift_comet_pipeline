@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -27,6 +28,8 @@ class CometRadialProfile:
     Theta is measured from the positive x-axis (along a numpy row) counter-clockwise
     One sample is taken of the profile per unit radial distance: If we want a cut of radius 20, we will have 20
     (x, y) pairs sampled.  We will also have the comet center at radius zero for a total of 21 points in the resulting profile.
+
+    The stacking step adjusts the image pixels to be in count rate, so pixel_values will be an array of floats representing count rates
     """
 
     # the distance from comet center of each sample along the line - these are x coordinates along the profile axis, with pixel_values being the y values
@@ -206,46 +209,6 @@ def count_rate_from_comet_radial_profile(
     return CountRate(value=float(count_rate), sigma=propogated_sigma)
 
 
-# def count_rate_from_comet_profile(
-#     comet_profile: CometProfile,
-#     bg: CountRatePerPixel,
-# ) -> Optional[CountRate]:
-#     """
-#     Takes a profile and assumes azimuthal symmetry to produce a count rate that would result
-#     from a circular aperture centered on the middle of the comet profile
-#     Reminder: we need the background count rate to propogate error
-#     """
-#     # TODO: this should take a radial profile, as CometProfile is not necessarily radial
-#
-#     if not comet_profile.center_is_comet_peak:
-#         print("This function is intended for profiles centered on the comet peak!")
-#         return None
-#
-#     # The factor is normally 2 * np.pi for the angular part of the integral, but
-#     # our answer is twice as big because our limits on r run from [-r, ..., r] and not [0, ..., r].
-#
-#     count_rate = (
-#         simpson(
-#             np.abs(comet_profile.profile_axis_xs) * comet_profile.pixel_values,
-#             comet_profile.profile_axis_xs,
-#             # TODO: test this so the error checker will shut up
-#             # x=comet_profile.profile_axis_xs,
-#         )
-#         * np.pi
-#     )
-#
-#     # TODO: find how to properly quantify the error for these pixel values
-#     profile_sigma = np.std(comet_profile.pixel_values) * 2 * np.pi
-#
-#     # pull radius of the aperture from the max distance in the profile
-#     propogated_sigma = np.sqrt(
-#         profile_sigma**2
-#         + (np.pi * np.max(comet_profile.profile_axis_xs) ** 2 * bg.sigma**2)
-#     )
-#
-#     return CountRate(value=float(count_rate), sigma=propogated_sigma)
-
-
 def comet_manual_aperture(
     img: SwiftUVOTImage,
     aperture_x: float,
@@ -277,6 +240,7 @@ def comet_manual_aperture(
 #     r_outer_pix: np.ndarray
 
 
+# TODO: deprecate?
 def surface_brightness_profiles(
     uw1: SwiftUVOTImage, uvv: SwiftUVOTImage, r_max: int
 ) -> pd.DataFrame:
@@ -355,6 +319,7 @@ def surface_brightness_profiles(
     return df
 
 
+# TODO: deprecate?
 def qh2o_from_surface_brightness_profiles(
     df: pd.DataFrame, epoch: Epoch, beta: float
 ) -> pd.DataFrame:
@@ -457,6 +422,29 @@ def qh2o_from_surface_brightness_profiles(
     return df
 
 
+def calculate_distance_from_center_mesh(img: SwiftUVOTImage):
+    """
+    Resulting array has the same dimensions as the input img, but the pixel values are now the distance to the center of the image,
+    rounded to the nearest integer.  This allows addressing a radial profile array with the mesh as the index: radial_profile[distance_from_center_mesh]
+
+    This works if we sample the radial profile at r = 0, r = 1, r = 2, ... but will break if we choose to sample differently
+    """
+
+    img_height, img_width = img.shape
+    img_center = get_uvot_image_center(img=img)
+    xs = np.linspace(0, img_width, num=img_width, endpoint=False)
+    ys = np.linspace(0, img_height, num=img_height, endpoint=False)
+    x, y = np.meshgrid(xs, ys)
+
+    # the pixel values in the mesh image are the distance from the center, rounded to the nearest integer, so we can use
+    # these values as an index to create a radially symmetric image from a 1-dimensional profile
+    distance_from_center_mesh = np.round(
+        np.sqrt((x - img_center.x) ** 2 + (y - img_center.y) ** 2)
+    ).astype(int)
+
+    return distance_from_center_mesh
+
+
 def radial_profile_to_image(
     profile: CometRadialProfile,
     distance_from_center_mesh: np.ndarray,
@@ -485,6 +473,9 @@ def radial_profile_to_image(
 def radial_profile_to_dataframe_product(
     profile: CometRadialProfile, km_per_pix: float
 ) -> pd.DataFrame:
+    """
+    Takes a radial profile and returns a dataframe with metadata attached that can be written to disk as a PipelineProduct
+    """
     df = pd.DataFrame(
         {
             "r_pixel": profile.profile_axis_xs,
@@ -506,6 +497,9 @@ def radial_profile_to_dataframe_product(
 
 
 def radial_profile_from_dataframe_product(df: pd.DataFrame) -> CometRadialProfile:
+    """
+    Reads a saved PipelineProduct we stored with radial_profile_from_dataframe_product and reconstructs a radial profile
+    """
 
     return CometRadialProfile(
         profile_axis_xs=df.r_pixel.values,
