@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from swift_comet_pipeline.comet.comet_profile import (
+from swift_comet_pipeline.comet.comet_radial_profile import (
     radial_profile_from_dataframe_product,
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
@@ -63,7 +63,7 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_extra_orbital_data(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
-        elif step == PipelineExtrasMenuEntry.load_hfs_test:
+        elif step == PipelineExtrasMenuEntry.load_radial_profile_test:
             load_radial_profile_test(swift_project_config=swift_project_config)
         else:
             exit_menu = True

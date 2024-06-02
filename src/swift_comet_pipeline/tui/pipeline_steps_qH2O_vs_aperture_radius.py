@@ -15,7 +15,7 @@ from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu, wait_for_key
-from swift_comet_pipeline.comet.comet_profile import comet_manual_aperture
+from swift_comet_pipeline.comet.comet_aperture import comet_manual_aperture
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
 from swift_comet_pipeline.swift.count_rate import (

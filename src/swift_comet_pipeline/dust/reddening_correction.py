@@ -10,10 +10,12 @@ def reddening_correction(
     effective_area_uw1_path: pathlib.Path,
     effective_area_uvv_path: pathlib.Path,
     dust_redness: DustReddeningPercent,
-):
+) -> float:
     """
     get the correction factor of beta for dust reddening
     units of reddening: %/100nm
+
+    where beta is the factor in (uw1 - beta * uvv)
     """
 
     ea_data_uw1 = read_effective_area(effective_area_path=effective_area_uw1_path)
@@ -29,6 +31,7 @@ def reddening_correction(
     wave_v = 0
     ea_v = 0
 
+    # TODO: rewrite this without loops
     delta_wave_uw1 = uw1_lambdas[1] - uw1_lambdas[0]
     delta_wave_v = uvv_lambdas[1] - uvv_lambdas[0]
     for i in range(len(uw1_lambdas)):

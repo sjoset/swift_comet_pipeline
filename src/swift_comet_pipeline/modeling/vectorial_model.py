@@ -2,10 +2,9 @@ from functools import cache
 from typing import Callable
 
 import numpy as np
-
-from pyvectorial_au.model_output.vectorial_model_result import VectorialModelResult
 import astropy.units as u
 
+from pyvectorial_au.model_output.vectorial_model_result import VectorialModelResult
 from pyvectorial_au.model_input.vectorial_model_config import (
     CometProduction,
     VectorialModelConfig,
@@ -83,14 +82,12 @@ def water_vectorial_model(
             grid=vmc.grid,
         )
 
-    if model_backend == "python":
+    if model_backend == "sbpy":
         extra_config = PythonModelExtraConfig(print_progress=False)
     elif model_backend == "rust":
         extra_config = RustModelExtraConfig()
     else:
-        print(
-            f"Invalid model backend {model_backend} specified!  Defaulting to python."
-        )
+        print(f"Invalid model backend {model_backend} specified!  Defaulting to sbpy.")
         extra_config = PythonModelExtraConfig(print_progress=False)
 
     vmcalculation = run_vectorial_models(
@@ -110,7 +107,7 @@ def num_OH_from_vectorial_model_result(vmr: VectorialModelResult) -> float:
 
     r_begin = np.min(vmr.volume_density_grid.to(u.m).value)  # type: ignore
     r_end = np.max(vmr.volume_density_grid.to(u.m).value)  # type: ignore
-    num_oh_r, num_oh_r_err = quad(
+    num_oh_r, _ = quad(
         integrand, a=r_begin, b=r_end, args=(vmr.volume_density_interpolation,)
     )
 

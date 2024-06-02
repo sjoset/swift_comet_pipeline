@@ -163,6 +163,9 @@ class EpochSubpipelineFiles:
                 )
             )
 
+        # TODO: for each stacking method, we should have a column density, production, and dust redness from the best fit
+        # TODO: dump all of these on a per-redness basis?
+
     @property
     def all_images_stacked(self) -> bool:
         return all(

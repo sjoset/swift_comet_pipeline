@@ -48,7 +48,6 @@ def comet_center_by_centroid(
 
     stats = ApertureStats(img, search_aperture)
 
-    # return tuple(stats.centroid)
     return PixelCoord(x=stats.centroid[0], y=stats.centroid[1])
 
 
@@ -74,6 +73,7 @@ def comet_center_by_peak(
     return PixelCoord(x=ap_min_x + peak_pos[1], y=ap_min_y + peak_pos[0])
 
 
+# TODO: deprecate?
 def compare_comet_center_methods(uw1: SwiftUVOTImage, uvv: SwiftUVOTImage):
     # TODO: uvv images tend to pick up the dust tail so we might expect some difference depending on the method of center detection,
     # so maybe we just use the uw1 and assume it's less likely to have a tail to scramble the center-finding

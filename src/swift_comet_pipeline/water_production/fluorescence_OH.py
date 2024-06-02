@@ -19,7 +19,7 @@ NumOH: TypeAlias = ValueAndStandardDev
 # https://asteroid.lowell.edu/comet/gfactor
 
 
-# TODO: add entry to identify the molecule this gfactor is describing
+# TODO: add entry to identify the molecule this gfactor is describing or rename this for hydroxyl
 @dataclass
 class FluorescenceGFactor1AU:
     helio_vs: np.ndarray
@@ -27,6 +27,7 @@ class FluorescenceGFactor1AU:
 
 
 def read_gfactor_1au_data(fluorescence_file: pathlib.Path) -> FluorescenceGFactor1AU:
+    # TODO: rename this function to reflect that our file reflects values computed for OH
     df = pd.read_csv(fluorescence_file)
     helio_vs = np.array(df["heliocentric_v_kms"].values)
 

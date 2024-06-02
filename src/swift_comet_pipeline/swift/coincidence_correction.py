@@ -37,11 +37,13 @@ class CoincidenceCorrection:
 
 
 def coincidence_correction(img: SwiftUVOTImage, scale: SwiftPixelResolution):
-    # don't alter the image that passed in
+    # TODO: document and cite Poole 2008
     img_data = copy.deepcopy(img)
 
+    # TODO: reimplement this in terms of a convolution and kernel
+
     # the padding around the images from swift are pure zeros - we have to divide by the pixel value
-    # in CoincidenceCorrectioncoi_factor() so change the padding pixels to be slightly non-zero
+    # in CoincidenceCorrection.coi_factor() so change the padding pixels to be slightly non-zero
     dead_space_mask = img_data == 0
     img_data[dead_space_mask] = 1e-29
 
@@ -78,6 +80,6 @@ def coincidence_correction(img: SwiftUVOTImage, scale: SwiftPixelResolution):
                 i : (i_len - 2 * aper + i), j : (j_len - 2 * aper + j)
             ]
             # coi_map_part += vertex[(1-i):(i_len-2*aper+1-i),(1-j):(j_len-2*aper+1-j)]
-    coi_map_part = coi.coi_factor(coi_map_part / 4)
+    coi_map_part = coi.coi_factor(coi_map_part / 4)  # type: ignore
     coi_map[aper : (i_len - aper), aper : (j_len - aper)] = coi_map_part
     return coi_map

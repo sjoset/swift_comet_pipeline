@@ -20,7 +20,7 @@ def make_water_molecule_parent() -> ParentMolecule:
 
 @u.quantity_input
 def make_slow_water_molecule_parent(
-    v_outflow: u.Quantity[u.km / u.s],
+    v_outflow: u.Quantity[u.km / u.s],  # type: ignore
 ) -> ParentMolecule:
 
     # we take 93% of H2O destruction to be photodissociation

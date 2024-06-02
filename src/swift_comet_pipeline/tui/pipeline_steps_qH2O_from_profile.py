@@ -39,7 +39,7 @@ from swift_comet_pipeline.tui.tui_common import (
     stacked_epoch_menu,
     wait_for_key,
 )
-from swift_comet_pipeline.comet.comet_profile import (
+from swift_comet_pipeline.comet.comet_radial_profile import (
     calculate_distance_from_center_mesh,
     count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
@@ -440,8 +440,6 @@ class RadialProfileSelectionPlot(object):
         self.uvv_division_plot.set_data(self.uvv_divided_median_image)
 
     def update_q_from_profiles(self):
-        # if self.uw1_radial_profile is None or self.uvv_radial_profile is None:
-        #     return
         self.uw1_count_rate = count_rate_from_comet_radial_profile(
             comet_profile=self.uw1_radial_profile, bg=self.uw1_bg.count_rate_per_pixel
         )
@@ -461,7 +459,6 @@ class RadialProfileSelectionPlot(object):
             uvv=CountRate(value=0.0, sigma=self.uvv_bg.count_rate_per_pixel.sigma),
             beta=self.beta_parameter,
         )
-        # print(self.abs_upper_limit_flux_OH)
 
         self.num_OH = flux_OH_to_num_OH(
             flux_OH=self.flux_OH,
