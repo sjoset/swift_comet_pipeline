@@ -33,33 +33,6 @@ from swift_comet_pipeline.comet.comet_radial_profile import (
 )
 
 
-# def show_column_densities(
-#     comet_column_density: ColumnDensity,
-#     vectorial_model_column_density: ColumnDensity,
-#     r_min: u.Quantity,
-# ) -> None:
-#     mask = comet_column_density.rs_km > r_min.to_value(u.km).value
-#
-#     _, ax = plt.subplots()
-#
-#     ax.plot(
-#         vectorial_model_column_density.rs_km[mask],
-#         vectorial_model_column_density.cd_cm2[mask],
-#         label="vectorial column density",
-#     )
-#     ax.plot(
-#         comet_column_density.rs_km[mask],
-#         comet_column_density.cd_cm2[mask],
-#         label="comet column density",
-#     )
-#     ax.set_xscale("log")
-#     ax.set_xlabel("distance r from nucleus, km")
-#     ax.set_yscale("log")
-#     ax.set_ylabel("fragment column density, 1/cm^2")
-#     ax.legend()
-#     plt.show()
-
-
 def calculate_comet_column_density(
     stacked_epoch: Epoch,
     uw1_profile: CometRadialProfile,
@@ -170,12 +143,13 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         exit(1)
 
     near_far_radius = 50000 * u.km  # type: ignore
+    # dust_rednesses = np.linspace(0.0, 20.0, num=5, endpoint=True)
+    dust_rednesses = np.linspace(0.0, 100.0, num=11, endpoint=True)
+
     ccds = {}
     near_fits = {}
     far_fits = {}
     whole_fits = {}
-    # dust_rednesses = np.linspace(0.0, 20.0, num=5, endpoint=True)
-    dust_rednesses = np.linspace(0.0, 100.0, num=11, endpoint=True)
     for dust_redness in dust_rednesses:
         ccds[dust_redness] = calculate_comet_column_density(
             stacked_epoch=stacked_epoch,
@@ -305,18 +279,34 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
     # ax.legend()
     # plt.show()
 
-    # dust_color = dust_rednesses[4]
-    # linear_cd_fit(
-    #     rs_km=vcds[dust_redness].rs_km,
-    #     cds_cm2=ccds[dust_color].cd_cm2,
-    #     within_r=50000 * u.km,  # type: ignore
-    #     helio_r_au=helio_r.to(u.AU).value,  # type: ignore
-    # )
+    dust_color = dust_rednesses[8]
+    linear_cd_fit(
+        column_density=ccds[dust_color],
+        within_r=near_far_radius,
+        helio_r_au=helio_r.to(u.AU).value,  # type: ignore
+        dust_redness=dust_color,
+    )
+    dust_color = dust_rednesses[0]
+    linear_cd_fit(
+        column_density=ccds[dust_color],
+        within_r=near_far_radius,
+        helio_r_au=helio_r.to(u.AU).value,  # type: ignore
+        dust_redness=dust_color,
+    )
 
 
-def linear_cd_fit(rs_km, cds_cm2, within_r: u.Quantity, helio_r_au) -> None:
+def linear_cd_fit(
+    column_density: ColumnDensity,
+    within_r: u.Quantity,
+    helio_r_au,
+    dust_redness: DustReddeningPercent,
+) -> None:
     # pre perihelion, the column density might be linear in log-log space and modeled by short-lived grains with low v_outflow
     # fit the profiles and find out how well this works
+
+    positive_mask = column_density.cd_cm2 > 0.0
+    rs_km = column_density.rs_km[positive_mask]
+    cds_cm2 = column_density.cd_cm2[positive_mask]
 
     def lin(x: float, a: float, b: float) -> float:
         return a * x + b
@@ -333,17 +323,18 @@ def linear_cd_fit(rs_km, cds_cm2, within_r: u.Quantity, helio_r_au) -> None:
 
     # popt, pcov = curve_fit(lin, rs_fit, cd_fit, sigma=rs_fit**2)
     popt, pcov = curve_fit(lin, rs_fit, cd_fit)
-    lifetime_s = -1 / (popt[0] * np.log(1.05))
+    # TODO: figure out how to calculate the lifetime properly
+    lifetime_s = -1 / (popt[0] * 1.05)
     exp_life = np.exp(lifetime_s)
     print(
-        f"{popt=}, {pcov=}, {lifetime_s=}, {exp_life=}, {lifetime_s / helio_r_au**2}, {exp_life/helio_r_au**2}"
+        f"{popt=}, {pcov=}, {lifetime_s=}, {exp_life=}, lifetime at 1 au: {lifetime_s / helio_r_au**2}, exp lifetime at 1 au: {exp_life/helio_r_au**2}"
     )
 
     popt_haser, pcov_haser = curve_fit(haser_like, rs_fit, cd_fit)
-    lifetime_s_haser = -1 / (popt_haser[0] * np.log(1.05))
+    lifetime_s_haser = -1 / (popt_haser[0] * 1.05)
     exp_life_haser = np.exp(lifetime_s_haser)
     print(
-        f"{popt_haser=}, {pcov_haser=}, {lifetime_s_haser=}, {exp_life_haser=}, {lifetime_s_haser / helio_r_au**2}, {exp_life_haser/helio_r_au**2}"
+        f"{popt_haser=}, {pcov_haser=}, {lifetime_s_haser=}, {exp_life_haser=}, lifetime at 1 au: {lifetime_s_haser / helio_r_au**2}, exp lifetime at 1 au: {exp_life_haser/helio_r_au**2}"
     )
 
     fit_cds = lin(rs_fit, a=popt[0], b=popt[1])
@@ -368,4 +359,7 @@ def linear_cd_fit(rs_km, cds_cm2, within_r: u.Quantity, helio_r_au) -> None:
     ax.set_yscale("log")
     ax.set_ylabel("log fragment column density, 1/cm^2")
     ax.legend()
+    ax.set_title(
+        f"Linear fit to log-log plot of column density at dust redness {dust_redness}%"
+    )
     plt.show()

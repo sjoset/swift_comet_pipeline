@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+
 import numpy as np
 from photutils.aperture import ApertureStats, CircularAperture
 
 from swift_comet_pipeline.swift.uvot_image import (
+    PixelCoord,
     SwiftUVOTImage,
 )
 from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
@@ -9,12 +12,13 @@ from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
 
 def comet_manual_aperture(
     img: SwiftUVOTImage,
-    aperture_x: float,
-    aperture_y: float,
+    aperture_center: PixelCoord,
     aperture_radius: float,
     bg: CountRatePerPixel,
 ) -> CountRate:
-    comet_aperture = CircularAperture((aperture_x, aperture_y), r=aperture_radius)
+    comet_aperture = CircularAperture(
+        (aperture_center.x, aperture_center.y), r=aperture_radius
+    )
     comet_aperture_stats = ApertureStats(img, comet_aperture)
 
     comet_count_rate = float(comet_aperture_stats.sum)

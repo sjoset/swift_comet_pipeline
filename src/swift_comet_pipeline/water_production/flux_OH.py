@@ -65,7 +65,8 @@ def OH_flux_from_count_rate(
 
     oh_flux = alpha * (uw1.value - beta * uvv.value)
 
-    # oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + (uvv.sigma * beta) ** 2)
-    oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + beta * uvv.sigma**2)
+    # TODO: check which of these is correct - ask Lucy
+    oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + (uvv.sigma * beta) ** 2)
+    # oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + np.abs(beta) * uvv.sigma**2)
 
     return OHFlux(value=oh_flux, sigma=oh_flux_err)

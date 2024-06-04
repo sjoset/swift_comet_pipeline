@@ -475,11 +475,13 @@ class RadialProfileSelectionPlot(object):
         )
 
         self.q_h2o = num_OH_to_Q_vectorial(
-            helio_r_au=self.helio_r_au, num_OH=self.num_OH
+            helio_r_au=self.helio_r_au, num_OH=self.num_OH, model_backend="rust"
         )
 
         self.abs_upper_limit_q_h2o = num_OH_to_Q_vectorial(
-            helio_r_au=self.helio_r_au, num_OH=self.abs_upper_limit_num_OH
+            helio_r_au=self.helio_r_au,
+            num_OH=self.abs_upper_limit_num_OH,
+            model_backend="rust",
         )
 
         detection_str = ""

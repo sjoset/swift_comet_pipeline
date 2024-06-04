@@ -10,7 +10,7 @@ CountRatePerPixel: TypeAlias = ValueAndStandardDev
 Magnitude: TypeAlias = ValueAndStandardDev
 
 
-# TODO: does this function belong here?
+# TODO: does this function belong here?  Move to magnitude.py
 def magnitude_from_count_rate(
     count_rate: CountRate, filter_type: SwiftFilter
 ) -> Magnitude:

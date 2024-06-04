@@ -1,25 +1,27 @@
 from itertools import product
 from typing import List
+from dataclasses import asdict
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from rich import print as rprint
 from tqdm import tqdm
 
 from swift_comet_pipeline.background.background_result import dict_to_background_result
 from swift_comet_pipeline.comet.comet_center_finding import compare_comet_center_methods
-from swift_comet_pipeline.comet.plateau_detect import plateau_detect
+
+# from swift_comet_pipeline.comet.plateau_detect import find_production_plateau
+from swift_comet_pipeline.comet.plateau_detect import find_production_plateaus
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu, wait_for_key
+from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu
 from swift_comet_pipeline.comet.comet_aperture import comet_manual_aperture
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
 from swift_comet_pipeline.swift.count_rate import (
-    CountRate,
     CountRatePerPixel,
     magnitude_from_count_rate,
 )
@@ -29,25 +31,15 @@ from swift_comet_pipeline.water_production.flux_OH import (
     beta_parameter,
 )
 from swift_comet_pipeline.water_production.num_OH_to_Q import num_OH_to_Q_vectorial
+from swift_comet_pipeline.water_production.q_vs_aperture_radius import (
+    QvsApertureRadiusEntry,
+    q_vs_aperture_radius_entry_list_from_dataframe,
+)
 
 
-def do_comet_photometry_at_img_center(
-    img: SwiftUVOTImage, aperture_radius: float, bg: CountRatePerPixel
-) -> CountRate:
-    pix_center = get_uvot_image_center(img=img)
-    ap_x, ap_y = pix_center.x, pix_center.y
-
-    return comet_manual_aperture(
-        img=img,
-        aperture_x=ap_x,
-        aperture_y=ap_y,
-        aperture_radius=aperture_radius,
-        bg=bg,
-    )
-
-
+# TODO: move this somewhere else
 def q_vs_aperture_radius(
-    epoch: Epoch,
+    stacked_epoch: Epoch,
     uw1: SwiftUVOTImage,
     uvv: SwiftUVOTImage,
     dust_rednesses: List[DustReddeningPercent],
@@ -55,184 +47,87 @@ def q_vs_aperture_radius(
     bguvv: CountRatePerPixel,
 ) -> pd.DataFrame:
     # TODO: schema for this dataframe and write it out
-    helio_r_au = np.mean(epoch.HELIO)
-    helio_v_kms = np.mean(epoch.HELIO_V)
-    delta = np.mean(epoch.OBS_DIS)
+    helio_r_au = np.mean(stacked_epoch.HELIO)
+    helio_v_kms = np.mean(stacked_epoch.HELIO_V)
+    delta_au = np.mean(stacked_epoch.OBS_DIS)
 
-    # TODO: can vectorial model give a better estimate? might be able to borrow the code for grid size here
-    radius_km_guess = 5e5
-    r_pix = int(radius_km_guess / np.mean(epoch.KM_PER_PIX))
+    radius_km_guess = 1e5
+    r_pix = int(radius_km_guess / np.mean(stacked_epoch.KM_PER_PIX))
     print(f"Guessing radius of {radius_km_guess} km or {r_pix} pixels")
 
-    aperture_radii, r_step = np.linspace(
-        1, r_pix, num=np.round(r_pix / 5).astype(np.int32), retstep=True
+    # aperture_radii, r_step = np.linspace(
+    #     1, r_pix, num=np.round(r_pix / 5).astype(np.int32), retstep=True
+    # )
+    aperture_radii = np.linspace(
+        1, r_pix * 1.5, num=np.round(r_pix).astype(np.int32) * 5
     )
-    redness_to_beta = {x: beta_parameter(x) for x in dust_rednesses}
+    beta_parameters = {x: beta_parameter(x) for x in dust_rednesses}
+    comet_center = get_uvot_image_center(img=uw1)
+    radii_and_dust_rednesses = list(product(aperture_radii, dust_rednesses))
 
-    count_uw1 = []
-    count_uvv = []
-    rs = []
-    red_list = []
-    qs = []
-    flux = []
-    oh = []
-    progress_bar = tqdm(
-        product(aperture_radii, dust_rednesses),
-        total=(len(aperture_radii) * len(dust_rednesses)),
-    )
-    for ap_r, redness in progress_bar:
-        rs.append(ap_r)
-        red_list.append(redness)
-
-        cuw1 = do_comet_photometry_at_img_center(
-            img=uw1, aperture_radius=ap_r, bg=bguw1
+    uw1_counts = {}
+    uvv_counts = {}
+    # find the counts and magnitudes in uw1 and uvv as a function of aperture radius - these don't depend on the dust redness
+    for r in tqdm(aperture_radii, unit="radii"):
+        uw1_counts[r] = comet_manual_aperture(
+            img=uw1, aperture_center=comet_center, aperture_radius=r, bg=bguw1
         )
-        cuvv = do_comet_photometry_at_img_center(
-            img=uvv, aperture_radius=ap_r, bg=bguvv
+        uvv_counts[r] = comet_manual_aperture(
+            img=uvv, aperture_center=comet_center, aperture_radius=r, bg=bguvv
         )
+    uw1_magnitudes = {
+        r: magnitude_from_count_rate(x, SwiftFilter.uw1) for r, x in uw1_counts.items()
+    }
+    uvv_magnitudes = {
+        r: magnitude_from_count_rate(x, SwiftFilter.uvv) for r, x in uvv_counts.items()
+    }
 
-        count_uw1.append(cuw1)
-        count_uvv.append(cuvv)
-
-        flux_OH = OH_flux_from_count_rate(
-            uw1=cuw1,
-            uvv=cuvv,
-            beta=redness_to_beta[redness],
+    flux_OH = {}
+    num_OH = {}
+    q_H2O = {}
+    for r, dust_redness in radii_and_dust_rednesses:
+        flux_OH[r, dust_redness] = OH_flux_from_count_rate(
+            uw1=uw1_counts[r],
+            uvv=uvv_counts[r],
+            beta=beta_parameters[dust_redness],
         )
-        flux.append(flux_OH)
-
-        num_oh = flux_OH_to_num_OH(
-            flux_OH=flux_OH,
+        num_OH[r, dust_redness] = flux_OH_to_num_OH(
+            flux_OH=flux_OH[r, dust_redness],
             helio_r_au=helio_r_au,
             helio_v_kms=helio_v_kms,
-            delta_au=delta,
+            delta_au=delta_au,
         )
-        oh.append(num_oh)
-
-        q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
-        qs.append(q)
-
-    mags_uw1 = [magnitude_from_count_rate(x, SwiftFilter.uw1) for x in count_uw1]
-    mags_uvv = [magnitude_from_count_rate(x, SwiftFilter.uvv) for x in count_uvv]
-    df = pd.DataFrame(
-        {
-            "aperture_radius": rs,
-            "dust_redness": list(map(lambda x: int(x), red_list)),
-            "counts_uw1": [x.value for x in count_uw1],
-            "sigma_counts_uw1": [x.sigma for x in count_uw1],
-            "counts_uvv": [x.value for x in count_uvv],
-            "sigma_counts_uvv": [x.sigma for x in count_uvv],
-            "mag_uw1": [m.value for m in mags_uw1],
-            "sigma_mag_uw1": [m.sigma for m in mags_uw1],
-            "mag_uvv": [m.value for m in mags_uvv],
-            "sigma_mag_uvv": [m.sigma for m in mags_uvv],
-            "flux_OH": [f.value for f in flux],
-            "sigma_flux_OH": [f.sigma for f in flux],
-            "num_OH": [x.value for x in oh],
-            "sigma_num_OH": [x.sigma for x in oh],
-            "Q_H2O": [q.value for q in qs],
-            "sigma_Q_H2O": [q.sigma for q in qs],
-        }
-    )
-    df["snr_uw1"] = df.counts_uw1 / df.sigma_counts_uw1
-    df["snr_uvv"] = df.counts_uvv / df.sigma_counts_uvv
-
-    # qmask = df["Q_H2O"] > 0
-    # print(df[qmask])
-
-    print("")
-    print("Plateau search in uw1 counts:")
-    uw1_plateau_list = plateau_detect(
-        ys=df.counts_uw1.values,
-        xstep=float(r_step),
-        smoothing=3,
-        threshold=1e-2,
-        min_length=5,
-    )
-    if len(uw1_plateau_list) > 0:
-        for p in uw1_plateau_list:
-            i = p.begin_index
-            j = p.end_index
-            print(
-                f"Plateau between r = {df.loc[i].aperture_radius} to r = {df.loc[j].aperture_radius}"
-            )
-            plateau_slice = df[i:j]
-            positive_Qs = plateau_slice[plateau_slice.Q_H2O > 0]
-            if len(positive_Qs > 0):
-                print(f"\tAverage Q_H2O: {np.mean(positive_Qs.Q_H2O)}")
-            else:
-                print("\tNo positive Q_H2O values found in this plateau")
-    else:
-        print("No plateaus in uw1 counts detected")
-
-    print("")
-    print("Plateau search in uvv counts:")
-    uvv_plateau_list = plateau_detect(
-        ys=df.counts_uvv.values,
-        xstep=float(r_step),
-        smoothing=5,
-        threshold=5e-3,
-        min_length=5,
-    )
-    if len(uvv_plateau_list) > 0:
-        for p in uvv_plateau_list:
-            i = p.begin_index
-            j = p.end_index
-            print(
-                f"Plateau between r = {df.loc[i].aperture_radius} to r = {df.loc[j].aperture_radius}"
-            )
-            plateau_slice = df[i:j]
-            positive_Qs = plateau_slice[plateau_slice.Q_H2O > 0]
-            if len(positive_Qs > 0):
-                # print(positive_Qs)
-                print(f"\tAverage Q_H2O: {np.mean(positive_Qs.Q_H2O)}")
-            else:
-                print("\tNo positive Q_H2O values found in this plateau")
-    else:
-        print("No plateaus in uvv counts detected")
-    print("")
-
-    df_reds = [y for _, y in df.groupby("dust_redness")]
-    for redness_df in df_reds:
-        _, axs = plt.subplots(nrows=1, ncols=3)
-        axs[2].set_yscale("log")
-
-        redness_df.plot.line(
-            x="aperture_radius", y="counts_uw1", subplots=True, ax=axs[0]
-        )
-        axs[0].errorbar(
-            redness_df.aperture_radius,
-            redness_df.counts_uw1,
-            redness_df.sigma_counts_uw1,
-        )
-        axs[0].set_title(
-            f"uw1 counts vs aperture radius with dust redness {redness_df.dust_redness.iloc[0]}"
-        )
-        redness_df.plot.line(
-            x="aperture_radius", y="counts_uvv", subplots=True, ax=axs[1]
-        )
-        axs[1].errorbar(
-            redness_df.aperture_radius,
-            redness_df.counts_uvv,
-            redness_df.sigma_counts_uvv,
-        )
-        redness_df.plot.line(x="aperture_radius", y="Q_H2O", subplots=True, ax=axs[2])
-        axs[2].errorbar(
-            redness_df.aperture_radius, redness_df.Q_H2O, redness_df.sigma_Q_H2O
+        q_H2O[r, dust_redness] = num_OH_to_Q_vectorial(
+            helio_r_au=helio_r_au, num_OH=num_OH[r, dust_redness], model_backend="rust"
         )
 
-        # TODO: rewrite this to show plateau per redness
-        # for p in uw1_plateau_list:
-        #     i = p.begin_index
-        #     j = p.end_index
-        #     axs[0].axvspan(redness_df.loc[i].aperture_radius, redness_df.loc[j].aperture_radius, color="blue", alpha=0.1)  # type: ignore
-        #
-        # for p in uvv_plateau_list:
-        #     i = p.begin_index
-        #     j = p.end_index
-        #     axs[1].axvspan(redness_df.loc[i].aperture_radius, redness_df.loc[j].aperture_radius, color="orange", alpha=0.1)  # type: ignore
+    q_vs_aperture_results_list = [
+        QvsApertureRadiusEntry(
+            aperture_r_pix=r,
+            dust_redness=float(dust_redness),
+            counts_uw1=uw1_counts[r].value,
+            counts_uw1_err=uw1_counts[r].sigma,
+            snr_uw1=uw1_counts[r].value / uw1_counts[r].sigma,
+            counts_uvv=uvv_counts[r].value,
+            counts_uvv_err=uvv_counts[r].sigma,
+            snr_uvv=uvv_counts[r].value / uvv_counts[r].sigma,
+            magnitude_uw1=uw1_magnitudes[r].value,
+            magnitude_uw1_err=uw1_magnitudes[r].sigma,
+            magnitude_uvv=uvv_magnitudes[r].value,
+            magnitude_uvv_err=uvv_magnitudes[r].sigma,
+            flux_OH=flux_OH[r, dust_redness].value,
+            flux_OH_err=flux_OH[r, dust_redness].sigma,
+            num_OH=num_OH[r, dust_redness].value,
+            num_OH_err=num_OH[r, dust_redness].sigma,
+            q_H2O=q_H2O[r, dust_redness].value,
+            q_H2O_err=q_H2O[r, dust_redness].sigma,
+        )
+        for r, dust_redness in radii_and_dust_rednesses
+    ]
 
-        plt.show()
+    q_vs_aperture_results_dict = [asdict(qvsar) for qvsar in q_vs_aperture_results_list]
+
+    df = pd.DataFrame(data=q_vs_aperture_results_dict)
 
     return df
 
@@ -277,6 +172,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
     )
 
     # TODO: select which method with menu
+    print("Selecting stacking method: sum")
     stacking_method = StackingMethod.summation
 
     # load background-subtracted images
@@ -296,7 +192,6 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
 
     if uw1_img is None or uvv_img is None:
         print("Error loading background-subtracted images!")
-        wait_for_key()
         return
 
     epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].read()
@@ -312,225 +207,88 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
         print("Error loading background analysis!")
         return
 
-    compare_comet_center_methods(uw1_img, uvv_img)
+    # compare_comet_center_methods(uw1_img, uvv_img)
 
     q_vs_r = q_vs_aperture_radius(
-        epoch=stacked_epoch,
+        stacked_epoch=stacked_epoch,
         uw1=uw1_img,
         uvv=uvv_img,
-        dust_rednesses=[DustReddeningPercent(x) for x in [0, 10, 20, 30, 40]],
+        dust_rednesses=[
+            DustReddeningPercent(x) for x in np.linspace(0, 30, num=2, endpoint=True)
+        ],
         bguw1=uw1_bg.count_rate_per_pixel,
         bguvv=uvv_bg.count_rate_per_pixel,
     )
 
-    # fit_inverse_r(uw1)
-    # fit_inverse_r(uvv)
+    q_plateau_list_dict = {}
+    df = q_vs_r
+    df_reds = df.groupby("dust_redness")
+    for dust_redness, redness_df in df_reds:
+        print(f"{dust_redness=}")
 
-    # peak_search_aperture_radius = 40
-    # pix_center = get_uvot_image_center(img=uvv)
+        q_plateau_list = find_production_plateaus(
+            q_vs_aperture_list=q_vs_aperture_radius_entry_list_from_dataframe(
+                df=redness_df
+            )
+        )
+        q_plateau_list_dict[dust_redness] = q_plateau_list
 
-    # TODO: check if uw1 and uvv peak are the same, then use peak, otherwise, image center
-    # search_aperture = CircularAperture(
-    #     (pix_center.x, pix_center.y), r=peak_search_aperture_radius
-    # )
-    # peak = find_comet_center(
-    #     img=uw1,
-    #     method=CometCenterFindingMethod.aperture_peak,
-    #     search_aperture=search_aperture,
-    # )
+        fig, axs = plt.subplots(nrows=1, ncols=3)
+        fig.suptitle(f"dust redness {dust_redness}%/nm")
+        axs[2].set_yscale("log")
 
-    # imgs = {SwiftFilter.uw1: uw1, SwiftFilter.uvv: uvv}
+        redness_df.plot.line(
+            x="aperture_r_pix", y="counts_uw1", subplots=True, ax=axs[0]
+        )
+        axs[0].errorbar(
+            redness_df.aperture_r_pix,
+            redness_df.counts_uw1,
+            redness_df.counts_uw1_err,
+        )
+        axs[0].set_title(f"uw1 counts vs aperture radius")
 
-    # radius_estimation = {}
-    #
-    # for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-    #     peak = pix_center
-    #     # test_circular_aperture_vs_donut_stack(img=imgs[filter_type])
-    #
-    #     count_list = []
-    #     ecr_list = []
-    #     thetas = np.linspace(0, np.pi, num=50, endpoint=False)
-    #     for theta in thetas:
-    #         comet_profile = count_rate_profile(
-    #             img=imgs[filter_type],
-    #             comet_center=peak,
-    #             theta=theta,
-    #             r=profile_radius,
-    #         )
-    #         ccr = count_rate_from_count_rate_profile(
-    #             comet_profile, bgresults[filter_type].count_rate_per_pixel
-    #         )
-    #         # print(f"From profile at {theta=}: {ccr}")
-    #         count_list.append(ccr)
-    #
-    #         ecr = estimate_comet_radius_at_angle(
-    #             img=imgs[filter_type],
-    #             comet_center=peak,
-    #             radius_guess=profile_radius,
-    #             theta=theta,
-    #         )
-    #         # print(f"Estimated comet radius: {ecr}")
-    #         ecr_list.append(ecr)
-    #
-    #     print("Using 50 cuts of comet profile at different angles:")
-    #     cl_mean = np.mean([x.value for x in count_list])
-    #     cl_median = np.median([x.value for x in count_list])
-    #     cl_std = np.std([x.value for x in count_list])
-    #     print(
-    #         f"Count rate summary: avg = {cl_mean}, median = {cl_median}, std = {cl_std}"
-    #     )
-    #     print(
-    #         f"Estimated comet radius: avg = {np.mean(ecr_list)}, median = {np.median(ecr_list)}, std = {np.std(ecr_list)}"
-    #     )
-    #     print("")
-    #
-    #     # cfe_ap = CircularAperture((peak.x, peak.y), np.mean(ecr_list))
-    #     # cfe_stats = ApertureStats(imgs[filter_type], cfe_ap)
-    #     # print(f"Counts in aperture of average radius from estimation: {cfe_stats.sum}")
-    #
-    #     radius_estimation[filter_type] = np.mean(ecr_list)
-    #
-    #     theta_list, radii_list = estimate_comet_radius_by_angle(
-    #         img=imgs[filter_type],
-    #         comet_center=peak,
-    #         radius_guess=30,
-    #     )
-    #
-    #     rl_ap = CircularAperture((peak.x, peak.y), np.mean(radii_list))
-    #     rl_stats = ApertureStats(imgs[filter_type], rl_ap)
-    #     print(f"Counts in aperture of average radius list: {rl_stats.sum}")
-    #
-    #     comet_profile = count_rate_profile(
-    #         img=imgs[filter_type],
-    #         comet_center=peak,
-    #         theta=0,
-    #         r=profile_radius,
-    #     )
-    #     fitted_model = fit_comet_profile_gaussian(comet_profile=comet_profile)
-    #     plot_fitted_profile(
-    #         comet_profile=comet_profile,
-    #         fitted_model=fitted_model,
-    #         sigma_threshold=4.0,
-    #         plot_title=f"Comet profile along theta = 0, with estimated aperture radius for filter {filter_to_file_string(filter_type)}",
-    #     )
-    #
-    # max_radius = np.max(
-    #     [radius_estimation[SwiftFilter.uw1], radius_estimation[SwiftFilter.uvv]]
-    # )
-    # print(f"Taking the radius to be {max_radius} for both filters")
-    # helio_r_au = np.mean(epoch.HELIO)
-    # helio_v_kms = np.mean(epoch.HELIO_V)
-    # delta = np.mean(epoch.OBS_DIS)
-    #
+        redness_df.plot.line(
+            x="aperture_r_pix", y="counts_uvv", subplots=True, ax=axs[1]
+        )
+        axs[1].errorbar(
+            redness_df.aperture_r_pix,
+            redness_df.counts_uvv,
+            redness_df.counts_uvv_err,
+        )
+        axs[1].set_title(f"uvv counts vs aperture radius")
 
-    # uw1cr = comet_manual_aperture(
-    #     imgs[SwiftFilter.uw1],
-    #     aperture_x=peak.x,
-    #     aperture_y=peak.y,
-    #     aperture_radius=max_radius,
-    #     bg=bgresults[SwiftFilter.uw1].count_rate_per_pixel,
-    # )
-    # uvvcr = comet_manual_aperture(
-    #     imgs[SwiftFilter.uvv],
-    #     aperture_x=peak.x,
-    #     aperture_y=peak.y,
-    #     aperture_radius=max_radius,
-    #     bg=bgresults[SwiftFilter.uvv].count_rate_per_pixel,
-    # )
-    #
-    # correction_factors = np.linspace(1.0, 3.0, num=50, endpoint=True)
-    # correction_factors = np.append(correction_factors, [10.0, 100.0])
-    # for correction_factor in correction_factors:
-    #     # corr_uw1cr = copy.deepcopy(uw1cr)
-    #     # corr_uw1cr.value = corr_uw1cr.value * correction_factor
-    #
-    #     flux_OH = OH_flux_from_count_rate(
-    #         uw1=ValueAndStandardDev(
-    #             value=uw1cr.value * correction_factor, sigma=uw1cr.sigma
-    #         ),
-    #         uvv=uvvcr,
-    #         beta=beta_parameter(DustReddeningPercent(reddening=10)),
-    #     )
-    #
-    #     num_oh = flux_OH_to_num_OH(
-    #         flux_OH=flux_OH,
-    #         helio_r_au=helio_r_au,
-    #         helio_v_kms=helio_v_kms,
-    #         delta_au=delta,
-    #     )
-    #
-    #     q = num_OH_to_Q_vectorial(helio_r_au=helio_r_au, num_OH=num_oh)
-    #
-    #     print(
-    #         f"Correction factor {correction_factor:7.6f}\t\tQ from best guess: {q.value:7.6e}"
-    #     )
+        redness_df.plot.line(
+            x="aperture_r_pix", y="q_H2O", subplots=True, ax=axs[2], logy=True
+        )
+        axs[2].errorbar(
+            redness_df.aperture_r_pix, redness_df.q_H2O, redness_df.q_H2O_err
+        )
+        axs[2].set_title(f"water production vs aperture radius")
 
-    # xs_list = []
-    # ys_list = []
-    # zs_list = []
-    #
-    # profile_radius = 30
-    # # angles = [3 * np.pi / 2, np.pi / 2, np.pi / 4]
-    # angles = np.linspace(0, np.pi, 50)
-    # angles = angles[:-1]
-    # for theta in angles:
-    #     xs, ys, prof = extract_profile(
-    #         img=uvv, r=profile_radius, theta=theta, plot_profile=False
-    #     )
-    #     xs_list.extend(xs)
-    #     ys_list.extend(ys)
-    #     zs_list.extend(prof)
-    #
-    # pix_center = get_uvot_image_center(img=uvv)
-    # search_aperture = CircularAperture((pix_center.x, pix_center.y), r=profile_radius)
-    #
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(1, 2, 1, projection="3d")
-    # ax2 = fig.add_subplot(1, 2, 2, projection="3d")
-    #
-    # comet_center = find_comet_center(
-    #     img=uvv,
-    #     method=CometCenterFindingMethod.aperture_peak,
-    #     search_aperture=search_aperture,
-    # )
-    #
-    # mx, my = np.meshgrid(
-    #     np.linspace(
-    #         comet_center[0] - profile_radius / 2, comet_center[0] + profile_radius / 2
-    #     ),
-    #     np.linspace(
-    #         comet_center[1] - profile_radius / 2, comet_center[1] + profile_radius / 2
-    #     ),
-    # )
-    # mz = interp.griddata((xs_list, ys_list), zs_list, (mx, my), method="linear")
-    #
-    # ax1.plot_surface(mx, my, mz, cmap="magma")
-    #
-    # # ax.plot_trisurf(xs_list, ys_list, zs_list, cmap="magma")
-    # ax2.contourf(mx, my, mz, cmap="magma")
-    #
-    # plt.show()
+        if q_plateau_list is not None:
+            for p in q_plateau_list:
+                print(f"{p=}")
+                axs[0].axvspan(p.begin_r, p.end_r, color="blue", alpha=0.1)
+                axs[1].axvspan(p.begin_r, p.end_r, color="blue", alpha=0.1)
+                axs[2].axvspan(p.begin_r, p.end_r, color="blue", alpha=0.1)
+                axs[2].text(
+                    x=p.begin_r,
+                    y=p.end_q / 100,
+                    s=f"{p.begin_q:1.2e}",
+                    color="#886",
+                    alpha=0.8,
+                )
+                axs[2].text(
+                    x=p.end_r,
+                    y=p.end_q / 10,
+                    s=f"{p.end_q:1.2e}",
+                    color="#688",
+                    alpha=0.8,
+                )
 
-    ####
-    # save q vs r
-    ####
-    # q_prod = pipeline_files.analysis_qh2o_products[epoch_path]
-    # q_prod.data_product = q_vs_r
-    # q_prod.save_product()
+        plt.show()
 
-    rprint("[green]Writing q vs aperture radius results ...[/green]")
-    # pipeline_files.write_pipeline_product(
-    #     PipelineProductType.qh2o_vs_aperture_radius,
-    #     epoch_id=epoch_id,
-    #     stacking_method=stacking_method,
-    #     data=q_vs_r,
-    # )
-    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data = q_vs_r
-    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].write()
-    rprint("[green]Done[/green]")
-    wait_for_key()
-    # next step in pipeline should be to decide redness and aperture radius?
-
-    # decide radius --> inform vectorial model about extent of grid?
-
-    # dust profile + column density fitting? --> redness
+    # rprint("[green]Writing q vs aperture radius results ...[/green]")
+    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data = q_vs_r
+    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].write()
+    # rprint("[green]Done[/green]")
