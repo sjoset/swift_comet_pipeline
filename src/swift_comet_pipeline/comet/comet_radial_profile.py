@@ -198,7 +198,7 @@ def radial_profile_to_image(
 def subtract_profiles(
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
-    dust_redness: DustReddeningPercent = 0.0,
+    dust_redness: DustReddeningPercent,
 ) -> CometRadialProfile:
     # TODO: documentation
 
