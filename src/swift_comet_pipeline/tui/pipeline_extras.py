@@ -1,8 +1,8 @@
 from enum import StrEnum
 
-from swift_comet_pipeline.comet.comet_radial_profile import (
-    radial_profile_from_dataframe_product,
-)
+from astropy.time import Time
+
+from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
@@ -28,7 +28,7 @@ class PipelineExtrasMenuEntry(StrEnum):
     epoch_summary = "epoch summary"
     epoch_latex_observation_log = "observation summary in latex format"
     get_orbital_data = "query jpl for comet and earth orbital data"
-    load_radial_profile_test = "test loading and reconstructing radial profiles"
+    perihelion_test = "test finding perihelion"
 
     surf_brightness_test = "surface brightness test code"
     comet_centers = "Raw images with comet centers marked"
@@ -63,8 +63,8 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_extra_orbital_data(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
-        elif step == PipelineExtrasMenuEntry.load_radial_profile_test:
-            load_radial_profile_test(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.perihelion_test:
+            perihelion_test(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
@@ -241,47 +241,18 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
     # print("")
 
 
-def load_radial_profile_test(swift_project_config: SwiftProjectConfig) -> None:
-    # TODO: seems to be working, remove this from menu
+def perihelion_test(swift_project_config: SwiftProjectConfig) -> None:
 
-    pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
-
-    data_ingestion_files = pipeline_files.data_ingestion_files
-    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
-
-    if data_ingestion_files.epochs is None:
-        print("No epochs found!")
-        return
-
-    if epoch_subpipeline_files is None:
-        print("No epochs available to stack!")
-        return
-
-    parent_epoch = epoch_menu(data_ingestion_files=data_ingestion_files)
-    if parent_epoch is None:
-        return
-
-    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-        parent_epoch=parent_epoch
+    # t_start = Time("Sep 04 2021")
+    t_start = Time("2021-09-04")
+    # t_end = Time("Feb 27 2024")
+    t_end = Time("2024-02-27")
+    op = find_perihelion(
+        swift_project_config=swift_project_config,
+        t_start_search=t_start,
+        t_end_search=t_end,
     )
-    if epoch_subpipeline is None:
-        return
-
-    epoch_subpipeline.extracted_profiles[
-        SwiftFilter.uw1, StackingMethod.summation
-    ].read()
-    df = epoch_subpipeline.extracted_profiles[
-        SwiftFilter.uw1, StackingMethod.summation
-    ].data
-
-    print(f"Dataframe:\n{df}")
-    print(f"Metadata:\n{df.attrs}")
-
-    profile = radial_profile_from_dataframe_product(df)
-
-    # print(profile)
-    print("Reconstructed CometRadialProfile:")
-    print(profile._comet_center)
-    print(profile.profile_axis_xs)
-    print(type(profile.profile_axis_xs))
-    print(profile.profile_axis_xs.shape)
+    if op is None:
+        print("Error finding perihelion!")
+    else:
+        print(f"Perihelion: {op[0].t_perihelion.ymdhms}")
