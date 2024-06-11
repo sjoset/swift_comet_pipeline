@@ -83,6 +83,7 @@ def stack_epoch_into_sum_and_median(
     image_data_to_stack: List[SwiftUVOTImage] = []
     exposure_times: List[float] = []
 
+    # TODO: we should return the dataframe of images that actually get used to keep track of what gets omitted
     stacking_progress_bar = tqdm(epoch.iterrows(), total=len(epoch), unit="images")
     for _, row in stacking_progress_bar:
         obsid = row["OBS_ID"]
@@ -94,8 +95,24 @@ def stack_epoch_into_sum_and_median(
         # read the image
         image_data = fits.getdata(image_path, ext=row["EXTENSION"])
 
+        if image_data is None:
+            print(f"Could not read fits image at {image_path}! Skipping it in stack.")
+            continue
+
         # do we use the horizons data, or did the user manually tell us where the comet is?
         comet_center_coords = get_comet_center_prefer_user_coords(row=row)
+
+        # TODO: check if the comet center is outside the bounds of the image and omit it?
+        # print out a warning about it at least
+        img_height, img_width = image_data.shape  # type: ignore
+        if comet_center_coords.x < 0 or comet_center_coords.x > img_width:
+            print(f"Image dimensions ==> width={img_width}\theight={img_height}")
+            print(f"Invalid comet x coordinate {comet_center_coords.x}! Skipping.")
+            continue
+        if comet_center_coords.y < 0 or comet_center_coords.y > img_height:
+            print(f"Image dimensions ==> width={img_width}\theight={img_height}")
+            print(f"Invalid comet y coordinate {comet_center_coords.y}! Skipping.")
+            continue
 
         # new image with the comet nucleus centered
         image_data = center_image_on_coords(
@@ -106,6 +123,7 @@ def stack_epoch_into_sum_and_median(
 
         # do any processing before stacking
         if do_coincidence_correction:
+            # TODO: for large event mode images, this is so slow that it is unusable
             # the correction expects images in count rate, but we are storing the raw images so divide by exposure time here
             coi_map = coincidence_correction(
                 img=image_data / exp_time, scale=pixel_resolution
@@ -118,6 +136,12 @@ def stack_epoch_into_sum_and_median(
         stacking_progress_bar.set_description(
             f"{image_path.name} extension {row.EXTENSION}"
         )
+
+    if len(image_data_to_stack) == 0:
+        print("No valid stacking data left!")
+        return None
+
+    # TODO: filter out any rows that weren't used from the dataframe
 
     exposure_time = epoch.EXPOSURE.sum()
 

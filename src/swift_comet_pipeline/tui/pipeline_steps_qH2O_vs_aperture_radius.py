@@ -132,6 +132,7 @@ def q_vs_aperture_radius(
     return df
 
 
+# TODO: show stacked images with aperture radii shaded in given the plateaus it finds
 def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> None:
     pipeline_files = PipelineFiles(swift_project_config.project_path)
     data_ingestion_files = pipeline_files.data_ingestion_files

@@ -12,7 +12,7 @@ from swift_comet_pipeline.tui.tui_common import get_yes_no
 from swift_comet_pipeline.swift.swift_data import SwiftData
 
 
-# TODO: add vectorial model quality to this somehow
+# TODO: add string for backend and path to binary
 @dataclass
 class SwiftProjectConfig:
     swift_data_path: pathlib.Path
