@@ -45,6 +45,10 @@ def vectorial_model_settings_init(
     )
 
 
+# TODO: add enum for model backends
+# TODO: add project config option to specify backend and path to the rust or fortran binary
+
+
 @cache
 @u.quantity_input
 def water_vectorial_model(

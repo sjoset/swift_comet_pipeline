@@ -16,6 +16,9 @@ from swift_comet_pipeline.tui.pipeline_extras import pipeline_extras_menu
 from swift_comet_pipeline.tui.pipeline_steps_background_analysis_step import (
     background_analysis_step,
 )
+from swift_comet_pipeline.tui.pipeline_steps_generate_lightcurve import (
+    generate_lightcurve_step,
+)
 from swift_comet_pipeline.tui.pipeline_steps_observation_log import (
     observation_log_step,
 )
@@ -49,6 +52,7 @@ class PipelineStepsMenuEntry(StrEnum):
     vectorial_fitting = (
         "derive water production from comet profile via fitting to model"
     )
+    generate_lightcurve = "generate lightcurve"
 
     extra_functions = "extra functions"
 
@@ -137,6 +141,8 @@ def main():
             qH2O_from_profile_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.vectorial_fitting:
             vectorial_fitting_step(swift_project_config=swift_project_config)
+        elif step == PipelineStepsMenuEntry.generate_lightcurve:
+            generate_lightcurve_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.extra_functions:
             pipeline_extras_menu(swift_project_config=swift_project_config)
         else:

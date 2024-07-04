@@ -37,8 +37,7 @@ def observation_log_step(swift_project_config: SwiftProjectConfig) -> None:
         return
 
     data_ingestion_files.observation_log._data = df
-    print(
-        f"Writing observation log to {data_ingestion_files.observation_log.product_path}..."
+    rprint(
+        f"[green]Writing observation log to {data_ingestion_files.observation_log.product_path}...[/green]"
     )
     data_ingestion_files.observation_log.write()
-    rprint("[green]Complete![/green]")

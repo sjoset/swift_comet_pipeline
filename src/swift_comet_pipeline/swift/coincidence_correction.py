@@ -36,6 +36,9 @@ class CoincidenceCorrection:
         return ratio
 
 
+# TODO: https://docs.astropy.org/en/stable/convolution/index.html
+
+
 def coincidence_correction(img: SwiftUVOTImage, scale: SwiftPixelResolution):
     # TODO: document and cite Poole 2008
     img_data = copy.deepcopy(img)

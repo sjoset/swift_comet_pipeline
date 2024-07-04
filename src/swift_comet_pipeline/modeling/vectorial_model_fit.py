@@ -15,7 +15,7 @@ class VectorialModelFit:
     # err of the associated fit
     best_fit_Q_err: u.Quantity
     # column density resulting from this fit
-    column_density: ColumnDensity
+    vectorial_column_density: ColumnDensity
 
 
 def fit_vectorial_model_to_comet_column_density(
@@ -77,5 +77,7 @@ def vectorial_fit(
     )
 
     return VectorialModelFit(
-        best_fit_Q=fit_Q, best_fit_Q_err=fit_err * fit_Q, column_density=vec_col_dens
+        best_fit_Q=fit_Q,
+        best_fit_Q_err=fit_err * fit_Q,
+        vectorial_column_density=vec_col_dens,
     )

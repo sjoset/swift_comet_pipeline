@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox, TextArea
 from matplotlib.colors import Normalize, LinearSegmentedColormap
@@ -8,13 +9,11 @@ from astropy.visualization import ZScaleInterval
 
 # from scipy.optimize import curve_fit
 
+from swift_comet_pipeline.comet.calculate_column_density import (
+    calculate_comet_column_density,
+)
 from swift_comet_pipeline.comet.column_density import (
     ColumnDensity,
-    surface_brightness_profile_to_column_density,
-)
-from swift_comet_pipeline.comet.comet_count_rate_profile import CometCountRateProfile
-from swift_comet_pipeline.comet.comet_surface_brightness_profile import (
-    countrate_profile_to_surface_brightness,
 )
 from swift_comet_pipeline.modeling.vectorial_model import water_vectorial_model
 from swift_comet_pipeline.modeling.vectorial_model_fit import (
@@ -22,73 +21,20 @@ from swift_comet_pipeline.modeling.vectorial_model_fit import (
     vectorial_fit,
 )
 from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import (
-    SwiftUVOTImage,
-    datamode_to_pixel_resolution,
-)
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
     stacked_epoch_menu,
 )
 from swift_comet_pipeline.comet.comet_radial_profile import (
-    CometRadialProfile,
     radial_profile_from_dataframe_product,
-    subtract_profiles,
 )
-
-
-def calculate_comet_column_density(
-    stacked_epoch: Epoch,
-    uw1_profile: CometRadialProfile,
-    uvv_profile: CometRadialProfile,
-    dust_redness: DustReddeningPercent,
-    r_min: u.Quantity,
-) -> ColumnDensity:
-    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
-    helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
-    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
-    pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
-
-    subtracted_profile = subtract_profiles(
-        uw1_profile=uw1_profile,
-        uvv_profile=uvv_profile,
-        dust_redness=dust_redness,
-    )
-
-    subtracted_profile_rs_km = subtracted_profile.profile_axis_xs * km_per_pix
-
-    # limit fitting to r > only_fit_beyond_r
-    profile_mask = subtracted_profile_rs_km > r_min.to(u.km).value  # type: ignore
-
-    profile_rs_km = subtracted_profile_rs_km[profile_mask]
-    countrate_profile: CometCountRateProfile = subtracted_profile.pixel_values[
-        profile_mask
-    ]
-
-    surface_brightness_profile = countrate_profile_to_surface_brightness(
-        countrate_profile=countrate_profile,
-        pixel_resolution=pixel_resolution,
-        delta=delta,
-    )
-
-    comet_column_density_values = surface_brightness_profile_to_column_density(
-        surface_brightness_profile=surface_brightness_profile,
-        delta=delta,
-        helio_v=helio_v,
-        helio_r=helio_r,
-    )
-
-    comet_column_density = ColumnDensity(
-        rs_km=profile_rs_km, cd_cm2=comet_column_density_values.to(1 / u.cm**2).value  # type: ignore
-    )
-
-    return comet_column_density
 
 
 def make_image_annotations(img: np.ndarray, norm, t: str):
@@ -114,13 +60,14 @@ def column_density_ratio_plot(
     ccds: dict[DustReddeningPercent, ColumnDensity],
     uw1_stack: SwiftUVOTImage,
     uvv_stack: SwiftUVOTImage,
+    t_perihelion: Time,
 ) -> None:
 
     # TODO: turn the image and label annotation into a function that takes positions as arguments
 
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
-    t_perihelion = Time("2015-11-15")
+
     time_from_perihelion = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
 
     zscale = ZScaleInterval()
@@ -142,7 +89,7 @@ def column_density_ratio_plot(
     ax.set_ylabel("fragment column density ratio")
     ax.legend()
     fig.suptitle(
-        f"Rh: {helio_r.to_value(u.AU)} AU, Delta: {delta.to_value(u.AU):1.2f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days"  # type: ignore
+        f"Rh: {helio_r.to_value(u.AU):1.4f} AU, Delta: {delta.to_value(u.AU):1.4f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days"  # type: ignore
     )
     uw1_offset_img, uw1_text_label = make_image_annotations(
         img=uw1_stack, norm=uw1_norm, t="Filter: uw1"
@@ -196,6 +143,7 @@ def vectorial_fitting_plots(
     uvv_stack: SwiftUVOTImage,
     fit_begin_r: u.Quantity,
     fit_end_r: u.Quantity,
+    t_perihelion: Time,
 ) -> None:
 
     dust_cmap = LinearSegmentedColormap.from_list(
@@ -210,7 +158,6 @@ def vectorial_fitting_plots(
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
     # TODO: get perihelion from orbital info
-    t_perihelion = Time("2015-11-15")
     time_from_perihelion = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
 
     zscale = ZScaleInterval()
@@ -230,8 +177,8 @@ def vectorial_fitting_plots(
             alpha=0.65,
         )
         ax.plot(
-            vectorial_fits[dust_redness].column_density.rs_km,
-            vectorial_fits[dust_redness].column_density.cd_cm2,
+            vectorial_fits[dust_redness].vectorial_column_density.rs_km,
+            vectorial_fits[dust_redness].vectorial_column_density.cd_cm2,
             label=f"vcd at {dust_redness}",
             color=line_color,
             alpha=0.8,
@@ -242,7 +189,7 @@ def vectorial_fitting_plots(
     ax.set_ylabel("log fragment column density, 1/cm^2")
     ax.legend()
     fig.suptitle(
-        f"Rh: {helio_r.to_value(u.AU)} AU, Delta: {delta.to_value(u.AU):1.2f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days\nfitting data from {fit_begin_r.to(u.km):1.3e} to {fit_end_r.to(u.km):1.3e}"  # type: ignore
+        f"Rh: {helio_r.to_value(u.AU):1.4f} AU, Delta: {delta.to_value(u.AU):1.4f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days\nfitting data from {fit_begin_r.to(u.km):1.3e} to {fit_end_r.to(u.km):1.3e}"  # type: ignore
     )
     uw1_offset_img, uw1_text_label = make_image_annotations(
         img=uw1_stack, norm=uw1_norm, t="Filter: uw1"
@@ -301,6 +248,11 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
 
     if data_ingestion_files.epochs is None:
         print("No epochs found!")
+        return
+
+    t_perihelion_list = find_perihelion(data_ingestion_files=data_ingestion_files)
+    if t_perihelion_list is None:
+        print("Could not find time of perihelion!")
         return
 
     if epoch_subpipelines is None:
@@ -397,6 +349,12 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
             r_fit_max=1.0e10 * u.km,  # type: ignore
         )
 
+    t_perihelion = t_perihelion_list[0].t_perihelion
+    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
+
+    print(f"Heliocentric distance: {helio_r.to_value(u.AU):1.4f} AU")
+    print(f"Date: {Time(np.mean(stacked_epoch.MID_TIME))}")
+    print(f"Perihelion: {t_perihelion}")
     print("Near-nucleus vectorial model fitting:")
     for dust_redness in dust_rednesses:
         print(
@@ -421,6 +379,7 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         ccds=ccds,
         uw1_stack=uw1_stack,
         uvv_stack=uvv_stack,
+        t_perihelion=t_perihelion,
     )
 
     vectorial_fitting_plots(
@@ -432,6 +391,7 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         uvv_stack=uvv_stack,
         fit_begin_r=0 * u.km,  # type: ignore
         fit_end_r=near_far_radius,
+        t_perihelion=t_perihelion,
     )
 
     vectorial_fitting_plots(
@@ -442,7 +402,8 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         uw1_stack=uw1_stack,
         uvv_stack=uvv_stack,
         fit_begin_r=near_far_radius,
-        fit_end_r=np.max(ccds[DustReddeningPercent(0.0)].rs_km) * u.km,
+        fit_end_r=np.max(ccds[DustReddeningPercent(0.0)].rs_km) * u.km,  # type: ignore
+        t_perihelion=t_perihelion,
     )
 
     # model_Q = 1e29 / u.s  # type: ignore

@@ -69,6 +69,8 @@ def stack_epoch_into_sum_and_median(
     no checks are made here
     If successful, returns a tuple of images (sum, median)
     """
+    # TODO: if we never use the median stacking mode, we can instead recursively break the epoch in halves and stack what fits in memory at a single time
+    # is that functionality that we want to abandon?
 
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(

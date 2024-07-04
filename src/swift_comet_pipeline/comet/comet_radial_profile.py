@@ -202,7 +202,7 @@ def subtract_profiles(
 ) -> CometRadialProfile:
     # TODO: documentation
 
-    # function assumes each radial profile is the same length radially
+    # function assumes radial profile from both filters is the same length radially
     assert len(uw1_profile.profile_axis_xs) == len(uvv_profile.profile_axis_xs)
 
     # should all be zero - the radial axes should be sampled the same way
@@ -213,7 +213,7 @@ def subtract_profiles(
     uw1_params = get_filter_parameters(SwiftFilter.uw1)
     uvv_params = get_filter_parameters(SwiftFilter.uvv)
 
-    # TODO: is this necessary? Ask Lucy
+    # TODO: is this necessary? Ask Lucy or Bodewits
     uvv_to_uw1_cf = uvv_params["cf"] / uw1_params["cf"]
 
     subtracted_pixels = (

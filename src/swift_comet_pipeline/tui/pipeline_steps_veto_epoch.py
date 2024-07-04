@@ -42,7 +42,6 @@ def veto_epoch_step(swift_project_config: SwiftProjectConfig) -> None:
     if not save_epoch:
         return
 
+    rprint("[green]Writing epoch file...[/green]")
     epoch_product.data = epoch_post_veto
     epoch_product.write()
-
-    rprint("[green]Epoch saved.[/green]")

@@ -5,8 +5,6 @@ from astropy.time import Time
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
@@ -17,7 +15,6 @@ from swift_comet_pipeline.tui.pipeline_extras_orbital_data import (
 from swift_comet_pipeline.tui.pipeline_extras_status import pipeline_extra_status
 from swift_comet_pipeline.tui.tui_common import (
     clear_screen,
-    epoch_menu,
     get_selection,
     wait_for_key,
 )
@@ -28,9 +25,7 @@ class PipelineExtrasMenuEntry(StrEnum):
     epoch_summary = "epoch summary"
     epoch_latex_observation_log = "observation summary in latex format"
     get_orbital_data = "query jpl for comet and earth orbital data"
-    perihelion_test = "test finding perihelion"
 
-    surf_brightness_test = "surface brightness test code"
     comet_centers = "Raw images with comet centers marked"
 
     @classmethod
@@ -57,103 +52,14 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_extra_latex_table_summary(
                 swift_project_config=swift_project_config
             )
-        elif step == PipelineExtrasMenuEntry.surf_brightness_test:
-            do_surf_brightness_test(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.get_orbital_data:
             pipeline_extra_orbital_data(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
-        elif step == PipelineExtrasMenuEntry.perihelion_test:
-            perihelion_test(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
         wait_for_key()
-
-
-def do_surf_brightness_test(swift_project_config: SwiftProjectConfig) -> None:
-    pass
-    # pipeline_files = PipelineFiles(
-    #     base_product_save_path=swift_project_config.project_path
-    # )
-    #
-    # # select the epoch we want to process
-    # epoch_id = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_be=True
-    # )
-    # if epoch_id is None:
-    #     return
-    #
-    # # load the epoch database
-    # epoch = pipeline_files.read_pipeline_product(
-    #     PipelineProductType.stacked_epoch, epoch_id=epoch_id
-    # )
-    # epoch_path = pipeline_files.get_product_path(
-    #     PipelineProductType.stacked_epoch, epoch_id=epoch_id
-    # )
-    # if epoch is None or epoch_path is None:
-    #     print("Error loading epoch!")
-    #     wait_for_key()
-    #     return
-    #
-    # print(
-    #     f"Starting analysis of {epoch_path.stem}: observation at {np.mean(epoch.HELIO)} AU"
-    # )
-    #
-    # stacking_method = StackingMethod.summation
-    #
-    # # load background-subtracted images
-    # uw1 = pipeline_files.read_pipeline_product(
-    #     PipelineProductType.background_subtracted_image,
-    #     epoch_id=epoch_id,
-    #     filter_type=SwiftFilter.uw1,
-    #     stacking_method=stacking_method,
-    # )
-    # uvv = pipeline_files.read_pipeline_product(
-    #     PipelineProductType.background_subtracted_image,
-    #     epoch_id=epoch_id,
-    #     filter_type=SwiftFilter.uvv,
-    #     stacking_method=stacking_method,
-    # )
-    # if uw1 is None or uvv is None:
-    #     print("Error loading background-subtracted images!")
-    #     wait_for_key()
-    #     return
-    #
-    # # uw1_exposure_time = np.sum(epoch[epoch.FILTER == SwiftFilter.uw1].EXPOSURE)
-    # # uvv_exposure_time = np.sum(epoch[epoch.FILTER == SwiftFilter.uvv].EXPOSURE)
-    #
-    # df = surface_brightness_profiles(uw1=uw1, uvv=uvv, r_max=200)
-    # df = qh2o_from_surface_brightness_profiles(
-    #     df=df, epoch=epoch, beta=beta_parameter(DustReddeningPercent(25))
-    # )
-    # print(df)
-    #
-    # # for c in ["cumulative_counts_uw1_mean", "cumulative_counts_uvv_mean"]:
-    # #     df[c].plot()
-    # # plt.show()
-    # #
-    # # for c in ["cumulative_counts_uw1_median", "cumulative_counts_uvv_median"]:
-    # #     df[c].plot()
-    # # plt.show()
-    #
-    # # for c in ["oh_brightness_running_total_median", "oh_brightness_running_total_mean"]:
-    # #     df[c].plot(legend=True)
-    # # plt.show()
-    #
-    # for c in ["flux_median", "flux_median_err"]:
-    #     df[c].plot(legend=True)
-    # plt.show()
-    #
-    # # for c in ["flux_mean", "flux_mean_err"]:
-    # #     df[c].plot(legend=True)
-    # # plt.show()
-    #
-    # for c in ["qs_median", "qs_median_max", "qs_median_max_err"]:
-    #     df[c].plot(legend=True)
-    # plt.show()
-    #
-    # wait_for_key()
 
 
 def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
@@ -239,20 +145,3 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
     #     progress_bar.set_description(f"Processed {obsid} extension {extension}")
     #
     # print("")
-
-
-def perihelion_test(swift_project_config: SwiftProjectConfig) -> None:
-
-    # t_start = Time("Sep 04 2021")
-    t_start = Time("2021-09-04")
-    # t_end = Time("Feb 27 2024")
-    t_end = Time("2024-02-27")
-    op = find_perihelion(
-        swift_project_config=swift_project_config,
-        t_start_search=t_start,
-        t_end_search=t_end,
-    )
-    if op is None:
-        print("Error finding perihelion!")
-    else:
-        print(f"Perihelion: {op[0].t_perihelion.ymdhms}")

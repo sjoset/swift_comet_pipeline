@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from astropy.time import Time
 from astropy.visualization import ZScaleInterval
+from rich import print as rprint
 
 from swift_comet_pipeline.background.background_result import (
     BackgroundResult,
@@ -582,6 +583,7 @@ def profile_selection_plot(
             profile=rpsp.uvv_radial_profile, km_per_pix=rpsp.km_per_pix
         )
     )
+    rprint("[green]Writing extracted profiles for uw1 and uvv filters...[/green]")
     epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].write()
 
@@ -595,6 +597,7 @@ def profile_selection_plot(
     ].data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uvv_median_profile_img
     )
+    rprint("[green]Writing extracted profile images for uw1 and uvv filters...[/green]")
     epoch_subpipeline.extracted_profile_images[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.extracted_profile_images[SwiftFilter.uvv, stacking_method].write()
 
@@ -608,6 +611,7 @@ def profile_selection_plot(
     ].data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uvv_subtracted_median_image
     )
+    rprint("[green]Writing median subtracted images for uw1 and uvv filters...[/green]")
     epoch_subpipeline.median_subtracted_images[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.median_subtracted_images[SwiftFilter.uvv, stacking_method].write()
 
@@ -621,6 +625,7 @@ def profile_selection_plot(
             epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
         )
     )
+    rprint("[green]Writing median divided images for uw1 and uvv filters...[/green]")
     epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].write()
     epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].write()
 

@@ -6,25 +6,23 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from rich import print as rprint
 
 from swift_comet_pipeline.background.background_result import dict_to_background_result
-from swift_comet_pipeline.comet.comet_center_finding import compare_comet_center_methods
-
-# from swift_comet_pipeline.comet.plateau_detect import find_production_plateau
+from swift_comet_pipeline.comet.comet_aperture import comet_manual_aperture
 from swift_comet_pipeline.comet.plateau_detect import find_production_plateaus
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu
-from swift_comet_pipeline.comet.comet_aperture import comet_manual_aperture
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import (
     CountRatePerPixel,
     magnitude_from_count_rate,
 )
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.tui.tui_common import stacked_epoch_menu
 from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.water_production.flux_OH import (
     OH_flux_from_count_rate,
@@ -37,6 +35,10 @@ from swift_comet_pipeline.water_production.q_vs_aperture_radius import (
 )
 
 
+# TODO: make the visualization separate so we can load the csv and look at it later
+
+
+# TODO: we should just return the list of counts/magnitude in each filter and compute Q for different rednesses later
 # TODO: move this somewhere else
 def q_vs_aperture_radius(
     stacked_epoch: Epoch,
@@ -55,16 +57,15 @@ def q_vs_aperture_radius(
     r_pix = int(radius_km_guess / np.mean(stacked_epoch.KM_PER_PIX))
     print(f"Guessing radius of {radius_km_guess} km or {r_pix} pixels")
 
-    # aperture_radii, r_step = np.linspace(
-    #     1, r_pix, num=np.round(r_pix / 5).astype(np.int32), retstep=True
-    # )
+    # sample every ~500 km
     aperture_radii = np.linspace(
-        1, r_pix * 1.5, num=np.round(r_pix).astype(np.int32) * 5
+        1, np.round(r_pix * 1.5).astype(np.int32), num=300, endpoint=True
     )
     beta_parameters = {x: beta_parameter(x) for x in dust_rednesses}
     comet_center = get_uvot_image_center(img=uw1)
     radii_and_dust_rednesses = list(product(aperture_radii, dust_rednesses))
 
+    # TODO: rewrite these loops, separate by filter if need be - tqdm is still helpful here though
     uw1_counts = {}
     uvv_counts = {}
     # find the counts and magnitudes in uw1 and uvv as a function of aperture radius - these don't depend on the dust redness
@@ -235,7 +236,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
         q_plateau_list_dict[dust_redness] = q_plateau_list
 
         fig, axs = plt.subplots(nrows=1, ncols=3)
-        fig.suptitle(f"dust redness {dust_redness}%/nm")
+        fig.suptitle(f"dust redness {dust_redness}%/100 nm")
         axs[2].set_yscale("log")
 
         redness_df.plot.line(
@@ -289,7 +290,6 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
 
         plt.show()
 
-    # rprint("[green]Writing q vs aperture radius results ...[/green]")
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data = q_vs_r
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].write()
-    # rprint("[green]Done[/green]")
+    rprint("[green]Writing q vs aperture radius results ...[/green]")
+    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data = q_vs_r
+    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].write()

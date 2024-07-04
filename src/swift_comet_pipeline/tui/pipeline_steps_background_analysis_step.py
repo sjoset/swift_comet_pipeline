@@ -2,6 +2,7 @@ from itertools import product
 from astropy.io import fits
 
 from icecream import ic
+from rich import print as rprint
 
 from swift_comet_pipeline.background.background_determination_method import (
     BackgroundDeterminationMethod,
@@ -14,7 +15,7 @@ from swift_comet_pipeline.background.determine_background import determine_backg
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.tui.tui_common import (
     stacked_epoch_menu,
@@ -83,6 +84,9 @@ def background_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
         print(f"{epoch_subpipeline.parent_epoch.epoch_id}")
         print(f"Background count rate: {bg_result.count_rate_per_pixel}")
 
+        rprint(
+            f"[green]Writing background analysis for filter {filter_to_file_string(filter_type)}, stacking method {stacking_method}...[/green]"
+        )
         epoch_subpipeline.background_analyses[filter_type, stacking_method].data = (
             background_result_to_dict(bg_result=bg_result)
         )
@@ -91,6 +95,9 @@ def background_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
         bg_corrected_img = img_data - bg_result.count_rate_per_pixel.value
 
         # make a new fits with the background-corrected image, and copy the header information over from the original stacked image
+        rprint(
+            f"[green]Writing background-subtracted FITS image for filter {filter_to_file_string(filter_type)}, stacking method {stacking_method}...[/green]"
+        )
         epoch_subpipeline.background_subtracted_images[
             filter_type, stacking_method
         ].data = fits.ImageHDU(data=bg_corrected_img, header=img_header)
