@@ -187,14 +187,23 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     if aperture_lc is None:
         return
 
-    # best near-fit lightcurve
-    pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
-    vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
-
-    if vectorial_near_fit_df is None:
-        return
-
-    vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+    # # best near-fit lightcurve
+    # pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
+    # vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
+    #
+    # if vectorial_near_fit_df is None:
+    #     return
+    #
+    # vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+    #
+    # # best far-fit lightcurve
+    # pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
+    # vectorial_far_fit_df = pipeline_files.best_far_fit_lightcurve.data
+    #
+    # if vectorial_far_fit_df is None:
+    #     return
+    #
+    # vectorial_far_fit_lc = dataframe_to_lightcurve(df=vectorial_far_fit_df)
 
     # # all vectorial fits
     # pipeline_files.complete_vectorial_lightcurve.read_product_if_not_loaded()
@@ -223,7 +232,8 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     lc_total = aperture_lc
 
     # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
-    show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
+    # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc + vectorial_far_fit_lc)
+    show_lightcurve(lc=lc_total)
 
 
 def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None:
@@ -240,13 +250,7 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
         print("No epochs available to stack!")
         return
 
-    # pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
-    # vectorial_best_fit_lc = pipeline_files.best_far_fit_lightcurve.data
-    #
-    # if vectorial_best_fit_lc is None:
-    #     return
-    #
-    # vectorial_far_fit_lightcurve = dataframe_to_lightcurve(df=vectorial_best_fit_lc)
+    # TODO: selection menu for which fits to see
 
     # all vectorial fits
     pipeline_files.complete_vectorial_lightcurve.read_product_if_not_loaded()
@@ -269,15 +273,67 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     near_fit_df.rename(
         columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}, inplace=True
     )
-    vectorial_lcs = dataframe_to_lightcurve(df=near_fit_df)
+    vectorial_near_lcs = dataframe_to_lightcurve(df=near_fit_df)
 
     # best near-fit lightcurve
     pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
-    vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
+    vectorial_best_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
 
-    if vectorial_near_fit_df is None:
+    if vectorial_best_near_fit_df is None:
+        return
+    vectorial_best_near_fit_lc = dataframe_to_lightcurve(df=vectorial_best_near_fit_df)
+
+    # pull out all far fits
+    far_fit_df = complete_vectorial_df[
+        [
+            "observation_time",
+            "time_from_perihelion_days",
+            "rh_au",
+            "far_fit_q",
+            "far_fit_q_err",
+            "dust_redness",
+        ]
+    ].copy()
+    far_fit_df.rename(
+        columns={"far_fit_q": "q", "far_fit_q_err": "q_err"}, inplace=True
+    )
+    vectorial_far_lcs = dataframe_to_lightcurve(df=far_fit_df)
+
+    # best far-fit lightcurve
+    pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
+    vectorial_best_far_fit_df = pipeline_files.best_far_fit_lightcurve.data
+
+    if vectorial_best_far_fit_df is None:
         return
 
-    vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+    vectorial_best_far_fit_lc = dataframe_to_lightcurve(df=vectorial_best_far_fit_df)
 
-    show_lightcurve(lc=vectorial_lcs, best_lc=vectorial_near_fit_lc)
+    # # pull out all full fits
+    # full_fit_df = complete_vectorial_df[
+    #     [
+    #         "observation_time",
+    #         "time_from_perihelion_days",
+    #         "rh_au",
+    #         "full_fit_q",
+    #         "full_fit_q_err",
+    #         "dust_redness",
+    #     ]
+    # ].copy()
+    # full_fit_df.rename(
+    #     columns={"full_fit_q": "q", "full_fit_q_err": "q_err"}, inplace=True
+    # )
+    # vectorial_lcs = dataframe_to_lightcurve(df=full_fit_df)
+    #
+    # # best full-fit lightcurve
+    # pipeline_files.best_full_fit_lightcurve.read_product_if_not_loaded()
+    # vectorial_full_fit_df = pipeline_files.best_full_fit_lightcurve.data
+    #
+    # if vectorial_full_fit_df is None:
+    #     return
+    #
+    # vectorial_full_fit_lc = dataframe_to_lightcurve(df=vectorial_full_fit_df)
+
+    show_lightcurve(
+        lc=vectorial_near_lcs + vectorial_far_lcs,
+        best_lc=vectorial_best_near_fit_lc + vectorial_best_far_fit_lc,
+    )
