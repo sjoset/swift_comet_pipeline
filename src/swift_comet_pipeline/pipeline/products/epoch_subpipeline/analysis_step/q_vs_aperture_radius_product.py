@@ -6,14 +6,14 @@ from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import 
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.analysis_step.epoch_subpipeline_analysis_product import (
     EpochSubPipelineAnalysisProduct,
 )
-from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import (
-    CSVDataframePipelineProductIO,
+from swift_comet_pipeline.pipeline.products.product_io_types.ecsv_product import (
+    ECSVDataframePipelineProductIO,
 )
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 
 
 class QvsApertureRadiusProduct(
-    EpochSubPipelineAnalysisProduct, CSVDataframePipelineProductIO
+    EpochSubPipelineAnalysisProduct, ECSVDataframePipelineProductIO
 ):
 
     def __init__(
@@ -30,5 +30,5 @@ class QvsApertureRadiusProduct(
             **kwargs,
         )
 
-        qvsa_filename = f"qh2o_vs_aperture_radius_{stacking_method}.csv"
+        qvsa_filename = f"qh2o_vs_aperture_radius_{stacking_method}.ecsv"
         self.product_path = self.product_path / pathlib.Path(qvsa_filename)

@@ -1,10 +1,14 @@
 from enum import StrEnum
 
-from astropy.time import Time
-
+from swift_comet_pipeline.lightcurve.lightcurve import dataframe_to_lightcurve
+from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
+    lightcurve_from_aperture_plateaus,
+)
+from swift_comet_pipeline.lightcurve.lightcurve_seaborn import show_lightcurve
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
@@ -25,8 +29,9 @@ class PipelineExtrasMenuEntry(StrEnum):
     epoch_summary = "epoch summary"
     epoch_latex_observation_log = "observation summary in latex format"
     get_orbital_data = "query jpl for comet and earth orbital data"
-
     comet_centers = "Raw images with comet centers marked"
+    show_aperture_lightcurve = "show aperture lightcurve"
+    show_vectorial_lightcurves = "show vectorial lightcurves"
 
     @classmethod
     def all_extras(cls):
@@ -56,6 +61,10 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             pipeline_extra_orbital_data(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.comet_centers:
             mark_comet_centers(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.show_aperture_lightcurve:
+            show_aperture_lightcurve(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.show_vectorial_lightcurves:
+            show_vectorial_lightcurves(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
@@ -145,3 +154,130 @@ def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
     #     progress_bar.set_description(f"Processed {obsid} extension {extension}")
     #
     # print("")
+
+
+def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    stacking_method = StackingMethod.summation
+
+    t_perihelion_list = find_perihelion(data_ingestion_files=data_ingestion_files)
+    if t_perihelion_list is None:
+        print("Could not find time of perihelion!")
+        return
+    t_perihelion = t_perihelion_list[0].t_perihelion
+
+    # aperture productions
+    aperture_lc = lightcurve_from_aperture_plateaus(
+        pipeline_files=pipeline_files,
+        stacking_method=stacking_method,
+        t_perihelion=t_perihelion,
+    )
+
+    if aperture_lc is None:
+        return
+
+    # best near-fit lightcurve
+    pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
+    vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
+
+    if vectorial_near_fit_df is None:
+        return
+
+    vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+
+    # # all vectorial fits
+    # pipeline_files.complete_vectorial_lightcurve.read_product_if_not_loaded()
+    # complete_vectorial_df = pipeline_files.complete_vectorial_lightcurve.data
+    #
+    # if complete_vectorial_df is None:
+    #     return
+
+    # # pull out all near fits
+    # near_fit_df = complete_vectorial_df[
+    #     [
+    #         "observation_time",
+    #         "time_from_perihelion_days",
+    #         "rh_au",
+    #         "near_fit_q",
+    #         "near_fit_q_err",
+    #         "dust_redness",
+    #     ]
+    # ].copy()
+    # near_fit_df.rename(
+    #     columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}, inplace=True
+    # )
+    # vectorial_lcs = dataframe_to_lightcurve(df=near_fit_df)
+
+    # lc_total = aperture_lc + vectorial_lcs
+    lc_total = aperture_lc
+
+    # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
+    show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
+
+
+def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None:
+
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    # pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
+    # vectorial_best_fit_lc = pipeline_files.best_far_fit_lightcurve.data
+    #
+    # if vectorial_best_fit_lc is None:
+    #     return
+    #
+    # vectorial_far_fit_lightcurve = dataframe_to_lightcurve(df=vectorial_best_fit_lc)
+
+    # all vectorial fits
+    pipeline_files.complete_vectorial_lightcurve.read_product_if_not_loaded()
+    complete_vectorial_df = pipeline_files.complete_vectorial_lightcurve.data
+
+    if complete_vectorial_df is None:
+        return
+
+    # pull out all near fits
+    near_fit_df = complete_vectorial_df[
+        [
+            "observation_time",
+            "time_from_perihelion_days",
+            "rh_au",
+            "near_fit_q",
+            "near_fit_q_err",
+            "dust_redness",
+        ]
+    ].copy()
+    near_fit_df.rename(
+        columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}, inplace=True
+    )
+    vectorial_lcs = dataframe_to_lightcurve(df=near_fit_df)
+
+    # best near-fit lightcurve
+    pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
+    vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
+
+    if vectorial_near_fit_df is None:
+        return
+
+    vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+
+    show_lightcurve(lc=vectorial_lcs, best_lc=vectorial_near_fit_lc)

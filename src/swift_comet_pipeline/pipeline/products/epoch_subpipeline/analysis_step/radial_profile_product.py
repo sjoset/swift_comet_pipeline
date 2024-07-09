@@ -33,6 +33,5 @@ class ExtractedRadialProfile(
         )
 
         filter_string = filter_to_file_string(filter_type=filter_type)
-        # ep_filename = f"extracted_profile_{filter_string}_{stacking_method}.hdf5"
         ep_filename = f"extracted_profile_{filter_string}_{stacking_method}.ecsv"
         self.product_path = self.product_path / pathlib.Path(ep_filename)

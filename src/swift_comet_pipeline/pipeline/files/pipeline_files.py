@@ -1,12 +1,17 @@
 import pathlib
 from typing import Optional, List
 
+from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
 from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
     EpochSubpipelineFiles,
 )
 from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import (
     EpochProduct,
+)
+from swift_comet_pipeline.pipeline.products.lightcurve.lightcurve_products import (
+    BestRednessLightCurveProduct,
+    CompleteVectorialLightCurveProduct,
 )
 
 # TODO: find out why stacked epoch products are saying every entry is uw1 filter
@@ -54,6 +59,19 @@ class PipelineFiles:
             EpochSubpipelineFiles(project_path=self.project_path, parent_epoch=x)
             for x in self.data_ingestion_files.epochs
         ]
+
+        self.complete_vectorial_lightcurve = CompleteVectorialLightCurveProduct(
+            product_path=self.project_path
+        )
+        self.best_near_fit_lightcurve = BestRednessLightCurveProduct(
+            product_path=self.project_path, fit_type=VectorialFitType.near_fit
+        )
+        self.best_far_fit_lightcurve = BestRednessLightCurveProduct(
+            product_path=self.project_path, fit_type=VectorialFitType.far_fit
+        )
+        self.best_full_fit_lightcurve = BestRednessLightCurveProduct(
+            product_path=self.project_path, fit_type=VectorialFitType.full_fit
+        )
 
     def epoch_subpipeline_from_parent_epoch(
         self, parent_epoch: EpochProduct

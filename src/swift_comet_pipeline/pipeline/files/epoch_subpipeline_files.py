@@ -202,14 +202,10 @@ class EpochSubpipelineFiles:
             ]
         )
 
-    @property
-    def q_vs_aperture_radius_completed(self) -> bool:
-        return all(
-            [
-                self.qh2o_vs_aperture_radius_analyses[sm].product_path.exists()
-                for sm in [StackingMethod.summation, StackingMethod.median]
-            ]
-        )
+    def q_vs_aperture_radius_completed(self, stacking_method: StackingMethod) -> bool:
+        return self.qh2o_vs_aperture_radius_analyses[
+            stacking_method
+        ].product_path.exists()
 
     def is_stackable(self, epoch: Epoch) -> bool:
         """

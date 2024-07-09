@@ -1,3 +1,4 @@
+from functools import cache
 from typing import TypeAlias
 
 import astropy.units as u
@@ -13,6 +14,7 @@ from swift_comet_pipeline.water_production.fluorescence_OH import NumOH
 NumQH2O: TypeAlias = ValueAndStandardDev
 
 
+@cache
 def num_OH_to_Q_vectorial(
     helio_r_au: float, num_OH: NumOH, model_backend="sbpy"
 ) -> NumQH2O:

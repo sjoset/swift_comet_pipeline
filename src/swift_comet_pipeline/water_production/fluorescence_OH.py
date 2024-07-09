@@ -1,3 +1,4 @@
+from functools import cache
 import pathlib
 import numpy as np
 import pandas as pd
@@ -20,12 +21,13 @@ NumOH: TypeAlias = ValueAndStandardDev
 
 
 # TODO: add entry to identify the molecule this gfactor is describing or rename this for hydroxyl
-@dataclass
+@dataclass(frozen=True)
 class FluorescenceGFactor1AU:
     helio_vs: np.ndarray
     gfactors: np.ndarray
 
 
+@cache
 def read_gfactor_1au_data(fluorescence_file: pathlib.Path) -> FluorescenceGFactor1AU:
     # TODO: rename this function to reflect that our file reflects values computed for OH
     df = pd.read_csv(fluorescence_file)
@@ -39,6 +41,7 @@ def read_gfactor_1au_data(fluorescence_file: pathlib.Path) -> FluorescenceGFacto
 
 # TODO: change helio_v_kms to be an astropy quantity, add decorator to enforce proper input
 # TODO: make rh a parameter and rename function to gfactor: scale the 1AU gfactor data by 1/(rh_in_au)**2
+@cache
 def gfactor_1au(
     helio_v_kms: float, fluorescence_data: Optional[FluorescenceGFactor1AU] = None
 ) -> float:

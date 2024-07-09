@@ -1,6 +1,6 @@
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from icecream import ic
 
@@ -42,3 +42,13 @@ class PipelineProduct(ABC):
     def delete_file(self) -> None:
         if self.exists():
             self.product_path.unlink()
+
+    # TODO:
+    # seems goofy to do it this way - rename read() and write() to read_data and write_data, and this to read() ?
+    # possibly an option to force reading in case we ever need to refresh data from disk
+    def read_product_if_not_loaded(self):
+        if self.product_path.exists() is False:
+            return
+
+        if self._data is None:
+            self.read()

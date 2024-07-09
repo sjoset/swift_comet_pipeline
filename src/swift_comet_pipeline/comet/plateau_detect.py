@@ -2,10 +2,11 @@ import numpy as np
 
 from scipy.ndimage import uniform_filter1d
 from itertools import groupby
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import List
 
-from swift_comet_pipeline.water_production.q_vs_aperture_radius import (
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.water_production.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
 )
 
@@ -17,7 +18,7 @@ class Plateau:
 
 
 @dataclass
-class PhysicalPlateau:
+class ProductionPlateau:
     begin_r: float
     end_r: float
     begin_q: float
@@ -37,9 +38,6 @@ def plateau_detect(
     # compute first and second derivative
     ds = np.gradient(smoothed, xstep)
     dds = np.gradient(ds, xstep)
-
-    # print(f"{ds=}")
-    # print(f"{dds=}")
 
     # mask = np.abs(ds / smoothed) < threshold
     # mask = np.logical_and(np.abs(dds) < threshold, np.abs(ds) < threshold)
@@ -66,6 +64,7 @@ def plateau_detect(
         for (k, rl, b, e) in full_plat
         if rl >= min_length and bool(k) is True and b + 1 < e
     ]
+
     # squeeze the plateau edges in by one index - this approach catches the 'cliffs' at the right and left edges
     # return [
     #     Plateau(begin_index=b + 1, end_index=e - 1)
@@ -75,57 +74,50 @@ def plateau_detect(
 
 
 def find_production_plateaus(
-    q_vs_aperture_list: list[QvsApertureRadiusEntry],
-) -> list[PhysicalPlateau] | None:
+    q_vs_aperture_radius_list: list[QvsApertureRadiusEntry],
+) -> list[ProductionPlateau]:
     """
     Make sure the aperture_r_pix entries are all equally spaced!
+
+    Will refuse to look for plateau if there aren't enough positive production values
     """
 
-    rs = np.array([qvsare.aperture_r_pix for qvsare in q_vs_aperture_list])
+    rs = np.array([qvsare.aperture_r_pix for qvsare in q_vs_aperture_radius_list])
     r_diffs = np.diff(rs)
 
     r_step = list(set(r_diffs))[0]
-    physical_qs = np.array([qvsare.q_H2O for qvsare in q_vs_aperture_list])
+    physical_qs = np.array([qvsare.q_H2O for qvsare in q_vs_aperture_radius_list])
 
     positive_production_mask = physical_qs > 0.0
     physical_qs = physical_qs[positive_production_mask]
     if len(physical_qs) < 5:
-        return None
+        return []
 
     rs = rs[positive_production_mask]
 
-    # try to scale the qs to something reasonably predictable
-    # qs = physical_qs / np.max(physical_qs)
-    # print(f"{qs=} {qs.shape=}")
-
     q_diffs = np.append([1], np.diff(physical_qs))
-    # print(f"{q_diffs=} {q_diffs.shape=}")
     qpc = q_diffs / physical_qs
-    # print(f"{qpc=} {qpc.shape=}")
 
     qs = qpc
 
-    print(f"Plateau search at dust redness {q_vs_aperture_list[0].dust_redness}:")
-
-    # thresholds = np.geomspace(start=1e-1, stop=10, num=41, endpoint=True) / r_step
+    # TODO: magic numbers for the threshold, found empirically - can we do better or justify these?
     thresholds = np.geomspace(start=1e-6, stop=1e-3, num=41, endpoint=True)
-    # thresholds = np.linspace(start=0.001, stop=0.05, num=31, endpoint=True)
 
     for cur_threshold in thresholds:
-        # print(f"{cur_threshold=}")
         q_plateau_list = plateau_detect(
             ys=qs,
             xstep=r_step,
-            smoothing=3,
+            smoothing=np.round(3 / r_step).astype(np.int32),
+            # smoothing=3,
             threshold=cur_threshold,
             min_length=3 / r_step,
         )
         if len(q_plateau_list) == 0:
             continue
 
-        print(f"Found plateaus with threshold {cur_threshold:1.3e}...")
+        # print(f"Found plateaus with threshold {cur_threshold:1.3e}...")
         physical_plateaus = [
-            PhysicalPlateau(
+            ProductionPlateau(
                 begin_r=rs[q.begin_index],
                 end_r=rs[q.end_index],
                 begin_q=physical_qs[q.begin_index],
@@ -136,5 +128,34 @@ def find_production_plateaus(
 
         return physical_plateaus
 
-    print("No plateaus found!")
-    return None
+    # print("No plateaus found!")
+    return []
+
+
+def production_plateau_to_dict(plateau: ProductionPlateau) -> dict:
+    return asdict(plateau)
+
+
+def dict_to_production_plateau(raw_yaml: dict) -> ProductionPlateau:
+    return ProductionPlateau(**raw_yaml)
+
+
+def dust_plateau_list_dict_serialize(
+    p: dict[DustReddeningPercent, list[ProductionPlateau]]
+) -> dict[DustReddeningPercent, list[dict]]:
+    serialized_dict = {}
+    for dust_redness, plateau_list_at_redness in p.items():
+        serialized_dict[dust_redness] = [asdict(x) for x in plateau_list_at_redness]
+    return serialized_dict
+
+
+def dust_plateau_list_dict_unserialize(
+    serialized_dict: dict[DustReddeningPercent, list[dict]]
+) -> dict[DustReddeningPercent, list[ProductionPlateau]]:
+    unserialized_dict = {}
+    for dust_redness, plateau_dict_list_at_redness in serialized_dict.items():
+        unserialized_dict[dust_redness] = [
+            dict_to_production_plateau(raw_yaml=x) for x in plateau_dict_list_at_redness
+        ]
+
+    return unserialized_dict

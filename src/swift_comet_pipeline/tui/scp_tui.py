@@ -37,7 +37,6 @@ from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stackin
 from swift_comet_pipeline.tui.tui_common import (
     clear_screen,
     get_selection,
-    wait_for_key,
 )
 
 
@@ -124,7 +123,9 @@ def main():
             exit_program = True
             continue
         step = pipeline_steps[step_selection]
-        # TODO: could this be a Protocol, and return a value that indicates whether or not to wait for a key after it's done, or just clear the screen and show the menu again?
+        # TODO: could this be a Protocol as a PipelineStep(swift_project_config) -> ret val
+        # along with a next_step(), prev_step(), and whether this one has been completed
+        #  maybe similar thing for epoch subpipelines
         if step == PipelineStepsMenuEntry.observation_log:
             observation_log_step(swift_project_config=swift_project_config)
         elif step == PipelineStepsMenuEntry.identify_epochs:
@@ -147,7 +148,6 @@ def main():
             pipeline_extras_menu(swift_project_config=swift_project_config)
         else:
             exit_program = True
-        wait_for_key()
 
 
 if __name__ == "__main__":

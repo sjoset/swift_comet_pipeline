@@ -13,6 +13,7 @@ from swift_comet_pipeline.background.background_result import (
     BackgroundResult,
     dict_to_background_result,
 )
+from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
@@ -49,6 +50,7 @@ from swift_comet_pipeline.comet.comet_radial_profile import (
 )
 
 
+# TODO: move this somewhere else
 # TODO: add pixel selection and cone angle to initialization so we can save/restore state
 class RadialProfileSelectionPlot(object):
     def __init__(
