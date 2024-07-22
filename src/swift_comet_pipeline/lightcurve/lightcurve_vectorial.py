@@ -18,7 +18,7 @@ from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 
 
 def lightcurve_from_vectorial_fits(
@@ -126,7 +126,7 @@ def lightcurve_entry_from_vectorial_fits(
     return LightCurveEntry(
         observation_time=observation_time,
         time_from_perihelion_days=float(
-            (observation_time - t_perihelion).to_value(u.day)
+            (observation_time - t_perihelion).to_value(u.day)  # type: ignore
         ),
         rh_au=helio_r.to_value(u.AU),  # type: ignore
         q=vec_fit.best_fit_Q.to_value(1 / u.s),  # type: ignore

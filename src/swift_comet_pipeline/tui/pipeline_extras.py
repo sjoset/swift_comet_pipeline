@@ -4,7 +4,7 @@ from swift_comet_pipeline.lightcurve.lightcurve import dataframe_to_lightcurve
 from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
     lightcurve_from_aperture_plateaus,
 )
-from swift_comet_pipeline.lightcurve.lightcurve_seaborn import show_lightcurve
+from swift_comet_pipeline.lightcurve.lightcurve_matplotlib import show_lightcurve_mpl
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
@@ -233,7 +233,7 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
 
     # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
     # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc + vectorial_far_fit_lc)
-    show_lightcurve(lc=lc_total)
+    show_lightcurve_mpl(lc=lc_total)
 
 
 def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None:
@@ -241,6 +241,9 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     pipeline_files = PipelineFiles(swift_project_config.project_path)
     data_ingestion_files = pipeline_files.data_ingestion_files
     epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    # TODO: stacking method selection
+    stacking_method = StackingMethod.summation
 
     if data_ingestion_files.epochs is None:
         print("No epochs found!")
@@ -253,8 +256,12 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     # TODO: selection menu for which fits to see
 
     # all vectorial fits
-    pipeline_files.complete_vectorial_lightcurve.read_product_if_not_loaded()
-    complete_vectorial_df = pipeline_files.complete_vectorial_lightcurve.data
+    pipeline_files.complete_vectorial_lightcurves[
+        stacking_method
+    ].read_product_if_not_loaded()
+    complete_vectorial_df = pipeline_files.complete_vectorial_lightcurves[
+        stacking_method
+    ].data
 
     if complete_vectorial_df is None:
         return
@@ -276,8 +283,12 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     vectorial_near_lcs = dataframe_to_lightcurve(df=near_fit_df)
 
     # best near-fit lightcurve
-    pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
-    vectorial_best_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
+    pipeline_files.best_near_fit_lightcurves[
+        stacking_method
+    ].read_product_if_not_loaded()
+    vectorial_best_near_fit_df = pipeline_files.best_near_fit_lightcurves[
+        stacking_method
+    ].data
 
     if vectorial_best_near_fit_df is None:
         return
@@ -300,8 +311,12 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     vectorial_far_lcs = dataframe_to_lightcurve(df=far_fit_df)
 
     # best far-fit lightcurve
-    pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
-    vectorial_best_far_fit_df = pipeline_files.best_far_fit_lightcurve.data
+    pipeline_files.best_far_fit_lightcurves[
+        stacking_method
+    ].read_product_if_not_loaded()
+    vectorial_best_far_fit_df = pipeline_files.best_far_fit_lightcurves[
+        stacking_method
+    ].data
 
     if vectorial_best_far_fit_df is None:
         return
@@ -333,7 +348,7 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     #
     # vectorial_full_fit_lc = dataframe_to_lightcurve(df=vectorial_full_fit_df)
 
-    show_lightcurve(
+    show_lightcurve_mpl(
         lc=vectorial_near_lcs + vectorial_far_lcs,
         best_lc=vectorial_best_near_fit_lc + vectorial_best_far_fit_lc,
     )

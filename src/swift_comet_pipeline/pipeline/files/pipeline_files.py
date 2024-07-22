@@ -13,6 +13,7 @@ from swift_comet_pipeline.pipeline.products.lightcurve.lightcurve_products impor
     BestRednessLightCurveProduct,
     CompleteVectorialLightCurveProduct,
 )
+from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 
 # TODO: find out why stacked epoch products are saying every entry is uw1 filter
 
@@ -60,18 +61,38 @@ class PipelineFiles:
             for x in self.data_ingestion_files.epochs
         ]
 
-        self.complete_vectorial_lightcurve = CompleteVectorialLightCurveProduct(
-            product_path=self.project_path
-        )
-        self.best_near_fit_lightcurve = BestRednessLightCurveProduct(
-            product_path=self.project_path, fit_type=VectorialFitType.near_fit
-        )
-        self.best_far_fit_lightcurve = BestRednessLightCurveProduct(
-            product_path=self.project_path, fit_type=VectorialFitType.far_fit
-        )
-        self.best_full_fit_lightcurve = BestRednessLightCurveProduct(
-            product_path=self.project_path, fit_type=VectorialFitType.full_fit
-        )
+        self.complete_vectorial_lightcurves = {}
+        self.best_near_fit_lightcurves = {}
+        self.best_far_fit_lightcurves = {}
+        self.best_full_fit_lightcurves = {}
+
+        for stacking_method in [StackingMethod.summation, StackingMethod.median]:
+            self.complete_vectorial_lightcurves[stacking_method] = (
+                CompleteVectorialLightCurveProduct(
+                    product_path=self.project_path, stacking_method=stacking_method
+                )
+            )
+            self.best_near_fit_lightcurves[stacking_method] = (
+                BestRednessLightCurveProduct(
+                    product_path=self.project_path,
+                    stacking_method=stacking_method,
+                    fit_type=VectorialFitType.near_fit,
+                )
+            )
+            self.best_far_fit_lightcurves[stacking_method] = (
+                BestRednessLightCurveProduct(
+                    product_path=self.project_path,
+                    stacking_method=stacking_method,
+                    fit_type=VectorialFitType.far_fit,
+                )
+            )
+            self.best_full_fit_lightcurves[stacking_method] = (
+                BestRednessLightCurveProduct(
+                    product_path=self.project_path,
+                    stacking_method=stacking_method,
+                    fit_type=VectorialFitType.full_fit,
+                )
+            )
 
     def epoch_subpipeline_from_parent_epoch(
         self, parent_epoch: EpochProduct

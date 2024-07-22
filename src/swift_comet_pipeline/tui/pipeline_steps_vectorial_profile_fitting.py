@@ -1,5 +1,6 @@
 import numpy as np
-import pandas as pd
+
+# import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox, TextArea
 from matplotlib.colors import Normalize, LinearSegmentedColormap
@@ -54,84 +55,84 @@ def make_image_annotations(img: np.ndarray, norm, t: str):
     return offset_img, text_area
 
 
-def column_density_ratio_plot(
-    stacked_epoch: Epoch,
-    dust_rednesses: list[DustReddeningPercent],
-    ccds: dict[DustReddeningPercent, ColumnDensity],
-    uw1_stack: SwiftUVOTImage,
-    uvv_stack: SwiftUVOTImage,
-    t_perihelion: Time,
-) -> None:
-
-    # TODO: turn the image and label annotation into a function that takes positions as arguments
-
-    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
-    delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
-
-    time_from_perihelion = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
-
-    zscale = ZScaleInterval()
-    uw1_vmin, uw1_vmax = zscale.get_limits(uw1_stack)
-    uvv_vmin, uvv_vmax = zscale.get_limits(uvv_stack)
-    uw1_norm = Normalize(vmin=uw1_vmin, vmax=uw1_vmax)
-    uvv_norm = Normalize(vmin=uvv_vmin, vmax=uvv_vmax)
-
-    # # study how the redness affects the column density as a function of radius
-    fig, ax = plt.subplots()
-    for dust_redness in dust_rednesses[1:]:
-        ax.plot(
-            ccds[dust_redness].rs_km,
-            ccds[dust_redness].cd_cm2 / ccds[dust_rednesses[0]].cd_cm2,
-            label=f"cd ratio at {dust_redness=}",
-        )
-    ax.set_xscale("log")
-    ax.set_xlabel("distance r from nucleus, km")
-    ax.set_ylabel("fragment column density ratio")
-    ax.legend()
-    fig.suptitle(
-        f"Rh: {helio_r.to_value(u.AU):1.4f} AU, Delta: {delta.to_value(u.AU):1.4f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days"  # type: ignore
-    )
-    uw1_offset_img, uw1_text_label = make_image_annotations(
-        img=uw1_stack, norm=uw1_norm, t="Filter: uw1"
-    )
-    uw1_offset_img.image.axes = ax
-    ab_uw1 = AnnotationBbox(
-        uw1_offset_img,
-        xy=(1, 1),
-        xycoords="axes fraction",
-        box_alignment=(0.5, 0.5),
-        bboxprops=dict(alpha=0.0),
-    )
-    tab_uw1 = AnnotationBbox(
-        uw1_text_label,
-        xy=(1.0, 0.91),
-        xycoords="axes fraction",
-        bboxprops=dict(alpha=0.0),
-    )
-    ax.add_artist(ab_uw1)
-    ax.add_artist(tab_uw1)
-    uvv_offset_img, uvv_text_label = make_image_annotations(
-        img=uvv_stack, norm=uvv_norm, t="Filter: uvv"
-    )
-    uvv_offset_img.image.axes = ax
-    ab_uvv = AnnotationBbox(
-        uvv_offset_img,
-        xy=(1, 1),
-        xycoords="axes fraction",
-        box_alignment=(0.5, 1.5),
-        bboxprops=dict(alpha=0.0),
-    )
-    tab_uvv = AnnotationBbox(
-        uvv_text_label,
-        # xy=(1.0, 0.87),
-        xy=(1.0, 0.65),
-        xycoords="axes fraction",
-        bboxprops=dict(alpha=0.0),
-    )
-    ax.add_artist(ab_uvv)
-    ax.add_artist(tab_uvv)
-    plt.show()
-    plt.close()
+# def column_density_ratio_plot(
+#     stacked_epoch: Epoch,
+#     dust_rednesses: list[DustReddeningPercent],
+#     ccds: dict[DustReddeningPercent, ColumnDensity],
+#     uw1_stack: SwiftUVOTImage,
+#     uvv_stack: SwiftUVOTImage,
+#     t_perihelion: Time,
+# ) -> None:
+#
+#     # TODO: turn the image and label annotation into a function that takes positions as arguments
+#
+#     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
+#     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
+#
+#     time_from_perihelion = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
+#
+#     zscale = ZScaleInterval()
+#     uw1_vmin, uw1_vmax = zscale.get_limits(uw1_stack)
+#     uvv_vmin, uvv_vmax = zscale.get_limits(uvv_stack)
+#     uw1_norm = Normalize(vmin=uw1_vmin, vmax=uw1_vmax)
+#     uvv_norm = Normalize(vmin=uvv_vmin, vmax=uvv_vmax)
+#
+#     # # study how the redness affects the column density as a function of radius
+#     fig, ax = plt.subplots()
+#     for dust_redness in dust_rednesses[1:]:
+#         ax.plot(
+#             ccds[dust_redness].rs_km,
+#             ccds[dust_redness].cd_cm2 / ccds[dust_rednesses[0]].cd_cm2,
+#             label=f"cd ratio at {dust_redness=}",
+#         )
+#     ax.set_xscale("log")
+#     ax.set_xlabel("distance r from nucleus, km")
+#     ax.set_ylabel("fragment column density ratio")
+#     ax.legend()
+#     fig.suptitle(
+#         f"Rh: {helio_r.to_value(u.AU):1.4f} AU, Delta: {delta.to_value(u.AU):1.4f} AU,\nTime from perihelion: {time_from_perihelion.to_value(u.day)} days"  # type: ignore
+#     )
+#     uw1_offset_img, uw1_text_label = make_image_annotations(
+#         img=uw1_stack, norm=uw1_norm, t="Filter: uw1"
+#     )
+#     uw1_offset_img.image.axes = ax
+#     ab_uw1 = AnnotationBbox(
+#         uw1_offset_img,
+#         xy=(1, 1),
+#         xycoords="axes fraction",
+#         box_alignment=(0.5, 0.5),
+#         bboxprops=dict(alpha=0.0),
+#     )
+#     tab_uw1 = AnnotationBbox(
+#         uw1_text_label,
+#         xy=(1.0, 0.91),
+#         xycoords="axes fraction",
+#         bboxprops=dict(alpha=0.0),
+#     )
+#     ax.add_artist(ab_uw1)
+#     ax.add_artist(tab_uw1)
+#     uvv_offset_img, uvv_text_label = make_image_annotations(
+#         img=uvv_stack, norm=uvv_norm, t="Filter: uvv"
+#     )
+#     uvv_offset_img.image.axes = ax
+#     ab_uvv = AnnotationBbox(
+#         uvv_offset_img,
+#         xy=(1, 1),
+#         xycoords="axes fraction",
+#         box_alignment=(0.5, 1.5),
+#         bboxprops=dict(alpha=0.0),
+#     )
+#     tab_uvv = AnnotationBbox(
+#         uvv_text_label,
+#         # xy=(1.0, 0.87),
+#         xy=(1.0, 0.65),
+#         xycoords="axes fraction",
+#         bboxprops=dict(alpha=0.0),
+#     )
+#     ax.add_artist(ab_uvv)
+#     ax.add_artist(tab_uvv)
+#     plt.show()
+#     plt.close()
 
 
 def vectorial_fitting_plots(
@@ -352,7 +353,7 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
     t_perihelion = t_perihelion_list[0].t_perihelion
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
 
-    print(f"Heliocentric distance: {helio_r.to_value(u.AU):1.4f} AU")
+    print(f"Heliocentric distance: {helio_r.to_value(u.AU):1.4f} AU")  # type: ignore
     print(f"Date: {Time(np.mean(stacked_epoch.MID_TIME))}")
     print(f"Perihelion: {t_perihelion}")
     print("Near-nucleus vectorial model fitting:")
@@ -373,14 +374,14 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
             f"Redness: {dust_redness}\tQ: {whole_fits[dust_redness].best_fit_Q:1.3e}\tErr: {whole_fits[dust_redness].best_fit_Q_err:1.3e}"
         )
 
-    column_density_ratio_plot(
-        stacked_epoch=stacked_epoch,
-        dust_rednesses=dust_rednesses,
-        ccds=ccds,
-        uw1_stack=uw1_stack,
-        uvv_stack=uvv_stack,
-        t_perihelion=t_perihelion,
-    )
+    # column_density_ratio_plot(
+    #     stacked_epoch=stacked_epoch,
+    #     dust_rednesses=dust_rednesses,
+    #     ccds=ccds,
+    #     uw1_stack=uw1_stack,
+    #     uvv_stack=uvv_stack,
+    #     t_perihelion=t_perihelion,
+    # )
 
     vectorial_fitting_plots(
         stacked_epoch=stacked_epoch,

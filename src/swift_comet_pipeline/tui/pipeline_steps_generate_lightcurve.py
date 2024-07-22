@@ -1,4 +1,4 @@
-import itertools
+# import itertools
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.lightcurve.lightcurve import lightcurve_to_dataframe
-from swift_comet_pipeline.lightcurve.lightcurve_seaborn import show_lightcurve
 from swift_comet_pipeline.lightcurve.lightcurve_vectorial import (
     lightcurve_from_vectorial_fits,
 )
@@ -142,9 +141,9 @@ def generate_lightcurve_step(swift_project_config: SwiftProjectConfig) -> None:
             best_full_fit_lightcurve_df,
         ],
         [
-            pipeline_files.best_near_fit_lightcurve,
-            pipeline_files.best_far_fit_lightcurve,
-            pipeline_files.best_full_fit_lightcurve,
+            pipeline_files.best_near_fit_lightcurves[stacking_method],
+            pipeline_files.best_far_fit_lightcurves[stacking_method],
+            pipeline_files.best_full_fit_lightcurves[stacking_method],
         ],
     ):
         lc_product.data = lc_df_data
@@ -161,15 +160,10 @@ def generate_lightcurve_step(swift_project_config: SwiftProjectConfig) -> None:
         :, ~complete_vectorial_lightcurves_df.columns.duplicated()
     ]
 
-    # t = itertools.chain.from_iterable(list(near_fit_lcs.values()))
-    # near_lcs = [x for x in t if x is not None]
-    # print(f"{near_lcs}")
-    # show_lightcurve(lc=near_lcs)
-
-    pipeline_files.complete_vectorial_lightcurve.data = (
+    pipeline_files.complete_vectorial_lightcurves[stacking_method].data = (
         complete_vectorial_lightcurves_df
     )
-    pipeline_files.complete_vectorial_lightcurve.write()
+    pipeline_files.complete_vectorial_lightcurves[stacking_method].write()
 
 
 # def show_lightcurves(df) -> None:

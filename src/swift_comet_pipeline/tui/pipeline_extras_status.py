@@ -43,7 +43,6 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
 
     print("")
 
-    # epoch_ids = pipeline_files.get_epoch_ids()
     epoch_products = data_ingestion_files.epochs
     if epoch_products is None:
         print("No epochs defined yet!")
@@ -62,7 +61,7 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             continue
 
         rprint(Panel(f"Epoch {parent_epoch.epoch_id}:", expand=False))
-        print("Stacked images:")
+        rprint("[orange3]Stacked images:[/orange3]")
         for filter_type, stacking_method in product(filters, stacking_methods):
             stack_exists = epoch_subpipeline.stacked_images[
                 filter_type, stacking_method
@@ -73,7 +72,7 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             )
         print("")
 
-        print("Background analysis:")
+        rprint("[orange3]Background analysis:[/orange3]")
         for filter_type, stacking_method in product(filters, stacking_methods):
             bg_exists = epoch_subpipeline.background_analyses[
                 filter_type, stacking_method
@@ -84,7 +83,7 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             )
         print("")
 
-        print("Background-subtracted images: ")
+        rprint("[orange3]Background-subtracted images: [/orange3]")
         for filter_type, stacking_method in product(filters, stacking_methods):
             img_exists = epoch_subpipeline.background_subtracted_images[
                 filter_type, stacking_method
@@ -95,7 +94,7 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             )
         print("")
 
-        print("Q vs aperture radius analysis: ")
+        rprint("[orange3]Q vs aperture radius analysis: [/orange3]")
         for stacking_method in stacking_methods:
             q_vs_aperture_exists = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
                 stacking_method
@@ -106,7 +105,7 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             )
         print("")
 
-        print("Radial profile extraction: ")
+        rprint("[orange3]Radial profile extraction: [/orange3]")
         for filter_type, stacking_method in product(filters, stacking_methods):
             extracted_profile_exists = epoch_subpipeline.extracted_profiles[
                 filter_type, stacking_method
@@ -117,13 +116,35 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
             )
         print("")
 
-        print("Extracted profile images: ")
+        rprint("[orange3]Extracted profile images: [/orange3]")
         for filter_type, stacking_method in product(filters, stacking_methods):
             extracted_profile_img_exists = epoch_subpipeline.extracted_profile_images[
                 filter_type, stacking_method
             ].product_path.exists()
             rprint(
                 f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(extracted_profile_img_exists)}\t",
+                end="",
+            )
+        print("")
+
+        rprint("[orange3]Median subtracted images: [/orange3]")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            med_sub_img_exists = epoch_subpipeline.median_subtracted_images[
+                filter_type, stacking_method
+            ].product_path.exists()
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(med_sub_img_exists)}\t",
+                end="",
+            )
+        print("")
+
+        rprint("[orange3]Median divided images: [/orange3]")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            med_div_img_exists = epoch_subpipeline.median_divided_images[
+                filter_type, stacking_method
+            ].product_path.exists()
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(med_div_img_exists)}\t",
                 end="",
             )
         print("\n\n")
