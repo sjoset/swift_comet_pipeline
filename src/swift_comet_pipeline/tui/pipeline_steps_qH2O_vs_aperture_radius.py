@@ -319,8 +319,6 @@ def q_vs_aperture_radius_at_epoch(
         # TODO: error message
         return
 
-    # km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-
     print(
         f"Starting analysis of {epoch_id}: observation at {np.mean(stacked_epoch.HELIO)} AU"
     )
@@ -379,7 +377,7 @@ def q_vs_aperture_radius_at_epoch(
         uw1_bg=uw1_bg,
         uvv_bg=uvv_bg,
         max_aperture_radius=150000 * u.km,  # type: ignore
-        num_apertures=300,
+        num_apertures=30,
     )
 
     by_dust_redness = lambda x: x.dust_redness
@@ -387,23 +385,22 @@ def q_vs_aperture_radius_at_epoch(
 
     q_plateau_list_dict = get_production_plateaus(sorted_q_vs_r=sorted_q_vs_r)
 
-    for dust_redness in dust_rednesses:
-        print(f"{dust_redness=}")
-        if q_plateau_list_dict[dust_redness] is not None:
-            print(f"{q_plateau_list_dict[dust_redness]}")
-        else:
-            print("None found")
+    # for dust_redness in dust_rednesses:
+    #     print(f"{dust_redness=}")
+    #     if q_plateau_list_dict[dust_redness] is not None:
+    #         print(f"{q_plateau_list_dict[dust_redness]}")
+    #     else:
+    #         print("None found")
 
-    print(q_plateau_list_dict)
+    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
+    for dust_redness, q_vs_aperture_radius_entry_at_redness in groupby(sorted_q_vs_r, key=by_dust_redness):  # type: ignore
+        qvarear = list(q_vs_aperture_radius_entry_at_redness)
 
-    # for dust_redness, q_vs_aperture_radius_entry_at_redness in groupby(sorted_q_vs_r, key=by_dust_redness):  # type: ignore
-    #     qvarear = list(q_vs_aperture_radius_entry_at_redness)
-    #
-    #     show_q_vs_aperture_with_plateaus(
-    #         q_vs_aperture_radius_list=qvarear,
-    #         q_plateau_list=q_plateau_list_dict[dust_redness],
-    #         km_per_pix=km_per_pix,
-    #     )
+        show_q_vs_aperture_with_plateaus(
+            q_vs_aperture_radius_list=qvarear,
+            q_plateau_list=q_plateau_list_dict[dust_redness],
+            km_per_pix=km_per_pix,
+        )
 
     df = dataframe_from_q_vs_aperture_radius_entry_list(sorted_q_vs_r)
     df.attrs.update(dust_plateau_list_dict_serialize(q_plateau_list_dict))  # type: ignore
@@ -430,6 +427,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
     # dust_rednesses = [DustReddeningPercent(0)] + [
     #     DustReddeningPercent(x) for x in np.geomspace(1, 50, num=50, endpoint=True)
     # ]
+
     dust_rednesses = [
         DustReddeningPercent(x)
         for x in np.linspace(start=0.0, stop=50.0, num=51, endpoint=True)
@@ -446,114 +444,3 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
             epoch_subpipeline_files=esf, dust_rednesses=dust_rednesses
         )
         print("")
-
-    # # select the epoch we want to process
-    # parent_epoch = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_exist=True
-    # )
-    # if parent_epoch is None:
-    #     return
-    #
-    # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-    #     parent_epoch=parent_epoch
-    # )
-    # if epoch_subpipeline is None:
-    #     # TODO: error message
-    #     return
-
-    # epoch_id = epoch_subpipeline.parent_epoch.epoch_id
-    #
-    # epoch_subpipeline.stacked_epoch.read()
-    # stacked_epoch = epoch_subpipeline.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     # TODO: error message
-    #     return
-    #
-    # km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    #
-    # print(
-    #     f"Starting analysis of {epoch_id}: observation at {np.mean(stacked_epoch.HELIO)} AU"
-    # )
-    #
-    # # TODO: select which method with menu
-    # print("Selecting stacking method: sum")
-    # stacking_method = StackingMethod.summation
-    #
-    # # load background-subtracted images
-    # epoch_subpipeline.background_subtracted_images[
-    #     SwiftFilter.uw1, stacking_method
-    # ].read()
-    # epoch_subpipeline.background_subtracted_images[
-    #     SwiftFilter.uvv, stacking_method
-    # ].read()
-    #
-    # uw1_img = epoch_subpipeline.background_subtracted_images[
-    #     SwiftFilter.uw1, stacking_method
-    # ].data.data
-    # uvv_img = epoch_subpipeline.background_subtracted_images[
-    #     SwiftFilter.uvv, stacking_method
-    # ].data.data
-    #
-    # if uw1_img is None or uvv_img is None:
-    #     print("Error loading background-subtracted images!")
-    #     return
-    #
-    # epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].read()
-    # epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].read()
-    # uw1_bg = dict_to_background_result(
-    #     epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].data
-    # )
-    # uvv_bg = dict_to_background_result(
-    #     epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].data
-    # )
-    #
-    # if uw1_bg is None or uvv_bg is None:
-    #     print("Error loading background analysis!")
-    #     return
-    #
-    # # TODO: use the larger end of the plateau as the radius of an aperture on a completed vectorial model, and use *that* calculate total OH and match production
-    #
-    # dust_rednesses = [DustReddeningPercent(0)] + [
-    #     DustReddeningPercent(x) for x in np.geomspace(1, 50, num=50, endpoint=True)
-    # ]
-    #
-    # q_vs_r = q_vs_aperture_radius(
-    #     stacked_epoch=stacked_epoch,
-    #     uw1_img=uw1_img,
-    #     uvv_img=uvv_img,
-    #     dust_rednesses=dust_rednesses,
-    #     uw1_bg=uw1_bg,
-    #     uvv_bg=uvv_bg,
-    #     max_aperture_radius=150000 * u.km,  # type: ignore
-    #     num_apertures=300,
-    # )
-    #
-    # by_dust_redness = lambda x: x.dust_redness
-    # sorted_q_vs_r = sorted(q_vs_r, key=by_dust_redness)  # type: ignore
-    #
-    # q_plateau_list_dict = get_production_plateaus(sorted_q_vs_r=sorted_q_vs_r)
-    #
-    # for dust_redness in dust_rednesses:
-    #     print(f"{dust_redness=}")
-    #     if q_plateau_list_dict[dust_redness] is not None:
-    #         print(f"{q_plateau_list_dict[dust_redness]}")
-    #     else:
-    #         print("None found")
-    #
-    # print(q_plateau_list_dict)
-    #
-    # # for dust_redness, q_vs_aperture_radius_entry_at_redness in groupby(sorted_q_vs_r, key=by_dust_redness):  # type: ignore
-    # #     qvarear = list(q_vs_aperture_radius_entry_at_redness)
-    # #
-    # #     show_q_vs_aperture_with_plateaus(
-    # #         q_vs_aperture_radius_list=qvarear,
-    # #         q_plateau_list=q_plateau_list_dict[dust_redness],
-    # #         km_per_pix=km_per_pix,
-    # #     )
-    #
-    # df = dataframe_from_q_vs_aperture_radius_entry_list(sorted_q_vs_r)
-    # df.attrs.update(dust_plateau_list_dict_serialize(q_plateau_list_dict))  # type: ignore
-    #
-    # rprint("[green]Writing q vs aperture radius results ...[/green]")
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data = df
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].write()

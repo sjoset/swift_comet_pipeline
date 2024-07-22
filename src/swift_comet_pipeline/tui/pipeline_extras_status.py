@@ -104,4 +104,26 @@ def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:
                 f"{stacking_method} {bool_to_x_or_check(q_vs_aperture_exists)}\t",
                 end="",
             )
+        print("")
+
+        print("Radial profile extraction: ")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            extracted_profile_exists = epoch_subpipeline.extracted_profiles[
+                filter_type, stacking_method
+            ].product_path.exists()
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(extracted_profile_exists)}\t",
+                end="",
+            )
+        print("")
+
+        print("Extracted profile images: ")
+        for filter_type, stacking_method in product(filters, stacking_methods):
+            extracted_profile_img_exists = epoch_subpipeline.extracted_profile_images[
+                filter_type, stacking_method
+            ].product_path.exists()
+            rprint(
+                f"{filter_to_file_string(filter_type)} {stacking_method}: {bool_to_x_or_check(extracted_profile_img_exists)}\t",
+                end="",
+            )
         print("\n\n")

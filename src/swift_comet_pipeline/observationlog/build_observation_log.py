@@ -202,8 +202,10 @@ def build_observation_log(
                 ((2 * np.pi) / (3600.0 * 360.0))
                 * row.ARCSECS_PER_PIXEL
                 * row.OBS_DIS
-                * u.AU
-            ).to_value(u.km)
+                * u.AU  # type: ignore
+            ).to_value(
+                u.km  # type: ignore
+            )
         ),
         axis=1,
     )

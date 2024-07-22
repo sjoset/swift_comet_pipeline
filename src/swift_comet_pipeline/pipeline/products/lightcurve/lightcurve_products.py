@@ -7,6 +7,7 @@ from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import 
 )
 
 
+# TODO: light curve products should depend on the stacking method!
 class LightCurveProduct(PipelineProduct):
 
     def __init__(self, product_path: pathlib.Path):

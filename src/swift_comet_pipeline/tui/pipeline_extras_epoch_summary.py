@@ -91,6 +91,8 @@ def pipeline_extra_epoch_summary(
     print("-----Stacked epoch-----")
     print(stacked_epoch)
 
+    print(stacked_epoch.OBS_DIS)
+
 
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,

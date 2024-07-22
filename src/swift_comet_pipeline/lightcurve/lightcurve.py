@@ -3,7 +3,6 @@ from typing import TypeAlias
 
 import pandas as pd
 from astropy.time import Time
-import astropy.units as u
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 
@@ -24,12 +23,10 @@ LightCurve: TypeAlias = list[LightCurveEntry | None]
 
 
 def lightcurve_to_dataframe(lc: LightCurve) -> pd.DataFrame:
-
     data_dict = [asdict(lc_entry) for lc_entry in lc if lc_entry is not None]
     df = pd.DataFrame(data=data_dict)
     return df
 
 
 def dataframe_to_lightcurve(df: pd.DataFrame) -> LightCurve:
-
     return df.apply(lambda row: LightCurveEntry(**row), axis=1).to_list()

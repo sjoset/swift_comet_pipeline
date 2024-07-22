@@ -37,6 +37,7 @@ from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stackin
 from swift_comet_pipeline.tui.tui_common import (
     clear_screen,
     get_selection,
+    wait_for_key,
 )
 
 
@@ -148,6 +149,7 @@ def main():
             pipeline_extras_menu(swift_project_config=swift_project_config)
         else:
             exit_program = True
+        wait_for_key()
 
 
 if __name__ == "__main__":
