@@ -8,12 +8,16 @@ from swift_comet_pipeline.swift.uvot_image import (
 from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
 
 
-def comet_manual_aperture(
+def aperture_count_rate(
     img: SwiftUVOTImage,
     aperture_center: PixelCoord,
     aperture_radius: float,
     bg: CountRatePerPixel,
 ) -> CountRate:
+    """
+    Constructs a circular aperture of aperture_radius at aperture_center and takes the sum of pixels
+    inside as the count rate, along with its error
+    """
     comet_aperture = CircularAperture(
         (aperture_center.x, aperture_center.y), r=aperture_radius
     )

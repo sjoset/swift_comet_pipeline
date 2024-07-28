@@ -187,15 +187,19 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     if aperture_lc is None:
         return
 
-    # # best near-fit lightcurve
-    # pipeline_files.best_near_fit_lightcurve.read_product_if_not_loaded()
-    # vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurve.data
-    #
-    # if vectorial_near_fit_df is None:
-    #     return
-    #
-    # vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
-    #
+    # best near-fit lightcurve
+    pipeline_files.best_near_fit_lightcurves[
+        stacking_method
+    ].read_product_if_not_loaded()
+    vectorial_near_fit_df = pipeline_files.best_near_fit_lightcurves[
+        stacking_method
+    ].data
+
+    if vectorial_near_fit_df is None:
+        return
+
+    vectorial_near_fit_lc = dataframe_to_lightcurve(df=vectorial_near_fit_df)
+
     # # best far-fit lightcurve
     # pipeline_files.best_far_fit_lightcurve.read_product_if_not_loaded()
     # vectorial_far_fit_df = pipeline_files.best_far_fit_lightcurve.data
@@ -231,9 +235,9 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     # lc_total = aperture_lc + vectorial_lcs
     lc_total = aperture_lc
 
-    # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc)
-    # show_lightcurve(lc=lc_total, best_lc=vectorial_near_fit_lc + vectorial_far_fit_lc)
-    show_lightcurve_mpl(lc=lc_total)
+    show_lightcurve_mpl(lc=lc_total, best_lc=vectorial_near_fit_lc)
+    # show_lightcurve_mpl(lc=lc_total, best_lc=vectorial_near_fit_lc + vectorial_far_fit_lc)
+    # show_lightcurve_mpl(lc=lc_total)
 
 
 def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None:

@@ -2,31 +2,16 @@ import numpy as np
 
 from scipy.ndimage import uniform_filter1d
 from itertools import groupby
-from dataclasses import asdict, dataclass
 from typing import List
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.water_production.q_vs_aperture_radius_entry import (
+from swift_comet_pipeline.aperture.plateau import Plateau, ProductionPlateau
+from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
 )
 
 
-@dataclass
-class Plateau:
-    begin_index: int
-    end_index: int
-
-
-@dataclass
-class ProductionPlateau:
-    begin_r: float
-    end_r: float
-    begin_q: float
-    end_q: float
-
-
 # TODO: can we use this for a CometRadialProfile as well?
-def plateau_detect(
+def find_plateaus(
     ys: np.ndarray, xstep: float, smoothing: int, threshold: float, min_length: int
 ) -> List[Plateau]:
     """
@@ -104,7 +89,7 @@ def find_production_plateaus(
     thresholds = np.geomspace(start=1e-6, stop=1e-3, num=41, endpoint=True)
 
     for cur_threshold in thresholds:
-        q_plateau_list = plateau_detect(
+        q_plateau_list = find_plateaus(
             ys=qs,
             xstep=r_step,
             smoothing=np.round(3 / r_step).astype(np.int32),
@@ -130,32 +115,3 @@ def find_production_plateaus(
 
     # print("No plateaus found!")
     return []
-
-
-def production_plateau_to_dict(plateau: ProductionPlateau) -> dict:
-    return asdict(plateau)
-
-
-def dict_to_production_plateau(raw_yaml: dict) -> ProductionPlateau:
-    return ProductionPlateau(**raw_yaml)
-
-
-def dust_plateau_list_dict_serialize(
-    p: dict[DustReddeningPercent, list[ProductionPlateau]]
-) -> dict[DustReddeningPercent, list[dict]]:
-    serialized_dict = {}
-    for dust_redness, plateau_list_at_redness in p.items():
-        serialized_dict[dust_redness] = [asdict(x) for x in plateau_list_at_redness]
-    return serialized_dict
-
-
-def dust_plateau_list_dict_unserialize(
-    serialized_dict: dict[DustReddeningPercent, list[dict]]
-) -> dict[DustReddeningPercent, list[ProductionPlateau]]:
-    unserialized_dict = {}
-    for dust_redness, plateau_dict_list_at_redness in serialized_dict.items():
-        unserialized_dict[dust_redness] = [
-            dict_to_production_plateau(raw_yaml=x) for x in plateau_dict_list_at_redness
-        ]
-
-    return unserialized_dict

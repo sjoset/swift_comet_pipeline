@@ -4,7 +4,9 @@ import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
-from swift_comet_pipeline.comet.plateau_detect import dust_plateau_list_dict_unserialize
+from swift_comet_pipeline.aperture.plateau_serialize import (
+    dust_plateau_list_dict_unserialize,
+)
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
     EpochSubpipelineFiles,
