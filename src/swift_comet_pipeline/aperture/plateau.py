@@ -7,6 +7,7 @@ class Plateau:
     end_index: int
 
 
+# TODO: rename begin_r and end_r to begin_r_pix, end_r_pix
 @dataclass
 class ProductionPlateau:
     begin_r: float

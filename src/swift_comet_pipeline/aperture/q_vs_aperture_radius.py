@@ -1,5 +1,6 @@
 from itertools import product, groupby
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import numpy as np
 from tqdm import tqdm
@@ -7,7 +8,10 @@ from rich import print as rprint
 import astropy.units as u
 
 from swift_comet_pipeline.aperture.aperture_count_rate import aperture_count_rate
-from swift_comet_pipeline.aperture.plateau import ProductionPlateau
+from swift_comet_pipeline.aperture.plateau import (
+    ProductionPlateau,
+    dict_to_production_plateau,
+)
 from swift_comet_pipeline.aperture.plateau_detect import find_production_plateaus
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
@@ -44,6 +48,11 @@ from swift_comet_pipeline.water_production.num_OH_to_Q import num_OH_to_Q_vector
 class CountrateVsApertureRadius:
     r_pixels: list[float]
     count_rates: list[CountRate]
+
+
+ReddeningToProductionPlateauListDict: TypeAlias = dict[
+    DustReddeningPercent, list[ProductionPlateau]
+]
 
 
 def counts_vs_aperture_radius(
@@ -211,10 +220,9 @@ def q_vs_aperture_radius(
 
 def get_production_plateaus(
     sorted_q_vs_r: list[QvsApertureRadiusEntry],
-) -> dict[DustReddeningPercent, list[ProductionPlateau]]:
+) -> ReddeningToProductionPlateauListDict:
     """
     sorted_q_vs_r should have been previously sorted by dust_redness to make sure the entries are contiguous so groupby() catches all of them
-    Returns a dict of key DustReddeningPercent --> list of production plateaus found at that redness
     """
 
     by_redness = lambda x: x.dust_redness
@@ -231,10 +239,29 @@ def get_production_plateaus(
     return q_plateau_list_dict
 
 
+def get_production_plateaus_from_yaml(
+    yaml_dict: dict,
+) -> ReddeningToProductionPlateauListDict:
+    """
+    Takes a ReddeningToProductionPlateauListDict that was stored as a dict in metadata and reconstructs into ReddeningToProductionPlateauListDict
+    """
+
+    q_plateau_list_dict: ReddeningToProductionPlateauListDict = {}
+
+    for dust_redness, plateau_list_dict in yaml_dict.items():
+        q_plateau_list_dict[dust_redness] = [
+            dict_to_production_plateau(x) for x in plateau_list_dict
+        ]
+
+    return q_plateau_list_dict
+
+
 def q_vs_aperture_radius_at_epoch(
     epoch_subpipeline_files: EpochSubpipelineFiles,
     dust_rednesses: list[DustReddeningPercent],
 ) -> None:
+
+    # TODO: document function
 
     epoch_id = epoch_subpipeline_files.parent_epoch.epoch_id
 
