@@ -2,6 +2,9 @@ from enum import StrEnum
 
 import numpy as np
 
+from swift_comet_pipeline.aperture.plateau_distribution_seaborn import (
+    show_plateau_distribution_seaborn,
+)
 from swift_comet_pipeline.aperture.q_vs_aperture_kde_seaborn import (
     show_q_density_estimates_vs_redness,
 )
@@ -10,6 +13,9 @@ from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
 )
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
     q_vs_aperture_radius_entry_list_from_dataframe,
+)
+from swift_comet_pipeline.aperture.q_vs_aperture_radius_seaborn import (
+    show_q_vs_aperture_radius_seaborn,
 )
 from swift_comet_pipeline.lightcurve.lightcurve import dataframe_to_lightcurve
 from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
@@ -44,7 +50,11 @@ class PipelineExtrasMenuEntry(StrEnum):
     comet_centers = "Raw images with comet centers marked"
     show_aperture_lightcurve = "show aperture lightcurve"
     show_vectorial_lightcurves = "show vectorial lightcurves"
-    show_ridgeplot = "show ridgeplot"
+    show_q_histograms_vs_redness = "show q(H2O) histograms vs. dust redness"
+    show_q_vs_aperture_radius = "show q vs aperture radius as function of redness"
+    show_plateau_distribution = (
+        "show distribution of production plateaus as a function of redness"
+    )
 
     @classmethod
     def all_extras(cls):
@@ -78,8 +88,12 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
             show_aperture_lightcurve(swift_project_config=swift_project_config)
         elif step == PipelineExtrasMenuEntry.show_vectorial_lightcurves:
             show_vectorial_lightcurves(swift_project_config=swift_project_config)
-        elif step == PipelineExtrasMenuEntry.show_ridgeplot:
-            show_ridgeplot(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.show_q_histograms_vs_redness:
+            show_q_histograms_vs_redness(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.show_q_vs_aperture_radius:
+            show_q_vs_aperture_radius(swift_project_config=swift_project_config)
+        elif step == PipelineExtrasMenuEntry.show_plateau_distribution:
+            show_plateau_distribution(swift_project_config=swift_project_config)
         else:
             exit_menu = True
 
@@ -87,7 +101,8 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
 
 
 def mark_comet_centers(swift_project_config: SwiftProjectConfig) -> None:
-    pass
+    del swift_project_config
+    return
     # """
     # Finds images in uvv and uw1 filters, and outputs pngs images of each
     # observation annotated with the center of the comet marked.
@@ -373,7 +388,55 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     )
 
 
-def show_ridgeplot(swift_project_config: SwiftProjectConfig) -> None:
+def show_q_histograms_vs_redness(swift_project_config: SwiftProjectConfig) -> None:
+
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    parent_epoch = stacked_epoch_menu(
+        pipeline_files=pipeline_files, require_background_analysis_to_exist=True
+    )
+    if parent_epoch is None:
+        return
+
+    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=parent_epoch
+    )
+    if epoch_subpipeline is None:
+        return
+
+    epoch_subpipeline.stacked_epoch.read()
+    stacked_epoch = epoch_subpipeline.stacked_epoch.data
+    if stacked_epoch is None:
+        print("Error reading epoch!")
+        return
+
+    stacking_method = StackingMethod.summation
+
+    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
+        stacking_method
+    ].read_product_if_not_loaded()
+    df = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data
+
+    q_vs_r = q_vs_aperture_radius_entry_list_from_dataframe(df=df)
+    q_plateau_list_dict = get_production_plateaus_from_yaml(yaml_dict=df.attrs)
+
+    show_q_density_estimates_vs_redness(
+        q_vs_aperture_radius_list=q_vs_r,
+        q_plateau_list_dict=q_plateau_list_dict,
+    )
+
+
+def show_q_vs_aperture_radius(swift_project_config: SwiftProjectConfig) -> None:
 
     pipeline_files = PipelineFiles(swift_project_config.project_path)
     data_ingestion_files = pipeline_files.data_ingestion_files
@@ -416,17 +479,58 @@ def show_ridgeplot(swift_project_config: SwiftProjectConfig) -> None:
     q_vs_r = q_vs_aperture_radius_entry_list_from_dataframe(df=df)
     q_plateau_list_dict = get_production_plateaus_from_yaml(yaml_dict=df.attrs)
 
-    # by_dust_redness = lambda x: x.dust_redness
-    # sorted_q_vs_r = sorted(q_vs_r, key=by_dust_redness)  # type: ignore
-
-    show_q_density_estimates_vs_redness(
+    show_q_vs_aperture_radius_seaborn(
         q_vs_aperture_radius_list=q_vs_r,
         q_plateau_list_dict=q_plateau_list_dict,
         km_per_pix=km_per_pix,
     )
 
-    # show_q_vs_aperture_ridgeplot(
-    #     sorted_q_vs_aperture_radius_list=sorted_q_vs_r,
-    #     q_plateau_list_dict=q_plateau_list_dict,
-    #     km_per_pix=km_per_pix,
-    # )
+
+def show_plateau_distribution(swift_project_config: SwiftProjectConfig) -> None:
+
+    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    data_ingestion_files = pipeline_files.data_ingestion_files
+    epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+
+    if data_ingestion_files.epochs is None:
+        print("No epochs found!")
+        return
+
+    if epoch_subpipeline_files is None:
+        print("No epochs available to stack!")
+        return
+
+    parent_epoch = stacked_epoch_menu(
+        pipeline_files=pipeline_files, require_background_analysis_to_exist=True
+    )
+    if parent_epoch is None:
+        return
+
+    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        parent_epoch=parent_epoch
+    )
+    if epoch_subpipeline is None:
+        return
+
+    epoch_subpipeline.stacked_epoch.read()
+    stacked_epoch = epoch_subpipeline.stacked_epoch.data
+    if stacked_epoch is None:
+        print("Error reading epoch!")
+        return
+
+    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
+    stacking_method = StackingMethod.summation
+
+    epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
+        stacking_method
+    ].read_product_if_not_loaded()
+    df = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data
+
+    q_vs_r = q_vs_aperture_radius_entry_list_from_dataframe(df=df)
+    q_plateau_list_dict = get_production_plateaus_from_yaml(yaml_dict=df.attrs)
+
+    show_plateau_distribution_seaborn(
+        q_vs_aperture_radius_list=q_vs_r,
+        q_plateau_list_dict=q_plateau_list_dict,
+        km_per_pix=km_per_pix,
+    )

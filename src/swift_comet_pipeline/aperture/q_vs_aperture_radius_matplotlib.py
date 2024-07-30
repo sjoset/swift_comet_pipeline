@@ -1,17 +1,8 @@
-from itertools import groupby
-
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from swift_comet_pipeline.aperture.plateau import ProductionPlateau
-from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
-    ReddeningToProductionPlateauListDict,
-)
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
-    dataframe_from_q_vs_aperture_radius_entry_list,
 )
 
 
