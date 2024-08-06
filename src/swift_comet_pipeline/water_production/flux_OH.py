@@ -1,4 +1,4 @@
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 
 import numpy as np
 from astropy.time import Time
@@ -18,7 +18,7 @@ OHFlux: TypeAlias = ValueAndStandardDev
 
 
 def beta_parameter(
-    dust_redness: DustReddeningPercent, solar_spectrum_time: Optional[Time] = None
+    dust_redness: DustReddeningPercent, solar_spectrum_time: Time | None = None
 ) -> float:
     if solar_spectrum_time is None:
         # arbitrary date, happy birthday Mom
@@ -27,9 +27,7 @@ def beta_parameter(
     spc = read_swift_pipeline_config()
     if spc is None:
         print("Could not read pipeline configuration!")
-        # TODO: do something better with the error handling
-        # TODO: just change this function to return an Optional?
-        return 0
+        exit(1)
 
     solar_count_rate_in_uw1 = solar_count_rate_in_filter(
         solar_spectrum_path=spc.solar_spectrum_path,

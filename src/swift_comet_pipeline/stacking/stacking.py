@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, List
+from typing import Tuple, List
 
 import numpy as np
 from astropy.io import fits
@@ -24,7 +24,7 @@ from swift_comet_pipeline.swift.coincidence_correction import coincidence_correc
 def determine_stacking_image_size(
     swift_data: SwiftData,
     epoch: Epoch,
-) -> Optional[Tuple[int, int]]:
+) -> Tuple[int, int] | None:
     """
     Opens every FITS file specified in the given epoch and finds the image size necessary to accommodate
     the largest image involved in the stack, so we can pad out the smaller images and stack them in one step

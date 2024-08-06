@@ -1,5 +1,4 @@
 import pathlib
-from typing import Optional
 
 from icecream import ic
 from pyvectorial_au.db.cache_init import initialize_vectorial_model_cache
@@ -7,7 +6,7 @@ from pyvectorial_au.db.cache_init import initialize_vectorial_model_cache
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 
 
-__VMCACHE_PATH__: Optional[pathlib.Path] = None
+__VMCACHE_PATH__: pathlib.Path | None = None
 
 
 def _construct_vectorial_model_cache_path(

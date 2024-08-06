@@ -1,14 +1,13 @@
-from typing import Optional
-
 import numpy as np
 from astropy import modeling
 from astropy.modeling.models import Gaussian1D
+from astropy.modeling import FittableModel
 import matplotlib.pyplot as plt
 
 from swift_comet_pipeline.comet.comet_profile import CometProfile
 
 
-def fit_comet_profile_gaussian(comet_profile: CometProfile) -> Optional[Gaussian1D]:
+def fit_comet_profile_gaussian(comet_profile: CometProfile) -> FittableModel | None:  # type: ignore
     """Takes a CometRadialProfile and returns a function f(r) generated from the profile's best-fit gaussian"""
 
     if not comet_profile.center_is_comet_peak:

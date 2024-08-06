@@ -19,7 +19,7 @@ from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
 )
 from swift_comet_pipeline.background.background_result import (
     BackgroundResult,
-    dict_to_background_result,
+    yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
@@ -304,12 +304,12 @@ def q_vs_aperture_radius_at_epoch(
     epoch_subpipeline_files.background_analyses[
         SwiftFilter.uvv, stacking_method
     ].read_product_if_not_loaded()
-    uw1_bg = dict_to_background_result(
+    uw1_bg = yaml_dict_to_background_result(
         epoch_subpipeline_files.background_analyses[
             SwiftFilter.uw1, stacking_method
         ].data
     )
-    uvv_bg = dict_to_background_result(
+    uvv_bg = yaml_dict_to_background_result(
         epoch_subpipeline_files.background_analyses[
             SwiftFilter.uvv, stacking_method
         ].data

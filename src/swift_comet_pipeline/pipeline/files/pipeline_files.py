@@ -1,5 +1,5 @@
 import pathlib
-from typing import Optional, List
+from typing import List
 
 from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
@@ -51,7 +51,7 @@ class PipelineFiles:
         self.project_path = project_path
         self.data_ingestion_files = DataIngestionFiles(project_path=self.project_path)
 
-        self.epoch_subpipelines: Optional[List[EpochSubpipelineFiles]] = None
+        self.epoch_subpipelines: List[EpochSubpipelineFiles] | None = None
         if self.data_ingestion_files.epochs is None:
             return
 
@@ -96,7 +96,7 @@ class PipelineFiles:
 
     def epoch_subpipeline_from_parent_epoch(
         self, parent_epoch: EpochProduct
-    ) -> Optional[EpochSubpipelineFiles]:
+    ) -> EpochSubpipelineFiles | None:
         if self.epoch_subpipelines is None:
             return None
 

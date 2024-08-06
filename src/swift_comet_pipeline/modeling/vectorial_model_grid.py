@@ -1,5 +1,4 @@
 from enum import StrEnum, auto
-from typing import Optional
 
 from icecream import ic
 from pyvectorial_au.model_input.vectorial_model_config import VectorialModelGrid
@@ -16,7 +15,7 @@ class VectorialModelGridQuality(StrEnum):
         return [str(x) for x in cls]
 
 
-__VMGRID_QUALITY__: Optional[VectorialModelGridQuality] = None
+__VMGRID_QUALITY__: VectorialModelGridQuality | None = None
 
 
 def vectorial_model_grid_quality_init(quality: VectorialModelGridQuality) -> None:

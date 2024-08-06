@@ -1,6 +1,6 @@
 from enum import Enum, StrEnum
 from dataclasses import dataclass
-from typing import TypeAlias, Tuple, Optional
+from typing import TypeAlias, Tuple
 
 import numpy as np
 
@@ -31,7 +31,7 @@ class SwiftUVOTImageType(StrEnum):
         return [x for x in cls]
 
 
-def datamode_from_fits_keyword_string(datamode: str) -> Optional[SwiftImageDataMode]:
+def datamode_from_fits_keyword_string(datamode: str) -> SwiftImageDataMode | None:
     if datamode == "IMAGE":
         return SwiftImageDataMode.data_mode
     elif datamode == "EVENT":
@@ -54,7 +54,7 @@ def pixel_resolution_to_datamode(pixel_res: SwiftPixelResolution) -> SwiftImageD
         return SwiftImageDataMode.event_mode
 
 
-def float_to_pixel_resolution(pixel_float: float) -> Optional[SwiftPixelResolution]:
+def float_to_pixel_resolution(pixel_float: float) -> SwiftPixelResolution | None:
     if pixel_float == SwiftPixelResolution.data_mode:
         return SwiftPixelResolution.data_mode
     elif pixel_float == SwiftPixelResolution.event_mode:

@@ -1,6 +1,5 @@
 import copy
 
-from typing import Optional
 from matplotlib.widgets import Slider
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +10,7 @@ from rich import print as rprint
 
 from swift_comet_pipeline.background.background_result import (
     BackgroundResult,
-    dict_to_background_result,
+    yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
@@ -504,7 +503,7 @@ class RadialProfileSelectionPlot(object):
 
 def profile_selection_plot(
     pipeline_files: PipelineFiles, stacking_method: StackingMethod
-) -> Optional[RadialProfileSelectionPlot]:
+) -> RadialProfileSelectionPlot | None:
     data_ingestion_files = pipeline_files.data_ingestion_files
     epoch_subpipelines = pipeline_files.epoch_subpipelines
 
@@ -556,10 +555,10 @@ def profile_selection_plot(
 
     epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].read()
     epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].read()
-    uw1_bg = dict_to_background_result(
+    uw1_bg = yaml_dict_to_background_result(
         epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].data
     )
-    uvv_bg = dict_to_background_result(
+    uvv_bg = yaml_dict_to_background_result(
         epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].data
     )
 

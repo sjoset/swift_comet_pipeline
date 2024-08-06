@@ -38,7 +38,7 @@ def background_result_to_dict(
 
 
 # TODO: make result Optional if this can fail somehow
-def dict_to_background_result(raw_yaml: dict) -> BackgroundResult:
+def yaml_dict_to_background_result(raw_yaml: dict) -> BackgroundResult:
     bg = SimpleNamespace(**raw_yaml)
     return BackgroundResult(
         CountRatePerPixel(**bg.count_rate_per_pixel),

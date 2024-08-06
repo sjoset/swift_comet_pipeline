@@ -6,7 +6,7 @@ import glob
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from typing import Optional, TypeAlias, List
+from typing import TypeAlias, List
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, SwiftUVOTImageType
 
@@ -21,14 +21,14 @@ def swift_orbit_id_from_obsid(obsid: SwiftObservationID) -> SwiftOrbitID:
     return SwiftOrbitID(f"{orbit_int:08}")
 
 
-def swift_observation_id_from_int(number: int) -> Optional[SwiftObservationID]:
+def swift_observation_id_from_int(number: int) -> SwiftObservationID | None:
     converted_string = f"{number:011}"
     if len(converted_string) != 11:
         return None
     return SwiftObservationID(converted_string)
 
 
-def swift_orbit_id_from_int(number: int) -> Optional[SwiftOrbitID]:
+def swift_orbit_id_from_int(number: int) -> SwiftOrbitID | None:
     converted_string = f"{number:08}"
     if len(converted_string) != 8:
         return None
@@ -94,7 +94,7 @@ class SwiftData:
         obsid: SwiftObservationID,
         filter_type: SwiftFilter,
         image_type: SwiftUVOTImageType = SwiftUVOTImageType.sky_units,
-    ) -> Optional[List[pathlib.Path]]:
+    ) -> List[pathlib.Path] | None:
         """
         Given an observation ID, filter type, and image type, returns a list of FITS files that match.
         Some observations have multiple files using the same filter, so we have to do it this way

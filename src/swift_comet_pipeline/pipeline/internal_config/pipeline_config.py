@@ -2,7 +2,6 @@ import os
 import yaml
 import pathlib
 import logging as log
-from typing import Optional
 from dataclasses import dataclass
 
 
@@ -15,7 +14,7 @@ class SwiftPipelineConfig:
     oh_fluorescence_path: pathlib.Path
 
 
-def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
+def _read_yaml(filepath: pathlib.Path) -> dict | None:
     """Read YAML file from disk and return dictionary with the contents"""
     with open(filepath, "r") as stream:
         try:
@@ -27,7 +26,7 @@ def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
     return param_yaml
 
 
-def read_swift_pipeline_config() -> Optional[SwiftPipelineConfig]:
+def read_swift_pipeline_config() -> SwiftPipelineConfig | None:
     script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))
     config_yaml = _read_yaml(script_path / pathlib.Path("pipeline_config.yaml"))
 

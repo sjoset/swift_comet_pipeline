@@ -2,7 +2,6 @@ import numpy as np
 
 from photutils.aperture import CircularAperture, ApertureStats
 
-from typing import Optional
 from enum import StrEnum, auto
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 
@@ -26,7 +25,7 @@ class CometCenterFindingMethod(StrEnum):
 def find_comet_center(
     img: SwiftUVOTImage,
     method: CometCenterFindingMethod = CometCenterFindingMethod.pixel_center,
-    search_aperture: Optional[CircularAperture] = None,
+    search_aperture: CircularAperture | None = None,
 ) -> PixelCoord:
     """
     Coordinates returned are x, y values
@@ -40,7 +39,7 @@ def find_comet_center(
 
 
 def comet_center_by_centroid(
-    img: SwiftUVOTImage, search_aperture: Optional[CircularAperture]
+    img: SwiftUVOTImage, search_aperture: CircularAperture | None
 ) -> PixelCoord:
     if search_aperture is None:
         print("No aperture provided for center finding by centroid!")
@@ -52,7 +51,7 @@ def comet_center_by_centroid(
 
 
 def comet_center_by_peak(
-    img: SwiftUVOTImage, search_aperture: Optional[CircularAperture]
+    img: SwiftUVOTImage, search_aperture: CircularAperture | None
 ) -> PixelCoord:
     if search_aperture is None:
         print("No aperture provided for center finding by peak!")

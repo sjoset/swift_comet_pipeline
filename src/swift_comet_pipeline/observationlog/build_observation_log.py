@@ -1,5 +1,4 @@
 import itertools
-from typing import Optional
 
 import logging as log
 import numpy as np
@@ -33,7 +32,7 @@ from swift_comet_pipeline.swift.uvot_image import (
 def build_observation_log(
     swift_data: SwiftData,
     horizons_id: str,
-) -> Optional[SwiftObservationLog]:
+) -> SwiftObservationLog | None:
     """
     Takes a swift data structure and looks through observation ids that have images that:
         - are from uvot

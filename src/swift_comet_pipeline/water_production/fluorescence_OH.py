@@ -6,7 +6,7 @@ import astropy.units as u
 
 from scipy.interpolate import interp1d
 from dataclasses import dataclass
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 
 from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
 from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
@@ -43,14 +43,13 @@ def read_gfactor_1au_data(fluorescence_file: pathlib.Path) -> FluorescenceGFacto
 # TODO: make rh a parameter and rename function to gfactor: scale the 1AU gfactor data by 1/(rh_in_au)**2
 @cache
 def gfactor_1au(
-    helio_v_kms: float, fluorescence_data: Optional[FluorescenceGFactor1AU] = None
+    helio_v_kms: float, fluorescence_data: FluorescenceGFactor1AU | None = None
 ) -> float:
     if fluorescence_data is None:
         spc = read_swift_pipeline_config()
         if spc is None:
             print("Could not read swift pipeline config!")
-            # TODO: this function should probably just return Optional
-            return 0.0
+            exit(1)
         fluorescence_data = read_gfactor_1au_data(
             fluorescence_file=spc.oh_fluorescence_path
         )
@@ -69,7 +68,7 @@ def flux_OH_to_num_OH(
     helio_r_au: float,
     helio_v_kms: float,
     delta_au: float,
-    fluorescence_data: Optional[FluorescenceGFactor1AU] = None,
+    fluorescence_data: FluorescenceGFactor1AU | None = None,
 ) -> NumOH:
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
     delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore

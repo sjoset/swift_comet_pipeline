@@ -1,5 +1,3 @@
-from typing import Optional
-
 from rich import print as rprint
 from rich.console import Console
 
@@ -27,7 +25,7 @@ def get_float(prompt: str) -> float:
     return user_input
 
 
-def get_selection(selection_list: list) -> Optional[int]:
+def get_selection(selection_list: list) -> int | None:
     user_selection = None
 
     while user_selection is None:
@@ -72,7 +70,7 @@ def get_yes_no() -> bool:
             return False
 
 
-def epoch_menu(data_ingestion_files: DataIngestionFiles) -> Optional[EpochProduct]:
+def epoch_menu(data_ingestion_files: DataIngestionFiles) -> EpochProduct | None:
     """Allows selection of an epoch via a text menu"""
     if data_ingestion_files.epochs is None:
         print("No epochs available!")
@@ -91,7 +89,7 @@ def stacked_epoch_menu(
     pipeline_files: PipelineFiles,
     require_background_analysis_to_exist: bool = False,
     require_background_analysis_to_not_exist: bool = False,
-) -> Optional[EpochProduct]:
+) -> EpochProduct | None:
     """
     The returned EpochProduct is the parent epoch that produced the selected stacked epoch!
 

@@ -1,7 +1,7 @@
 import pathlib
 import glob
 import calendar
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 from astropy.time import Time
@@ -41,10 +41,10 @@ class DataIngestionFiles:
             product_path=self.project_path
         )
 
-        self.epochs: Optional[List[EpochProduct]] = None
+        self.epochs: List[EpochProduct] | None = None
         self.scan_for_epoch_files()
 
-    def _find_epoch_files(self) -> Optional[List[pathlib.Path]]:
+    def _find_epoch_files(self) -> List[pathlib.Path] | None:
         """If there are epoch files generated for this project, return a list of paths to them, otherwise None"""
         glob_pattern = str(self.epoch_dir_path / pathlib.Path("*.parquet"))
         epoch_filename_list = sorted(glob.glob(glob_pattern))

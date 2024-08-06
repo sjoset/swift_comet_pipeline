@@ -1,4 +1,3 @@
-from typing import Optional
 from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import (
     EpochProduct,
 )
@@ -17,8 +16,8 @@ class EpochSubPipelineAnalysisProduct(EpochSubPipelineProduct):
     def __init__(
         self,
         parent_epoch: EpochProduct,
-        filter_type: Optional[SwiftFilter] = None,
-        stacking_method: Optional[StackingMethod] = None,
+        filter_type: SwiftFilter | None = None,
+        stacking_method: StackingMethod | None = None,
         *args,
         **kwargs,
     ):

@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pandas as pd
 
 from swift_comet_pipeline.swift.uvot_image import PixelCoord
@@ -35,7 +33,7 @@ def get_horizons_comet_center(row: pd.Series) -> PixelCoord:
     return PixelCoord(x=row.PX, y=row.PY)
 
 
-def get_user_specified_comet_center(row: pd.Series) -> Optional[PixelCoord]:
+def get_user_specified_comet_center(row: pd.Series) -> PixelCoord | None:
     """
     Takes an observation log dataframe row or Epoch dataframe row and returns either a PixelCoord of the comet
     center the user specified in the veto step, or returns None

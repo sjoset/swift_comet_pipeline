@@ -1,8 +1,7 @@
-import os
 import yaml
 import pathlib
 import logging as log
-from typing import Callable, Optional
+from typing import Callable
 from dataclasses import asdict, dataclass
 
 from rich import print as rprint
@@ -13,7 +12,6 @@ from swift_comet_pipeline.tui.tui_common import get_yes_no
 from swift_comet_pipeline.swift.swift_data import SwiftData
 
 
-# TODO: add string for backend and path to binary
 @dataclass
 class SwiftProjectConfig:
     swift_data_path: pathlib.Path
@@ -33,7 +31,7 @@ class SwiftPipelineConfig:
 
 
 # TODO: this function is defined multiple times in different files: move it into its own file somewhere
-def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
+def _read_yaml(filepath: pathlib.Path) -> dict | None:
     """Read YAML file from disk and return dictionary with the contents"""
     with open(filepath, "r") as stream:
         try:
@@ -45,7 +43,7 @@ def _read_yaml(filepath: pathlib.Path) -> Optional[dict]:
     return param_yaml
 
 
-def _path_from_yaml(yaml_dict: dict, key: str) -> Optional[pathlib.Path]:
+def _path_from_yaml(yaml_dict: dict, key: str) -> pathlib.Path | None:
     """
     Extracts the string yaml_dict[key], and if it exists, turn it into a pathlib.Path
     """
@@ -59,7 +57,7 @@ def _path_from_yaml(yaml_dict: dict, key: str) -> Optional[pathlib.Path]:
 
 def read_swift_project_config(
     config_path: pathlib.Path,
-) -> Optional[SwiftProjectConfig]:
+) -> SwiftProjectConfig | None:
     """
     Returns a SwiftProjectConfig given the yaml config file path
     """
@@ -128,7 +126,7 @@ def convert_or_delete(d: dict, k: str, conversion_function: Callable):
 
 def read_or_create_project_config(
     swift_project_config_path: pathlib.Path,
-) -> Optional[SwiftProjectConfig]:
+) -> SwiftProjectConfig | None:
     # check if project config exists, and offer to create if not
     if not swift_project_config_path.exists():
         print(
@@ -184,11 +182,17 @@ def create_swift_project_config_from_input(
         f"Vectorial model quality {VectorialModelGridQuality.all_qualities()}: "
     )
 
+    # TODO: this fails on invalid input, make it more robust
+    vm_backend = input(
+        f"Vectorial model backend {VectorialModelBackend.all_model_backends()}: "
+    )
+
     swift_project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
         project_path=project_path,
         vectorial_model_quality=VectorialModelGridQuality(vm_quality),
+        vectorial_model_backend=VectorialModelBackend(vm_backend),
     )
 
     write_swift_project_config(

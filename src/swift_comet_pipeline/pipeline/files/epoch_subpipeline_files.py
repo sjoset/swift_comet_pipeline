@@ -1,6 +1,5 @@
 import pathlib
 from itertools import product
-from typing import Optional
 
 import numpy as np
 from icecream import ic
@@ -315,7 +314,7 @@ class EpochSubpipelineFiles:
         for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
             self.stacked_images[filter_type, stacking_method].write()
 
-    def get_stacked_image_set(self) -> Optional[StackedUVOTImageSet]:
+    def get_stacked_image_set(self) -> StackedUVOTImageSet | None:
         stacked_image_set = {}
 
         uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
