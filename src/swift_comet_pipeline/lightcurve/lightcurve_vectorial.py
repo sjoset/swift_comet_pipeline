@@ -89,7 +89,7 @@ def lightcurve_entry_from_vectorial_fits(
     )
 
     model_Q = 1e29 / u.s  # type: ignore
-    vmr = water_vectorial_model(base_q=model_Q, helio_r=helio_r, model_backend="rust")
+    vmr = water_vectorial_model(base_q=model_Q, helio_r=helio_r)
     if vmr.column_density_interpolation is None:
         print(
             "No column density interpolation returned from vectorial model! This is a bug! Exiting."

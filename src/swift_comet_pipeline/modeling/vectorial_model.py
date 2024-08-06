@@ -1,6 +1,7 @@
 from functools import cache
 from typing import Callable
 
+# from icecream import ic
 import numpy as np
 import astropy.units as u
 
@@ -25,6 +26,11 @@ from swift_comet_pipeline.modeling.molecular_parameters import (
     make_slow_water_molecule_parent,
     make_water_molecule_parent,
 )
+from swift_comet_pipeline.modeling.vectorial_model_backend import (
+    VectorialModelBackend,
+    get_vectorial_model_backend,
+    vectorial_model_backend_init,
+)
 from swift_comet_pipeline.modeling.vectorial_model_cache import (
     get_vectorial_model_cache_path,
     vectorial_model_cache_init,
@@ -43,10 +49,7 @@ def vectorial_model_settings_init(
     vectorial_model_grid_quality_init(
         quality=swift_project_config.vectorial_model_quality
     )
-
-
-# TODO: add enum for model backends
-# TODO: add project config option to specify backend and path to the rust or fortran binary
+    vectorial_model_backend_init(backend=swift_project_config.vectorial_model_backend)
 
 
 @cache
@@ -55,7 +58,6 @@ def water_vectorial_model(
     base_q: u.Quantity[1 / u.s],  # type: ignore
     helio_r: u.Quantity[u.AU],  # type: ignore
     water_grains: bool = False,
-    model_backend="sbpy",
 ) -> VectorialModelResult:
     vmcache_path = get_vectorial_model_cache_path()
 
@@ -86,9 +88,11 @@ def water_vectorial_model(
             grid=vmc.grid,
         )
 
-    if model_backend == "sbpy":
+    model_backend = get_vectorial_model_backend()
+    # ic(f"Using model backend {model_backend}..")
+    if model_backend == VectorialModelBackend.sbpy:
         extra_config = PythonModelExtraConfig(print_progress=False)
-    elif model_backend == "rust":
+    elif model_backend == VectorialModelBackend.rust:
         extra_config = RustModelExtraConfig()
     else:
         print(f"Invalid model backend {model_backend} specified!  Defaulting to sbpy.")

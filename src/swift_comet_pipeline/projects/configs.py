@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 
 from rich import print as rprint
 
+from swift_comet_pipeline.modeling.vectorial_model_backend import VectorialModelBackend
 from swift_comet_pipeline.modeling.vectorial_model_grid import VectorialModelGridQuality
 from swift_comet_pipeline.tui.tui_common import get_yes_no
 from swift_comet_pipeline.swift.swift_data import SwiftData
@@ -19,6 +20,7 @@ class SwiftProjectConfig:
     jpl_horizons_id: str
     project_path: pathlib.Path
     vectorial_model_quality: VectorialModelGridQuality
+    vectorial_model_backend: VectorialModelBackend
 
 
 @dataclass
@@ -84,6 +86,9 @@ def read_swift_project_config(
         vectorial_model_quality=VectorialModelGridQuality(
             config_yaml["vectorial_model_quality"]
         ),
+        vectorial_model_backend=VectorialModelBackend(
+            config_yaml["vectorial_model_backend"]
+        ),
     )
     return project_config
 
@@ -93,14 +98,14 @@ def write_swift_project_config(
 ) -> None:
     dict_to_write = asdict(swift_project_config)
 
-    path_keys_to_convert = [
-        "swift_data_path",
-        "project_path",
-    ]
-    # TODO: convert_or_delete is from an older implementation where config values could have been missing,
-    # but the config was re-worked and now we can just convert and assume the values are there without checking and deleting missing values
-    for k in path_keys_to_convert:
-        convert_or_delete(dict_to_write, k, os.fspath)
+    # path_keys_to_convert = [
+    #     "swift_data_path",
+    #     "project_path",
+    # ]
+    # # TODO: convert_or_delete is from an older implementation where config values could have been missing,
+    # # but the config was re-worked and now we can just convert and assume the values are there without checking and deleting missing values
+    # for k in path_keys_to_convert:
+    #     convert_or_delete(dict_to_write, k, os.fspath)
 
     dict_to_write["vectorial_model_quality"] = str(
         dict_to_write["vectorial_model_quality"]

@@ -15,15 +15,11 @@ NumQH2O: TypeAlias = ValueAndStandardDev
 
 
 @cache
-def num_OH_to_Q_vectorial(
-    helio_r_au: float, num_OH: NumOH, model_backend="sbpy"
-) -> NumQH2O:
+def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: NumOH) -> NumQH2O:
     base_q = 1.0e29 / u.s  # type: ignore
     helio_r = helio_r_au * u.AU  # type: ignore
 
-    vmr = water_vectorial_model(
-        base_q=base_q, helio_r=helio_r, model_backend=model_backend
-    )
+    vmr = water_vectorial_model(base_q=base_q, helio_r=helio_r)
     predicted_num_OH = num_OH_from_vectorial_model_result(vmr=vmr)
     predicted_to_actual = predicted_num_OH / num_OH.value
 
