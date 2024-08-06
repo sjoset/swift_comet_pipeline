@@ -25,20 +25,39 @@ from swift_comet_pipeline.swift.uvot_image import (
 SwiftObservationLog: TypeAlias = pd.DataFrame
 
 
-# TODO: add documentation for each of these entries and what they hold
 def observation_log_schema() -> pa.Schema:
+    """
+    Returns schema that describes the columns in our observation log dataframe
+
+    Most FITS header keyword documentation can be found at https://archive.stsci.edu/swiftuvot/UVOT_swguide_v2_2.pdf
+    """
     schema = pa.schema(
         [
+            ### FITS keywords from SWIFT-processed FITS files
+            # Observation ID: uniquely identifies an SWIFT observation set, which may contain multiple FITS image extensions.  Represented as a fixed-width string of 11 characters,
+            # with the first 8 digits being the 'target id' and the last 3 being 'segment number': '000', '001', ... to denote multiple observations taken on the target consecutively.
+            # We store this in the db as an integer, and convert back to SwiftObservationID string representation when we read the file
             pa.field("OBS_ID", pa.int64()),
+            # Start time of the observation, as a string with the format 'YYYY-MM-DD HH:MM:SS'
             pa.field("DATE_OBS", pa.string()),
+            # End time of the observation, as a string with the format 'YYYY-MM-DD HH:MM:SS'
             pa.field("DATE_END", pa.string()),
+            # Mid time of the observation, as a string with the format 'YYYY-MM-DD HH:MM:SS'
             pa.field("MID_TIME", pa.string()),
+            # Which SwiftFilter was used for this observation
             pa.field("FILTER", pa.string()),
+            # Position angle, degrees of roll
             pa.field("PA_PNT", pa.float64()),
+            # Right ascension, degrees
             pa.field("RA_OBJ", pa.float64()),
+            # Declination, degrees
             pa.field("DEC_OBJ", pa.float64()),
+            # Total exposure time after all known corrections applied
             pa.field("EXPOSURE", pa.float64()),
+            ### Added during observation log building
+            # Each image extension gets its own header and entry in the observation log: keep track of it here
             pa.field("EXTENSION", pa.int16()),
+            # The filename (not path) of the FITS file this observation came from: together with the extension, we can find an observation's image to read and process later
             pa.field("FITS_FILENAME", pa.string()),
             # heliocentric distance at time of observation, in AU
             pa.field("HELIO", pa.float64()),
@@ -61,7 +80,9 @@ def observation_log_schema() -> pa.Schema:
             pa.field("ARCSECS_PER_PIXEL", pa.float64()),
             # conversion from pixels to kilometers, based on the distance of the comet from the observation point
             pa.field("KM_PER_PIX", pa.float64()),
+            # String holding the SWIFT software that processed the image, which includes the version.  Currently unused - this is here just in case.
             pa.field("CREATOR", pa.string()),
+            # Holds whether or not the user has chosen to veto the image's inclusion in stacking: manual_veto = true means exclude
             pa.field("manual_veto", pa.bool_()),
         ]
     )
@@ -134,7 +155,6 @@ def write_observation_log(
     oc.to_parquet(obs_log_path, schema=schema)
 
 
-# TODO: there is probably a better place for these
 def includes_uvv_and_uw1_filters(
     obs_log: SwiftObservationLog,
 ) -> bool:

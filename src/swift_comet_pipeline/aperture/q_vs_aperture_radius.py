@@ -22,7 +22,7 @@ from swift_comet_pipeline.background.background_result import (
     dict_to_background_result,
 )
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
     EpochSubpipelineFiles,
 )
@@ -88,7 +88,7 @@ def counts_vs_aperture_radius(
 
 
 def q_vs_aperture_radius(
-    stacked_epoch: Epoch,
+    stacked_epoch: StackedEpoch,
     uw1_img: SwiftUVOTImage,
     uvv_img: SwiftUVOTImage,
     dust_rednesses: list[DustReddeningPercent],

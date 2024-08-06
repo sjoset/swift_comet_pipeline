@@ -13,11 +13,12 @@ from swift_comet_pipeline.background.background_result import (
     BackgroundResult,
     dict_to_background_result,
 )
+from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import CountRate
-from swift_comet_pipeline.observationlog.epoch import Epoch, epoch_stacked_image_to_fits
+from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import (
@@ -54,22 +55,24 @@ from swift_comet_pipeline.comet.comet_radial_profile import (
 class RadialProfileSelectionPlot(object):
     def __init__(
         self,
-        epoch: Epoch,
+        stacked_epoch: StackedEpoch,
         uw1_img: SwiftUVOTImage,
         uw1_bg: BackgroundResult,
         uvv_img: SwiftUVOTImage,
         uvv_bg: BackgroundResult,
     ):
-        self.epoch = epoch
-        self.helio_r_au = np.mean(epoch.HELIO)
-        self.helio_v_kms = np.mean(epoch.HELIO_V)
-        self.delta = np.mean(epoch.OBS_DIS)
-        self.km_per_pix = np.mean(epoch.KM_PER_PIX)
+        self.stacked_epoch = stacked_epoch
+        self.helio_r_au = np.mean(stacked_epoch.HELIO)
+        self.helio_v_kms = np.mean(stacked_epoch.HELIO_V)
+        self.delta = np.mean(stacked_epoch.OBS_DIS)
+        self.km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
 
         # TODO: add calculation of perihelion from orbital data or as a given from the user
         # this is particular to C/2013US10
         self.perihelion = Time("2015-11-15")
-        self.time_from_perihelion = Time(np.mean(epoch.MID_TIME)) - self.perihelion
+        self.time_from_perihelion = (
+            Time(np.mean(stacked_epoch.MID_TIME)) - self.perihelion
+        )
 
         self.uw1_img = uw1_img
         self.uw1_bg = uw1_bg
@@ -565,7 +568,7 @@ def profile_selection_plot(
         return
 
     rpsp = RadialProfileSelectionPlot(
-        epoch=stacked_epoch,
+        stacked_epoch=stacked_epoch,
         uw1_img=uw1_img,
         uw1_bg=uw1_bg,
         uvv_img=uvv_img,

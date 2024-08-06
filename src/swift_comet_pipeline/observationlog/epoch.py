@@ -14,7 +14,6 @@ from swift_comet_pipeline.observationlog.observation_log import (
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
 
 
-# TODO: consider using Epoch: TypeAlias = SwiftObservationLog and deleting all of this
 Epoch: TypeAlias = pd.DataFrame
 
 

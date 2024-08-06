@@ -63,7 +63,7 @@ def stack_epoch_into_sum_and_median(
     epoch: Epoch,
     do_coincidence_correction: bool = True,
     pixel_resolution: SwiftPixelResolution = SwiftPixelResolution.data_mode,
-) -> Optional[Tuple[SwiftUVOTImage, SwiftUVOTImage]]:
+) -> Tuple[SwiftUVOTImage, SwiftUVOTImage] | None:
     """
     Blindly takes every entry in the given Epoch and attempts to stack it - epoch should be pre-filtered because
     no checks are made here

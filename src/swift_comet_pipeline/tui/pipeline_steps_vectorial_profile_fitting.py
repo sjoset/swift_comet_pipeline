@@ -22,6 +22,7 @@ from swift_comet_pipeline.modeling.vectorial_model_fit import (
     vectorial_fit,
 )
 from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
@@ -136,7 +137,7 @@ def make_image_annotations(img: np.ndarray, norm, t: str):
 
 
 def vectorial_fitting_plots(
-    stacked_epoch: Epoch,
+    stacked_epoch: StackedEpoch,
     dust_rednesses: list[DustReddeningPercent],
     ccds: dict[DustReddeningPercent, ColumnDensity],
     vectorial_fits: dict[DustReddeningPercent, VectorialModelFit],

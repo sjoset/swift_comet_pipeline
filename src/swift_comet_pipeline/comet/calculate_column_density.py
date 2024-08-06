@@ -12,7 +12,7 @@ from swift_comet_pipeline.comet.comet_surface_brightness_profile import (
     countrate_profile_to_surface_brightness,
 )
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.swift.uvot_image import datamode_to_pixel_resolution
 from swift_comet_pipeline.water_production.fluorescence_OH import gfactor_1au
 
@@ -41,7 +41,7 @@ def surface_brightness_profile_to_column_density(
 
 
 def calculate_comet_column_density(
-    stacked_epoch: Epoch,
+    stacked_epoch: StackedEpoch,
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
     dust_redness: DustReddeningPercent,

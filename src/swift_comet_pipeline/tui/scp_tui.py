@@ -7,6 +7,7 @@ import warnings
 import logging as log
 from enum import StrEnum
 
+import pandas as pd
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
@@ -100,6 +101,8 @@ def main():
     # we don't care about these particular warnings
     warnings.resetwarnings()
     warnings.filterwarnings("ignore", category=FITSFixedWarning, append=True)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.max_rows", None)
 
     args = process_args()
     swift_project_config_path = pathlib.Path(args.swift_project_config)

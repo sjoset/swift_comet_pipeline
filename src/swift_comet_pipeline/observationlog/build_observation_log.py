@@ -142,14 +142,21 @@ def build_observation_log(
     # obs_log["IMAGE_SHAPE_ROWS"] = image_shape_row_list
     # obs_log["IMAGE_SHAPE_COLS"] = image_shape_col_list
 
-    # TODO: document expected units on these values from horizons
     # translates horizons results (left) to observation log column names (right)
+    # documentation of values returned by Horizons available at
+    # https://astroquery.readthedocs.io/en/latest/api/astroquery.jplhorizons.HorizonsClass.html#astroquery.jplhorizons.HorizonsClass.ephemerides
     ephemeris_info = {
+        # Target heliocentric distance, float, in AU
         "r": "HELIO",
+        # Target heliocentric distance change rate, float, in km/s
         "r_rate": "HELIO_V",
+        # Target distance from observation point (@swift in our case), float, in AU
         "delta": "OBS_DIS",
+        # Target solar phase angle, float, degrees (Sun-Target-Object angle)
         "alpha": "PHASE",
+        # Target right ascension, float, degrees
         "RA": "RA",
+        # Target declination, float, degrees
         "DEC": "DEC",
     }
     # make dataframe with columns of the ephemeris_info values
