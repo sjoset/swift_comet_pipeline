@@ -257,8 +257,8 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     #         "dust_redness",
     #     ]
     # ].copy()
-    # near_fit_df.rename(
-    #     columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}, inplace=True
+    # near_fit_df = near_fit_df.rename(
+    #     columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}
     # )
     # vectorial_lcs = dataframe_to_lightcurve(df=near_fit_df)
 
@@ -311,8 +311,8 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
             "dust_redness",
         ]
     ].copy()
-    near_fit_df.rename(
-        columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}, inplace=True
+    near_fit_df = near_fit_df.rename(
+        columns={"near_fit_q": "q", "near_fit_q_err": "q_err"}
     )
     vectorial_near_lcs = dataframe_to_lightcurve(df=near_fit_df)
 
@@ -339,9 +339,7 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
             "dust_redness",
         ]
     ].copy()
-    far_fit_df.rename(
-        columns={"far_fit_q": "q", "far_fit_q_err": "q_err"}, inplace=True
-    )
+    far_fit_df = far_fit_df.rename(columns={"far_fit_q": "q", "far_fit_q_err": "q_err"})
     vectorial_far_lcs = dataframe_to_lightcurve(df=far_fit_df)
 
     # best far-fit lightcurve
@@ -368,8 +366,8 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     #         "dust_redness",
     #     ]
     # ].copy()
-    # full_fit_df.rename(
-    #     columns={"full_fit_q": "q", "full_fit_q_err": "q_err"}, inplace=True
+    # full_fit_df = full_fit_df.rename(
+    #     columns={"full_fit_q": "q", "full_fit_q_err": "q_err"}
     # )
     # vectorial_lcs = dataframe_to_lightcurve(df=full_fit_df)
     #

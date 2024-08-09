@@ -149,10 +149,10 @@ def generate_lightcurve_step(swift_project_config: SwiftProjectConfig) -> None:
         lc_product.data = lc_df_data
         lc_product.write()
 
-    # rename conflicting columns so that we can combine them all into one
-    df_near.rename(columns={"q": "near_fit_q", "q_err": "near_fit_q_err"}, inplace=True)
-    df_far.rename(columns={"q": "far_fit_q", "q_err": "far_fit_q_err"}, inplace=True)
-    df_full.rename(columns={"q": "full_fit_q", "q_err": "full_fit_q_err"}, inplace=True)
+    # rename conflicting columns so that we can combine them all into one dataframe
+    df_near = df_near.rename(columns={"q": "near_fit_q", "q_err": "near_fit_q_err"})
+    df_far = df_far.rename(columns={"q": "far_fit_q", "q_err": "far_fit_q_err"})
+    df_full = df_full.rename(columns={"q": "full_fit_q", "q_err": "full_fit_q_err"})
 
     # drop the duplicated columns: each df has its own time_from_perihelion and observation_time columns
     complete_vectorial_lightcurves_df = pd.concat([df_near, df_far, df_full], axis=1)
