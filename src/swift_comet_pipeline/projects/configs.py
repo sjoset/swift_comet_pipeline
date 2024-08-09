@@ -21,6 +21,7 @@ class SwiftProjectConfig:
     vectorial_model_backend: VectorialModelBackend
 
 
+# TODO: move this to a better place
 @dataclass
 class SwiftPipelineConfig:
     solar_spectrum_path: pathlib.Path
