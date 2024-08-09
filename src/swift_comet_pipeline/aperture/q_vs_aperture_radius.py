@@ -13,6 +13,9 @@ from swift_comet_pipeline.aperture.plateau import (
     dict_to_production_plateau,
 )
 from swift_comet_pipeline.aperture.plateau_detect import find_production_plateaus
+from swift_comet_pipeline.aperture.plateau_serialize import (
+    dust_plateau_list_dict_serialize,
+)
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
     dataframe_from_q_vs_aperture_radius_entry_list,
@@ -169,7 +172,7 @@ def q_vs_aperture_radius(
         )
         # TODO: backend hard-coded
         q_H2O[r, dust_redness] = num_OH_to_Q_vectorial(
-            helio_r_au=helio_r_au, num_OH=num_OH[r, dust_redness], model_backend="rust"
+            helio_r_au=helio_r_au, num_OH=num_OH[r, dust_redness]
         )
 
     radii_count_rates_mags_and_dust_color = product(
