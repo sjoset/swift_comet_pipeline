@@ -13,6 +13,7 @@ from swift_comet_pipeline.background.background_result import (
     yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
+from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
@@ -59,6 +60,7 @@ class RadialProfileSelectionPlot(object):
         uw1_bg: BackgroundResult,
         uvv_img: SwiftUVOTImage,
         uvv_bg: BackgroundResult,
+        t_perihelion: Time,
     ):
         self.stacked_epoch = stacked_epoch
         self.helio_r_au = np.mean(stacked_epoch.HELIO)
@@ -66,11 +68,9 @@ class RadialProfileSelectionPlot(object):
         self.delta = np.mean(stacked_epoch.OBS_DIS)
         self.km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
 
-        # TODO: add calculation of perihelion from orbital data or as a given from the user
-        # this is particular to C/2013US10
-        self.perihelion = Time("2015-11-15")
+        self.t_perihelion = t_perihelion
         self.time_from_perihelion = (
-            Time(np.mean(stacked_epoch.MID_TIME)) - self.perihelion
+            Time(np.mean(stacked_epoch.MID_TIME)) - self.t_perihelion
         )
 
         self.uw1_img = uw1_img
@@ -533,6 +533,12 @@ def profile_selection_plot(
         print("Error reading epoch!")
         return
 
+    t_perihelion_list = find_perihelion(data_ingestion_files=data_ingestion_files)
+    if t_perihelion_list is None:
+        print("Could not find time of perihelion!")
+        return
+    t_perihelion = t_perihelion_list[0].t_perihelion
+
     epoch_subpipeline.background_subtracted_images[
         SwiftFilter.uw1, stacking_method
     ].read()
@@ -571,6 +577,7 @@ def profile_selection_plot(
         uw1_bg=uw1_bg,
         uvv_img=uvv_img,
         uvv_bg=uvv_bg,
+        t_perihelion=t_perihelion,
     )
     rpsp.show()
 
