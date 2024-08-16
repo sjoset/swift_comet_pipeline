@@ -34,6 +34,9 @@ from swift_comet_pipeline.pipeline.products.epoch_subpipeline.background_analysi
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.background_analysis_step.background_subtracted_fits_product import (
     BackgroundSubtractedFITSProduct,
 )
+from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.exposure_mask_product import (
+    ExposureMaskProduct,
+)
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.stacked_epoch_product import (
     StackedEpochProduct,
 )
@@ -66,6 +69,14 @@ class EpochSubpipelineFiles:
         self.stacked_epoch = StackedEpochProduct(
             product_path=self.project_path, parent_epoch=self.parent_epoch
         )
+
+        self.exposure_map = {}
+        for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
+            self.exposure_map[filter_type] = ExposureMaskProduct(
+                product_path=self.project_path,
+                parent_epoch=self.parent_epoch,
+                filter_type=filter_type,
+            )
 
         self.stacked_images = {}
         self.background_analyses = {}
@@ -260,6 +271,7 @@ class EpochSubpipelineFiles:
 
         epoch_pixel_resolution = epoch_to_stack.ARCSECS_PER_PIXEL.iloc[0]
         stacked_images = StackedUVOTImageSet({})
+        exposure_maps = {}
 
         # do the stacking
         for filter_type in uw1_and_uvv:
@@ -283,6 +295,7 @@ class EpochSubpipelineFiles:
 
             stacked_images[(filter_type, StackingMethod.summation)] = stack_result[0]
             stacked_images[(filter_type, StackingMethod.median)] = stack_result[1]
+            exposure_maps[filter_type] = stack_result[2]
 
         # Adjust the images from each filter to be the same size
         for stacking_method in sum_and_median:
@@ -301,9 +314,14 @@ class EpochSubpipelineFiles:
             )
             self.stacked_images[filter_type, stacking_method].data = hdu
 
+        for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
+            self.exposure_map[filter_type].data = epoch_stacked_image_to_fits(
+                epoch=epoch_to_stack, img=exposure_maps[filter_type]
+            )
+
     def write_uw1_and_uvv_stacks(self) -> None:
         """
-        Writes the stacked epoch dataframe, along with the four images created during stacking
+        Writes the stacked epoch dataframe, along with the four images created during stacking, and exposure map
         This is a separate step so that the stacking results can be viewed before deciding to save or not save the results
         """
         uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
@@ -313,6 +331,9 @@ class EpochSubpipelineFiles:
 
         for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
             self.stacked_images[filter_type, stacking_method].write()
+
+        for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
+            self.exposure_map[filter_type].write()
 
     def get_stacked_image_set(self) -> StackedUVOTImageSet | None:
         stacked_image_set = {}

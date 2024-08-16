@@ -63,11 +63,12 @@ def stack_epoch_into_sum_and_median(
     epoch: Epoch,
     do_coincidence_correction: bool = True,
     pixel_resolution: SwiftPixelResolution = SwiftPixelResolution.data_mode,
-) -> Tuple[SwiftUVOTImage, SwiftUVOTImage] | None:
+) -> Tuple[SwiftUVOTImage, SwiftUVOTImage, SwiftUVOTImage] | None:
     """
     Blindly takes every entry in the given Epoch and attempts to stack it - epoch should be pre-filtered because
     no checks are made here
-    If successful, returns a tuple of images (sum, median)
+    If successful, returns a tuple of images: (sum, median, exposure_map)
+    The exposure_map image has pixels with values in units of seconds - the total exposure time from the stack of images involved
     """
     # TODO: if we never use the median stacking mode, we can instead recursively break the epoch in halves and stack what fits in memory at a single time
     # is that functionality that we want to abandon?
@@ -84,6 +85,7 @@ def stack_epoch_into_sum_and_median(
 
     image_data_to_stack: List[SwiftUVOTImage] = []
     exposure_times: List[float] = []
+    exposure_map_list = []
 
     # TODO: we should return the dataframe of images that actually get used to keep track of what gets omitted
     stacking_progress_bar = tqdm(epoch.iterrows(), total=len(epoch), unit="images")
@@ -135,6 +137,11 @@ def stack_epoch_into_sum_and_median(
         image_data_to_stack.append(image_data)
         exposure_times.append(exp_time)
 
+        dead_pixels = image_data == 0
+        good_pix = np.ones_like(image_data) * exp_time
+        good_pix[dead_pixels] = 0
+        exposure_map_list.append(good_pix)
+
         stacking_progress_bar.set_description(
             f"{image_path.name} extension {row.EXTENSION}"
         )
@@ -143,7 +150,7 @@ def stack_epoch_into_sum_and_median(
         print("No valid stacking data left!")
         return None
 
-    # TODO: filter out any rows that weren't used from the dataframe
+    final_exposure_map = np.sum(exposure_map_list, axis=0)
 
     exposure_time = epoch.EXPOSURE.sum()
 
@@ -155,4 +162,4 @@ def stack_epoch_into_sum_and_median(
         img /= exp_time
     stack_median = np.median(image_data_to_stack, axis=0)
 
-    return stack_sum, stack_median
+    return stack_sum, stack_median, final_exposure_map
