@@ -1,8 +1,9 @@
-import numpy as np
-
-from scipy.ndimage import uniform_filter1d
 from itertools import groupby
 from typing import List
+
+from icecream import ic
+import numpy as np
+from scipy.ndimage import uniform_filter1d
 
 from swift_comet_pipeline.aperture.plateau import Plateau, ProductionPlateau
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
@@ -73,6 +74,8 @@ def find_production_plateaus(
     r_step = list(set(r_diffs))[0]
     physical_qs = np.array([qvsare.q_H2O for qvsare in q_vs_aperture_radius_list])
 
+    # ic(rs, r_diffs, r_step, physical_qs)
+
     positive_production_mask = physical_qs > 0.0
     physical_qs = physical_qs[positive_production_mask]
     if len(physical_qs) < 5:
@@ -92,8 +95,8 @@ def find_production_plateaus(
         q_plateau_list = find_plateaus(
             ys=qs,
             xstep=r_step,
-            smoothing=np.round(3 / r_step).astype(np.int32),
-            # smoothing=3,
+            # smoothing=np.round(3 / r_step).astype(np.int32),
+            smoothing=3,
             threshold=cur_threshold,
             min_length=3 / r_step,
         )
