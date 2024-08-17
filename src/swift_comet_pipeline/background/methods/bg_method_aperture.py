@@ -28,7 +28,7 @@ def bg_manual_aperture_median(
     aperture_x: float,
     aperture_y: float,
     aperture_radius: float,
-) -> BackgroundResult:
+) -> CountRatePerPixel:
     aperture_stats = bg_manual_aperture_stats(
         img=img,
         aperture_x=aperture_x,
@@ -40,19 +40,21 @@ def bg_manual_aperture_median(
     # error of median is a factor larger than sigma
     error_abs = 1.2533 * aperture_stats.std[0]
 
-    params = {
-        "aperture_x": float(aperture_x),
-        "aperture_y": float(aperture_y),
-        "aperture_radius": float(aperture_radius),
-    }
+    # params = {
+    #     "aperture_x": float(aperture_x),
+    #     "aperture_y": float(aperture_y),
+    #     "aperture_radius": float(aperture_radius),
+    # }
 
-    return BackgroundResult(
-        count_rate_per_pixel=CountRatePerPixel(
-            value=count_rate_per_pixel, sigma=error_abs
-        ),
-        params=params,
-        method=BackgroundDeterminationMethod.manual_aperture_median,
-    )
+    # return BackgroundResult(
+    #     count_rate_per_pixel=CountRatePerPixel(
+    #         value=count_rate_per_pixel, sigma=error_abs
+    #     ),
+    #     params=params,
+    #     method=BackgroundDeterminationMethod.manual_aperture_median,
+    # )
+
+    return CountRatePerPixel(value=count_rate_per_pixel, sigma=error_abs)
 
 
 def bg_manual_aperture_mean(
@@ -60,7 +62,7 @@ def bg_manual_aperture_mean(
     aperture_x: float,
     aperture_y: float,
     aperture_radius: float,
-) -> BackgroundResult:
+) -> CountRatePerPixel:
     aperture_stats = bg_manual_aperture_stats(
         img=img,
         aperture_x=aperture_x,
@@ -71,16 +73,18 @@ def bg_manual_aperture_mean(
     count_rate_per_pixel = aperture_stats.mean[0]
     error_abs = aperture_stats.std[0]
 
-    params = {
-        "aperture_x": float(aperture_x),
-        "aperture_y": float(aperture_y),
-        "aperture_radius": float(aperture_radius),
-    }
+    # params = {
+    #     "aperture_x": float(aperture_x),
+    #     "aperture_y": float(aperture_y),
+    #     "aperture_radius": float(aperture_radius),
+    # }
 
-    return BackgroundResult(
-        count_rate_per_pixel=CountRatePerPixel(
-            value=count_rate_per_pixel, sigma=error_abs
-        ),
-        params=params,
-        method=BackgroundDeterminationMethod.manual_aperture_mean,
-    )
+    # return BackgroundResult(
+    #     count_rate_per_pixel=CountRatePerPixel(
+    #         value=count_rate_per_pixel, sigma=error_abs
+    #     ),
+    #     params=params,
+    #     method=BackgroundDeterminationMethod.manual_aperture_mean,
+    # )
+
+    return CountRatePerPixel(value=count_rate_per_pixel, sigma=error_abs)

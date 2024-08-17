@@ -306,6 +306,12 @@ class EpochSubpipelineFiles:
             stacked_images[(SwiftFilter.uw1, stacking_method)] = uw1_img
             stacked_images[(SwiftFilter.uvv, stacking_method)] = uvv_img
 
+        # Adjust the exposure maps as well so that they stay the same size as the stacked images
+        uw1_exp_map, uvv_exp_map = pad_to_match_sizes(
+            img_one=exposure_maps[SwiftFilter.uw1],
+            img_two=exposure_maps[SwiftFilter.uvv],
+        )
+
         # push all the data into the products for writing later
         self.stacked_epoch.data = epoch_to_stack
         for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
@@ -314,10 +320,12 @@ class EpochSubpipelineFiles:
             )
             self.stacked_images[filter_type, stacking_method].data = hdu
 
-        for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-            self.exposure_map[filter_type].data = epoch_stacked_image_to_fits(
-                epoch=epoch_to_stack, img=exposure_maps[filter_type]
-            )
+        self.exposure_map[SwiftFilter.uw1].data = epoch_stacked_image_to_fits(
+            epoch=epoch_to_stack, img=uw1_exp_map
+        )
+        self.exposure_map[SwiftFilter.uvv].data = epoch_stacked_image_to_fits(
+            epoch=epoch_to_stack, img=uvv_exp_map
+        )
 
     def write_uw1_and_uvv_stacks(self) -> None:
         """

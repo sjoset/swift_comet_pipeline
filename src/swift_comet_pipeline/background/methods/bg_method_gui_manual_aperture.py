@@ -5,10 +5,15 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 from matplotlib.widgets import Slider
 
+from swift_comet_pipeline.background.background_determination_method import (
+    BackgroundDeterminationMethod,
+)
+from swift_comet_pipeline.background.background_result import BackgroundResult
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.background.methods.bg_method_aperture import (
     bg_manual_aperture_mean,
+    bg_manual_aperture_median,
 )
 
 
@@ -16,11 +21,29 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     bg = BackgroundAperturePlacementPlot(img, filter_type=filter_type)
     bg.show()
 
-    return bg_manual_aperture_mean(
-        img=img,
-        aperture_x=bg.aperture.get_center()[0],  # type: ignore
-        aperture_y=bg.aperture.get_center()[1],  # type: ignore
-        aperture_radius=bg.aperture.radius,
+    # return bg_manual_aperture_mean(
+    #     img=img,
+    #     aperture_x=bg.aperture.get_center()[0],  # type: ignore
+    #     aperture_y=bg.aperture.get_center()[1],  # type: ignore
+    #     aperture_radius=bg.aperture.radius,
+    # )
+
+    ap_x = float(bg.aperture.get_center()[0])  # type: ignore
+    ap_y = float(bg.aperture.get_center()[1])  # type: ignore
+    ap_radius = float(bg.aperture.radius)
+
+    params = {
+        "aperture_x": ap_x,
+        "aperture_y": ap_y,
+        "aperture_radius": ap_radius,
+    }
+
+    return BackgroundResult(
+        count_rate_per_pixel=bg_manual_aperture_median(
+            img=img, aperture_x=ap_x, aperture_y=ap_y, aperture_radius=ap_radius
+        ),
+        params=params,
+        method=BackgroundDeterminationMethod.gui_manual_aperture,
     )
 
 
@@ -97,7 +120,7 @@ class BackgroundAperturePlacementPlot:
             aperture_y=self.aperture.get_center()[1],  # type: ignore
             aperture_radius=self.aperture.radius,
         )
-        self.bg_count_rate = bgresult.count_rate_per_pixel.value
+        self.bg_count_rate = bgresult.value
         self.count_rate_annotation.set_text(self.count_rate_string())
         self.img_plot.set_data(self.original_img - self.bg_count_rate)
 

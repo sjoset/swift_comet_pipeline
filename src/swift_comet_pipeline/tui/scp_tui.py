@@ -103,6 +103,7 @@ def main():
     warnings.filterwarnings("ignore", category=FITSFixedWarning, append=True)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.max_rows", None)
+    pd.set_option("display.width", 0)
 
     args = process_args()
     swift_project_config_path = pathlib.Path(args.swift_project_config)

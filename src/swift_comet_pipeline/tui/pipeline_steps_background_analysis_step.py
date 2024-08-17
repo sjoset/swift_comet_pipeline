@@ -1,6 +1,8 @@
 from itertools import product
-from astropy.io import fits
 
+import questionary
+import numpy as np
+from astropy.io import fits
 from icecream import ic
 from rich import print as rprint
 
@@ -22,12 +24,30 @@ from swift_comet_pipeline.tui.tui_common import (
 )
 
 
-def get_background(img: SwiftUVOTImage, filter_type: SwiftFilter) -> BackgroundResult:
-    # TODO: menu here for type of BG method
+def get_background_method_choice() -> BackgroundDeterminationMethod | None:
+
+    bg_method = questionary.select(
+        message="Background method: ",
+        choices=BackgroundDeterminationMethod.all_bg_determination_methods(),
+    ).ask()
+
+    return bg_method
+
+
+def get_background(
+    img: SwiftUVOTImage,
+    exposure_map: SwiftUVOTImage,
+    filter_type: SwiftFilter,
+    bg_method: BackgroundDeterminationMethod,
+    helio_r_au: float,
+) -> BackgroundResult:
+
     bg_cr = determine_background(
         img=img,
-        background_method=BackgroundDeterminationMethod.gui_manual_aperture,
         filter_type=filter_type,
+        exposure_map=exposure_map,
+        background_method=bg_method,
+        helio_r_au=helio_r_au,
     )
 
     return bg_cr
@@ -73,13 +93,33 @@ def background_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
         )
         return
 
+    bg_method = get_background_method_choice()
+    if bg_method is None:
+        return
+
+    epoch_subpipeline.stacked_epoch.read_product_if_not_loaded()
+    stacked_epoch = epoch_subpipeline.stacked_epoch.data
+    if stacked_epoch is None:
+        print("Error reading stacked epoch!")
+        return
+    helio_r_au = np.mean(stacked_epoch.HELIO)
+
     for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
         img_data = stacked_image_set[filter_type, stacking_method]
         img_header = epoch_subpipeline.stacked_images[
             filter_type, stacking_method
         ].data.header
 
-        bg_result = get_background(img_data, filter_type=filter_type)
+        epoch_subpipeline.exposure_map[filter_type].read_product_if_not_loaded()
+        exposure_map = epoch_subpipeline.exposure_map[filter_type].data.data
+
+        bg_result = get_background(
+            img_data,
+            exposure_map=exposure_map,
+            filter_type=filter_type,
+            bg_method=bg_method,
+            helio_r_au=helio_r_au,
+        )
 
         print(f"{epoch_subpipeline.parent_epoch.epoch_id}")
         print(f"Background count rate: {bg_result.count_rate_per_pixel}")

@@ -106,8 +106,7 @@ def stack_epoch_into_sum_and_median(
         # do we use the horizons data, or did the user manually tell us where the comet is?
         comet_center_coords = get_comet_center_prefer_user_coords(row=row)
 
-        # TODO: check if the comet center is outside the bounds of the image and omit it?
-        # print out a warning about it at least
+        # check if the comet center is outside the bounds of the image and omit it
         img_height, img_width = image_data.shape  # type: ignore
         if comet_center_coords.x < 0 or comet_center_coords.x > img_width:
             print(f"Image dimensions ==> width={img_width}\theight={img_height}")
