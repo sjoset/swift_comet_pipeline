@@ -1,4 +1,5 @@
 # swift_comet_pipeline
+A package to analyze UVOT image data of comets from the Swift satellite (https://www.swift.ac.uk/).  A related project at https://github.com/sjoset/swift_portal_downloader automates the acquisition of data appropriate for this pipeline.
 
 ## Development installation:
 ## Install poetry
