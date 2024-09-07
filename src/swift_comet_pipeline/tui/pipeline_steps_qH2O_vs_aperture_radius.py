@@ -24,7 +24,7 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
 
     dust_rednesses = [
         DustReddeningPercent(x)
-        for x in np.linspace(start=0.0, stop=50.0, num=51, endpoint=True)
+        for x in np.linspace(start=-100.0, stop=100.0, num=201, endpoint=True)
     ]
 
     for parent_epoch in data_ingestion_files.epochs:

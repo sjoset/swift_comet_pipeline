@@ -11,8 +11,8 @@ from swift_comet_pipeline.lightcurve.lightcurve import (
 
 def show_lightcurve_mpl(lc: LightCurve, best_lc: LightCurve | None = None) -> None:
 
-    # x_column = "rh"
-    x_column = "time_from_perihelion_days"
+    x_column = "rh"
+    # x_column = "time_from_perihelion_days"
 
     # TODO: can probably use np.min(np.diff())/3 for jitter
     # x-axis jitter settings

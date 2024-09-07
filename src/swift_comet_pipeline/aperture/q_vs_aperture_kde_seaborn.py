@@ -64,13 +64,18 @@ def show_q_density_estimates_vs_redness(
         sns.kdeplot,
         "log_q",
         bw_adjust=0.25,
-        clip_on=False,
+        # TODO: this clips the histogram, but not the axes
+        # clip_on=False,
+        clip=(26, 30),
         fill=True,
         alpha=0.8,
         linewidth=0.5,
     )
     g.map(sns.kdeplot, "log_q", clip_on=False, color="w", lw=1.0, bw_adjust=0.25)
     g.refline(y=0, linewidth=1.0, linestyle="-", color=None, clip_on=False)  # type: ignore
+
+    g.set(xlim=(26, 30))
+    # plt.xlim(26, 30)
 
     # Define and use a simple function to label the plot in axes coordinates
     def label(_, color, label):
