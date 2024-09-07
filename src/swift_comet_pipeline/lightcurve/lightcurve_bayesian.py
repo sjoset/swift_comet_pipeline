@@ -3,7 +3,7 @@ from typing import TypeAlias
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, rv_frozen
+from scipy.stats import norm
 from astropy.time import Time
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
@@ -27,7 +27,7 @@ BayesianLightCurve: TypeAlias = list[BayesianLightCurveEntry]
 
 def make_gaussian_bayesian_prior(
     mean_reddening: DustReddeningPercent, sigma_reddening: float
-) -> rv_frozen:
+):
     return norm(loc=float(mean_reddening), scale=sigma_reddening)
 
 
