@@ -46,8 +46,8 @@ def lightcurve_entries_from_aperture_plateaus(
 ) -> list[LightCurveEntry] | None:
     # TODO: document
 
-    if epoch_subpipeline_files is None:
-        return None
+    # if epoch_subpipeline_files is None:
+    #     return None
 
     epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
     stacked_epoch = epoch_subpipeline_files.stacked_epoch.data

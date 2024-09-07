@@ -28,13 +28,14 @@ def qH2O_vs_aperture_radius_step(swift_project_config: SwiftProjectConfig) -> No
     ]
 
     for parent_epoch in data_ingestion_files.epochs:
-        esf = pipeline_files.epoch_subpipeline_from_parent_epoch(
+        epoch_subpipeline_files = pipeline_files.epoch_subpipeline_from_parent_epoch(
             parent_epoch=parent_epoch
         )
-        if esf is None:
+        if epoch_subpipeline_files is None:
             print(f"No subpipeline found for epoch {parent_epoch.product_path.name}")
             continue
         q_vs_aperture_radius_at_epoch(
-            epoch_subpipeline_files=esf, dust_rednesses=dust_rednesses
+            epoch_subpipeline_files=epoch_subpipeline_files,
+            dust_rednesses=dust_rednesses,
         )
         print("")
