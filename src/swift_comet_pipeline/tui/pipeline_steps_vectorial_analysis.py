@@ -14,7 +14,11 @@ from swift_comet_pipeline.background.background_result import (
 )
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
-from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
+    SwiftCometPipelineStepEnum,
+)
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import CountRate
@@ -26,6 +30,7 @@ from swift_comet_pipeline.swift.uvot_image import (
     SwiftUVOTImage,
     get_uvot_image_center,
 )
+from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
 from swift_comet_pipeline.water_production.fluorescence_OH import (
     flux_OH_to_num_OH,
 )
@@ -38,7 +43,6 @@ from swift_comet_pipeline.water_production.num_OH_to_Q import (
 )
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
-    stacked_epoch_menu,
     wait_for_key,
 )
 from swift_comet_pipeline.comet.comet_radial_profile import (
@@ -501,75 +505,65 @@ class RadialProfileSelectionPlot(object):
 
 
 def profile_selection_plot(
-    pipeline_files: PipelineFiles, stacking_method: StackingMethod
+    scp: SwiftCometPipeline, stacking_method: StackingMethod
 ) -> RadialProfileSelectionPlot | None:
-    data_ingestion_files = pipeline_files.data_ingestion_files
-    epoch_subpipelines = pipeline_files.epoch_subpipelines
 
-    if data_ingestion_files.epochs is None:
-        print("No epochs found!")
-        return
-
-    if epoch_subpipelines is None:
-        # TODO: better error message
-        print("No epochs ready for this step!")
-        return
-
-    parent_epoch = stacked_epoch_menu(
-        pipeline_files=pipeline_files, require_background_analysis_to_exist=True
+    selected_epoch_id = subpipeline_selection_menu(
+        scp=scp, status_marker=SwiftCometPipelineStepEnum.vectorial_analysis
     )
-    if parent_epoch is None:
-        return
+    if selected_epoch_id is None:
+        return None
 
-    epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-        parent_epoch=parent_epoch
+    stacked_epoch = scp.get_product_data(
+        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=selected_epoch_id
     )
-    if epoch_subpipeline is None:
-        return
-
-    epoch_subpipeline.stacked_epoch.read()
-    stacked_epoch = epoch_subpipeline.stacked_epoch.data
     if stacked_epoch is None:
-        print("Error reading epoch!")
-        return
+        return None
 
-    t_perihelion_list = find_perihelion(data_ingestion_files=data_ingestion_files)
+    t_perihelion_list = find_perihelion(scp=scp)
     if t_perihelion_list is None:
         print("Could not find time of perihelion!")
-        return
+        return None
     t_perihelion = t_perihelion_list[0].t_perihelion
 
-    epoch_subpipeline.background_subtracted_images[
-        SwiftFilter.uw1, stacking_method
-    ].read()
-    epoch_subpipeline.background_subtracted_images[
-        SwiftFilter.uvv, stacking_method
-    ].read()
-
-    uw1_img = epoch_subpipeline.background_subtracted_images[
-        SwiftFilter.uw1, stacking_method
-    ].data.data
-    uvv_img = epoch_subpipeline.background_subtracted_images[
-        SwiftFilter.uvv, stacking_method
-    ].data.data
+    uw1_img = scp.get_product_data(
+        pf=PipelineFilesEnum.background_subtracted_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    assert uw1_img is not None
+    uw1_img = uw1_img.data
+    uvv_img = scp.get_product_data(
+        pf=PipelineFilesEnum.background_subtracted_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert uvv_img is not None
+    uvv_img = uvv_img.data
 
     if uw1_img is None or uvv_img is None:
         print("Error loading background-subtracted images!")
         wait_for_key()
         return
 
-    epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].read()
-    epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].read()
-    uw1_bg = yaml_dict_to_background_result(
-        epoch_subpipeline.background_analyses[SwiftFilter.uw1, stacking_method].data
+    uw1_bg = scp.get_product_data(
+        pf=PipelineFilesEnum.background_determination,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
     )
-    uvv_bg = yaml_dict_to_background_result(
-        epoch_subpipeline.background_analyses[SwiftFilter.uvv, stacking_method].data
+    assert uw1_bg is not None
+    uw1_bg = yaml_dict_to_background_result(raw_yaml=uw1_bg)
+    uvv_bg = scp.get_product_data(
+        pf=PipelineFilesEnum.background_determination,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
     )
-
-    if uw1_bg is None or uvv_bg is None:
-        print("Error loading background analysis!")
-        return
+    assert uvv_bg is not None
+    uvv_bg = yaml_dict_to_background_result(raw_yaml=uvv_bg)
 
     rpsp = RadialProfileSelectionPlot(
         stacked_epoch=stacked_epoch,
@@ -581,62 +575,99 @@ def profile_selection_plot(
     )
     rpsp.show()
 
-    # TODO: ask to save results
-    epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].data = (
-        radial_profile_to_dataframe_product(
-            profile=rpsp.uw1_radial_profile, km_per_pix=rpsp.km_per_pix
-        )
-    )
-    epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].data = (
-        radial_profile_to_dataframe_product(
-            profile=rpsp.uvv_radial_profile, km_per_pix=rpsp.km_per_pix
-        )
-    )
     rprint("[green]Writing extracted profiles for uw1 and uvv filters...[/green]")
-    epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].write()
-    epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].write()
 
-    epoch_subpipeline.extracted_profile_images[
-        SwiftFilter.uw1, stacking_method
-    ].data = epoch_stacked_image_to_fits(
+    uw1_profile = scp.get_product(
+        pf=PipelineFilesEnum.extracted_profile,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    assert uw1_profile is not None
+    uw1_profile.data = radial_profile_to_dataframe_product(
+        profile=rpsp.uw1_radial_profile, km_per_pix=rpsp.km_per_pix
+    )
+    uw1_profile.write()
+    uvv_profile = scp.get_product(
+        pf=PipelineFilesEnum.extracted_profile,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert uvv_profile is not None
+    uvv_profile.data = radial_profile_to_dataframe_product(
+        profile=rpsp.uvv_radial_profile, km_per_pix=rpsp.km_per_pix
+    )
+    uvv_profile.write()
+
+    prof_img_uw1 = scp.get_product(
+        pf=PipelineFilesEnum.extracted_profile_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    assert prof_img_uw1 is not None
+    prof_img_uw1.data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uw1_median_profile_img
     )
-    epoch_subpipeline.extracted_profile_images[
-        SwiftFilter.uvv, stacking_method
-    ].data = epoch_stacked_image_to_fits(
+    prof_img_uw1.write()
+    prof_img_uvv = scp.get_product(
+        pf=PipelineFilesEnum.extracted_profile_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert prof_img_uvv is not None
+    prof_img_uvv.data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uvv_median_profile_img
     )
-    rprint("[green]Writing extracted profile images for uw1 and uvv filters...[/green]")
-    epoch_subpipeline.extracted_profile_images[SwiftFilter.uw1, stacking_method].write()
-    epoch_subpipeline.extracted_profile_images[SwiftFilter.uvv, stacking_method].write()
+    prof_img_uvv.write()
 
-    epoch_subpipeline.median_subtracted_images[
-        SwiftFilter.uw1, stacking_method
-    ].data = epoch_stacked_image_to_fits(
+    med_sub_uw1 = scp.get_product(
+        pf=PipelineFilesEnum.median_subtracted_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    assert med_sub_uw1 is not None
+    med_sub_uw1.data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uw1_subtracted_median_image
     )
-    epoch_subpipeline.median_subtracted_images[
-        SwiftFilter.uvv, stacking_method
-    ].data = epoch_stacked_image_to_fits(
+    med_sub_uw1.write()
+    med_sub_uvv = scp.get_product(
+        pf=PipelineFilesEnum.median_subtracted_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert med_sub_uvv is not None
+    med_sub_uvv.data = epoch_stacked_image_to_fits(
         epoch=stacked_epoch, img=rpsp.uvv_subtracted_median_image
     )
-    rprint("[green]Writing median subtracted images for uw1 and uvv filters...[/green]")
-    epoch_subpipeline.median_subtracted_images[SwiftFilter.uw1, stacking_method].write()
-    epoch_subpipeline.median_subtracted_images[SwiftFilter.uvv, stacking_method].write()
+    med_sub_uvv.write()
 
-    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].data = (
-        epoch_stacked_image_to_fits(
-            epoch=stacked_epoch, img=rpsp.uw1_divided_median_image
-        )
+    med_div_uw1 = scp.get_product(
+        pf=PipelineFilesEnum.median_divided_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
     )
-    epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].data = (
-        epoch_stacked_image_to_fits(
-            epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
-        )
+    assert med_div_uw1 is not None
+    med_div_uw1.data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uw1_divided_median_image
     )
-    rprint("[green]Writing median divided images for uw1 and uvv filters...[/green]")
-    epoch_subpipeline.median_divided_images[SwiftFilter.uw1, stacking_method].write()
-    epoch_subpipeline.median_divided_images[SwiftFilter.uvv, stacking_method].write()
+    med_div_uw1.write()
+    med_div_uvv = scp.get_product(
+        pf=PipelineFilesEnum.median_divided_image,
+        epoch_id=selected_epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert med_div_uvv is not None
+    med_div_uvv.data = epoch_stacked_image_to_fits(
+        epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
+    )
+    med_div_uvv.write()
 
     # TODO: write a dataclass to hold the q_from_profile_extraction and associated to_dict and from_dict for saving/loading if needed
     # TODO: write the code to fill in this dataclass and save the product
@@ -644,10 +675,10 @@ def profile_selection_plot(
     return rpsp
 
 
-def qH2O_from_profile_step(
+def vectorial_analysis_step(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    pipeline_files = PipelineFiles(swift_project_config.project_path)
+    scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
     selection = get_selection(stacking_methods)
@@ -655,8 +686,6 @@ def qH2O_from_profile_step(
         return
     stacking_method = stacking_methods[selection]
 
-    rpsp = profile_selection_plot(
-        pipeline_files=pipeline_files, stacking_method=stacking_method
-    )
+    rpsp = profile_selection_plot(scp=scp, stacking_method=stacking_method)
     if rpsp is None:
         return

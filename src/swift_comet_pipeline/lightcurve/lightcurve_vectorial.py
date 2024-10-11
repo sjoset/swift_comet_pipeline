@@ -13,16 +13,15 @@ from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEnt
 from swift_comet_pipeline.modeling.vectorial_model import water_vectorial_model
 from swift_comet_pipeline.modeling.vectorial_model_fit import vectorial_fit
 from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
-from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
-    EpochSubpipelineFiles,
-)
-from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
+from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 
 
 def lightcurve_from_vectorial_fits(
-    pipeline_files: PipelineFiles,
+    scp: SwiftCometPipeline,
     stacking_method: StackingMethod,
     t_perihelion: Time,
     dust_redness: DustReddeningPercent,
@@ -30,26 +29,28 @@ def lightcurve_from_vectorial_fits(
     near_far_radius: u.Quantity,
 ) -> LightCurve | None:
 
-    if pipeline_files.epoch_subpipelines is None:
-        return None
+    epoch_ids = scp.get_epoch_id_list()
+    assert epoch_ids is not None
 
-    lightcurve = []
-    for epoch_subpipeline in pipeline_files.epoch_subpipelines:
-        lc_entry = lightcurve_entry_from_vectorial_fits(
-            epoch_subpipeline_files=epoch_subpipeline,
+    lightcurve = [
+        lightcurve_entry_from_vectorial_fits(
+            scp=scp,
+            epoch_id=epoch_id,
             stacking_method=stacking_method,
             t_perihelion=t_perihelion,
             dust_redness=dust_redness,
             fit_type=fit_type,
             near_far_radius=near_far_radius,
         )
-        lightcurve.append(lc_entry)
+        for epoch_id in epoch_ids
+    ]
 
     return lightcurve
 
 
 def lightcurve_entry_from_vectorial_fits(
-    epoch_subpipeline_files: EpochSubpipelineFiles,
+    scp: SwiftCometPipeline,
+    epoch_id: EpochID,
     stacking_method: StackingMethod,
     t_perihelion: Time,
     dust_redness: DustReddeningPercent,
@@ -57,36 +58,30 @@ def lightcurve_entry_from_vectorial_fits(
     near_far_radius: u.Quantity,
 ) -> LightCurveEntry | None:
 
-    if not epoch_subpipeline_files.stacked_epoch.product_path.exists():
-        return None
-
-    epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
-    stacked_epoch = epoch_subpipeline_files.stacked_epoch.data
-    if stacked_epoch is None:
-        return None
+    stacked_epoch = scp.get_product_data(
+        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
+    )
+    assert stacked_epoch is not None
 
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
     observation_time = Time(np.mean(stacked_epoch.MID_TIME))
 
-    for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-        p = epoch_subpipeline_files.extracted_profiles[filter_type, stacking_method]
-        p.read_product_if_not_loaded()
-        if p.data is None:
-            # print(
-            #     f"Could not load radial profile of {epoch_subpipeline_files.parent_epoch.product_path.name} for filter {filter_to_file_string(filter_type=filter_type)}"
-            # )
-            return None
-
-    uw1_profile = radial_profile_from_dataframe_product(
-        df=epoch_subpipeline_files.extracted_profiles[
-            SwiftFilter.uw1, stacking_method
-        ].data
+    uw1_profile = scp.get_product_data(
+        pf=PipelineFilesEnum.extracted_profile,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
     )
-    uvv_profile = radial_profile_from_dataframe_product(
-        df=epoch_subpipeline_files.extracted_profiles[
-            SwiftFilter.uvv, stacking_method
-        ].data
+    assert uw1_profile is not None
+    uw1_profile = radial_profile_from_dataframe_product(uw1_profile)
+    uvv_profile = scp.get_product_data(
+        pf=PipelineFilesEnum.extracted_profile,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
     )
+    assert uvv_profile is not None
+    uvv_profile = radial_profile_from_dataframe_product(uvv_profile)
 
     model_Q = 1e29 / u.s  # type: ignore
     vmr = water_vectorial_model(base_q=model_Q, helio_r=helio_r)

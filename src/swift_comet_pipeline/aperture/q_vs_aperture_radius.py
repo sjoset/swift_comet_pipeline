@@ -25,10 +25,10 @@ from swift_comet_pipeline.background.background_result import (
     yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.observationlog.epoch import EpochID
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
-from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
-    EpochSubpipelineFiles,
-)
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.count_rate import CountRate
 from swift_comet_pipeline.swift.magnitude_from_countrate import (
@@ -36,6 +36,7 @@ from swift_comet_pipeline.swift.magnitude_from_countrate import (
 )
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.water_production.flux_OH import (
     OH_flux_from_count_rate,
@@ -101,11 +102,14 @@ def q_vs_aperture_radius(
     num_apertures: int = 300,
 ) -> list[QvsApertureRadiusEntry] | None:
 
+    # TODO: document function
+
     helio_r_au = np.mean(stacked_epoch.HELIO)
     helio_v_kms = np.mean(stacked_epoch.HELIO_V)
     delta_au = np.mean(stacked_epoch.OBS_DIS)
     km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
 
+    # we are given a maximum aperture radius in physical units - translate to pixels
     r_pix_max = max_aperture_radius.to_value(u.km) / km_per_pix  # type: ignore
     if r_pix_max < 1.0:
         print(
@@ -170,7 +174,6 @@ def q_vs_aperture_radius(
             helio_v_kms=helio_v_kms,
             delta_au=delta_au,
         )
-        # TODO: backend hard-coded
         q_H2O[r, dust_redness] = num_OH_to_Q_vectorial(
             helio_r_au=helio_r_au, num_OH=num_OH[r, dust_redness]
         )
@@ -260,63 +263,109 @@ def get_production_plateaus_from_yaml(
 
 
 def q_vs_aperture_radius_at_epoch(
-    epoch_subpipeline_files: EpochSubpipelineFiles,
+    # epoch_subpipeline_files: EpochSubpipelineFiles,
+    scp: SwiftCometPipeline,
+    epoch_id: EpochID,
+    stacking_method: StackingMethod,
     dust_rednesses: list[DustReddeningPercent],
 ) -> None:
 
     # TODO: document function
 
-    epoch_id = epoch_subpipeline_files.parent_epoch.epoch_id
-
-    epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
-    stacked_epoch = epoch_subpipeline_files.stacked_epoch.data
-    if stacked_epoch is None:
-        # TODO: error message
+    if scp.exists(
+        pf=PipelineFilesEnum.aperture_analysis,
+        epoch_id=epoch_id,
+        stacking_method=stacking_method,
+    ):
+        print(f"Aperture analysis for {epoch_id} already exists - skipping.")
+        # TODO: ask to re-calculate
+        # wait_for_key()
         return
+
+    # epoch_id = epoch_subpipeline_files.parent_epoch.epoch_id
+
+    # epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
+    # stacked_epoch = epoch_subpipeline_files.stacked_epoch.data
+    # if stacked_epoch is None:
+    #     # TODO: error message
+    #     return
+
+    stacked_epoch = scp.get_product_data(
+        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
+    )
+    assert stacked_epoch is not None
 
     print(
         f"Starting analysis of {epoch_id}: observation at {np.mean(stacked_epoch.HELIO)} AU"
     )
 
-    # TODO: select which method with menu
-    # print("Selecting stacking method: sum")
-    stacking_method = StackingMethod.summation
-
-    # load background-subtracted images
-    epoch_subpipeline_files.background_subtracted_images[
-        SwiftFilter.uw1, stacking_method
-    ].read_product_if_not_loaded()
-    epoch_subpipeline_files.background_subtracted_images[
-        SwiftFilter.uvv, stacking_method
-    ].read_product_if_not_loaded()
-
-    uw1_img = epoch_subpipeline_files.background_subtracted_images[
-        SwiftFilter.uw1, stacking_method
-    ].data.data
-    uvv_img = epoch_subpipeline_files.background_subtracted_images[
-        SwiftFilter.uvv, stacking_method
-    ].data.data
+    # # load background-subtracted images
+    # epoch_subpipeline_files.background_subtracted_images[
+    #     SwiftFilter.uw1, stacking_method
+    # ].read_product_if_not_loaded()
+    # epoch_subpipeline_files.background_subtracted_images[
+    #     SwiftFilter.uvv, stacking_method
+    # ].read_product_if_not_loaded()
+    #
+    # uw1_img = epoch_subpipeline_files.background_subtracted_images[
+    #     SwiftFilter.uw1, stacking_method
+    # ].data.data
+    # uvv_img = epoch_subpipeline_files.background_subtracted_images[
+    #     SwiftFilter.uvv, stacking_method
+    # ].data.data
+    uw1_img = scp.get_product_data(
+        pf=PipelineFilesEnum.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
+    )
+    assert uw1_img is not None
+    uw1_img = uw1_img.data
+    uvv_img = scp.get_product_data(
+        pf=PipelineFilesEnum.background_subtracted_image,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
+    )
+    assert uvv_img is not None
+    uvv_img = uvv_img.data
 
     if uw1_img is None or uvv_img is None:
         print("Error loading background-subtracted images!")
         return
 
-    epoch_subpipeline_files.background_analyses[
-        SwiftFilter.uw1, stacking_method
-    ].read_product_if_not_loaded()
-    epoch_subpipeline_files.background_analyses[
-        SwiftFilter.uvv, stacking_method
-    ].read_product_if_not_loaded()
-    uw1_bg = yaml_dict_to_background_result(
-        epoch_subpipeline_files.background_analyses[
-            SwiftFilter.uw1, stacking_method
-        ].data
+    # epoch_subpipeline_files.background_analyses[
+    #     SwiftFilter.uw1, stacking_method
+    # ].read_product_if_not_loaded()
+    # epoch_subpipeline_files.background_analyses[
+    #     SwiftFilter.uvv, stacking_method
+    # ].read_product_if_not_loaded()
+    # uw1_bg = yaml_dict_to_background_result(
+    #     epoch_subpipeline_files.background_analyses[
+    #         SwiftFilter.uw1, stacking_method
+    #     ].data
+    # )
+    # uvv_bg = yaml_dict_to_background_result(
+    #     epoch_subpipeline_files.background_analyses[
+    #         SwiftFilter.uvv, stacking_method
+    #     ].data
+    # )
+    uw1_bg = scp.get_product_data(
+        pf=PipelineFilesEnum.background_determination,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uw1,
+        stacking_method=stacking_method,
     )
-    uvv_bg = yaml_dict_to_background_result(
-        epoch_subpipeline_files.background_analyses[
-            SwiftFilter.uvv, stacking_method
-        ].data
+    assert uw1_bg is not None
+    uw1_bg = yaml_dict_to_background_result(uw1_bg)
+    uvv_bg = scp.get_product_data(
+        pf=PipelineFilesEnum.background_determination,
+        epoch_id=epoch_id,
+        filter_type=SwiftFilter.uvv,
+        stacking_method=stacking_method,
     )
+    assert uvv_bg is not None
+    uvv_bg = yaml_dict_to_background_result(uvv_bg)
 
     if uw1_bg is None or uvv_bg is None:
         print("Error loading background analysis!")
@@ -332,7 +381,7 @@ def q_vs_aperture_radius_at_epoch(
         uw1_bg=uw1_bg,
         uvv_bg=uvv_bg,
         max_aperture_radius=150000 * u.km,  # type: ignore
-        num_apertures=30,
+        num_apertures=100,
     )
 
     by_dust_redness = lambda x: x.dust_redness
@@ -361,5 +410,13 @@ def q_vs_aperture_radius_at_epoch(
     df.attrs.update(dust_plateau_list_dict_serialize(q_plateau_list_dict))  # type: ignore
 
     rprint("[green]Writing q vs aperture radius results ...[/green]")
-    epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].data = df
-    epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].write()
+    # epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].data = df
+    # epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].write()
+    ap_analysis_product = scp.get_product(
+        pf=PipelineFilesEnum.aperture_analysis,
+        epoch_id=epoch_id,
+        stacking_method=stacking_method,
+    )
+    assert ap_analysis_product is not None
+    ap_analysis_product.data = df
+    ap_analysis_product.write()

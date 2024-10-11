@@ -47,4 +47,5 @@ def reddening_correction(
     # get reddening correction factor: do this with proper units (when EA lambdas are in angstroms, this is 200000)
     middle_factor = (wave_v - wave_uw1) * dust_redness / 20000
 
+    # Reference: eq. 3.36 and 3.39 in Xing thesis
     return (1 - middle_factor) / (1 + middle_factor)

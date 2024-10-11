@@ -6,7 +6,14 @@ from swift_comet_pipeline.observationlog.gui_observation_log_slicing import (
 from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
     epochs_from_time_delta,
 )
-from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
+    SwiftCometPipelineStepStatus,
+)
+from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
+    SwiftCometPipelineStepEnum,
+)
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import get_yes_no, wait_for_key
@@ -16,16 +23,18 @@ from swift_comet_pipeline.observationlog.observation_log import (
 
 
 def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
-    data_ingestion_files = DataIngestionFiles(
-        project_path=swift_project_config.project_path
-    )
+    scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    data_ingestion_files.observation_log.read()
-    obs_log = data_ingestion_files.observation_log.data
-    if obs_log is None:
-        rprint("[red]Observation log is missing![/red]")
+    if (
+        scp.get_status(SwiftCometPipelineStepEnum.observation_log)
+        != SwiftCometPipelineStepStatus.complete
+    ):
+        rprint("[red]Observation log has not been generated![/red]")
         wait_for_key()
         return
+
+    obs_log = scp.get_product_data(pf=PipelineFilesEnum.observation_log)
+    assert obs_log is not None
 
     if not includes_uvv_and_uw1_filters(obs_log=obs_log):
         rprint(
@@ -48,13 +57,10 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     if not save_epochs:
         return
 
-    if data_ingestion_files.epochs is not None:
-        print("Found previous epochs in project! Delete epochs and their results?")
-        delete_epochs_and_results = get_yes_no()
-        # TODO: delete epochs and all of their results
-        print("ignoring response for now")
-
-    data_ingestion_files.create_epochs(epoch_list=epoch_list, write_to_disk=True)
+    # data_ingestion_files.create_epochs(epoch_list=epoch_list, write_to_disk=True)
+    scp.pipeline_files.create_pre_stack_epochs(
+        epoch_list=epoch_list, write_to_disk=True
+    )
 
     rprint("[green]Done writing epochs![/green]")
     wait_for_key()

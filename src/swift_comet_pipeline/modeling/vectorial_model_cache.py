@@ -3,7 +3,7 @@ import pathlib
 from icecream import ic
 from pyvectorial_au.db.cache_init import initialize_vectorial_model_cache
 
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
 
 
 __VMCACHE_PATH__: pathlib.Path | None = None

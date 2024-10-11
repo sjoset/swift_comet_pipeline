@@ -20,21 +20,36 @@ class BayesianLightCurveEntry:
     rh_au: float
     posterior_q: float
     non_detection_probability: float
+    dust_mean: DustReddeningPercent
+    dust_sigma: DustReddeningPercent
+
+
+# mostly unused in analysis but in case we want to see internals of q interacting with dust prior
+@dataclass
+class WaterProductionPosteriorEntry:
+    dust_redness: DustReddeningPercent
+    time_from_perihelion_days: float
+    rh_au: float
+    observation_time: Time
+    q: float
+    redness_prior_prob: float
+    posterior_qs: float
 
 
 BayesianLightCurve: TypeAlias = list[BayesianLightCurveEntry]
+WaterProductionPosteriorDataFrame: TypeAlias = pd.DataFrame
 
 
-def make_gaussian_bayesian_prior(
-    mean_reddening: DustReddeningPercent, sigma_reddening: float
-):
+def make_gaussian_prior(mean_reddening: DustReddeningPercent, sigma_reddening: float):
     return norm(loc=float(mean_reddening), scale=sigma_reddening)
 
 
 def bayesian_lightcurve_from_aperture_lightcurve(
     lc: LightCurve, mean_reddening: DustReddeningPercent, sigma_reddening: float
-) -> BayesianLightCurve:
-    # TODO: document
+) -> tuple[BayesianLightCurve, WaterProductionPosteriorDataFrame]:
+    # TODO: document function and the columns of WaterProductionPosteriorDataFrame
+
+    # Assume a gaussian prior for the dust redness, and a uniform likelihood associated with q - we don't have any belief about what q should pop out of our model
 
     lc_df = lightcurve_to_dataframe(lc=lc)
 
@@ -73,7 +88,7 @@ def bayesian_lightcurve_from_aperture_lightcurve(
     filled_in_df = pd.concat(filled_in_df_list)
 
     # make our dust redness prior
-    gaussian_prior = make_gaussian_bayesian_prior(
+    gaussian_prior = make_gaussian_prior(
         mean_reddening=mean_reddening, sigma_reddening=sigma_reddening
     )
 
@@ -82,13 +97,14 @@ def bayesian_lightcurve_from_aperture_lightcurve(
         lambda x: gaussian_prior.pdf(x)  # type: ignore
     )
 
-    # calculate the water production times the probability that production is correct
+    # calculate the water production times the prior redness probability
     filled_in_df["posterior_qs"] = filled_in_df.q * filled_in_df.redness_prior_prob
 
     posterior_q_list = []
     non_detection_probs = []
     for _, sub_df in filled_in_df.groupby("time_from_perihelion_days"):
         non_zero_prod_mask = sub_df.q != 0.0
+        # Expectation value of q, with sum taken over the redness
         posterior_q = np.sum(sub_df.posterior_qs[non_zero_prod_mask])
         posterior_q_list.append(posterior_q)
         non_detection_prob = np.sum(sub_df.redness_prior_prob[~non_zero_prod_mask])
@@ -101,14 +117,15 @@ def bayesian_lightcurve_from_aperture_lightcurve(
             "rh_au": filled_in_df.rh_au.unique(),
             "observation_time": filled_in_df.observation_time.unique(),
             "non_detection_probability": non_detection_probs,
+            "dust_mean": mean_reddening,
+            "dust_sigma": sigma_reddening,
         }
     )
 
     # tag the heliocentric distance with plus or minus, negative distance being pre-perihelion
     result_df.rh_au = result_df.rh_au * np.sign(result_df.time_from_perihelion_days)
-    # return result_df
 
-    return dataframe_to_bayesian_lightcurve(df=result_df)
+    return (dataframe_to_bayesian_lightcurve(df=result_df), filled_in_df)
 
 
 def bayesian_lightcurve_to_dataframe(blc: BayesianLightCurve) -> pd.DataFrame:

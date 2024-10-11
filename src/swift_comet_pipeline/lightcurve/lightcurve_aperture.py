@@ -4,30 +4,32 @@ import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_unserialize,
 )
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
-from swift_comet_pipeline.pipeline.files.epoch_subpipeline_files import (
-    EpochSubpipelineFiles,
-)
-from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
+from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 
 
 def lightcurve_from_aperture_plateaus(
-    pipeline_files: PipelineFiles,
+    scp: SwiftCometPipeline,
     stacking_method: StackingMethod,
     t_perihelion: Time,
 ) -> LightCurve | None:
+
     # TODO: document
-    if pipeline_files.epoch_subpipelines is None:
-        return None
+
+    epoch_ids = scp.get_epoch_id_list()
+    assert epoch_ids is not None
 
     lightcurve_entries = []
-    for epoch_subpipeline_files in pipeline_files.epoch_subpipelines:
+    for epoch_id in epoch_ids:
         lc_entries = lightcurve_entries_from_aperture_plateaus(
-            epoch_subpipeline_files=epoch_subpipeline_files,
+            scp=scp,
+            epoch_id=epoch_id,
             stacking_method=stacking_method,
             t_perihelion=t_perihelion,
         )
@@ -40,36 +42,28 @@ def lightcurve_from_aperture_plateaus(
 
 
 def lightcurve_entries_from_aperture_plateaus(
-    epoch_subpipeline_files: EpochSubpipelineFiles,
+    scp: SwiftCometPipeline,
+    epoch_id: EpochID,
     stacking_method: StackingMethod,
     t_perihelion: Time,
 ) -> list[LightCurveEntry] | None:
     # TODO: document
 
-    # if epoch_subpipeline_files is None:
-    #     return None
-
-    epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
-    stacked_epoch = epoch_subpipeline_files.stacked_epoch.data
-    if stacked_epoch is None:
-        return None
+    stacked_epoch = scp.get_product_data(
+        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
+    )
+    assert stacked_epoch is not None
 
     helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
     observation_time = Time(np.mean(stacked_epoch.MID_TIME))
     time_from_perihelion_days = float((observation_time - t_perihelion).to_value(u.day))  # type: ignore
 
-    q_vs_r_product = epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[
-        stacking_method
-    ]
-
-    if not q_vs_r_product.product_path.exists():
-        return None
-
-    q_vs_r_product.read_product_if_not_loaded()
-    if q_vs_r_product.data is None:
-        return None
-
-    df = q_vs_r_product.data
+    df = scp.get_product_data(
+        pf=PipelineFilesEnum.aperture_analysis,
+        epoch_id=epoch_id,
+        stacking_method=stacking_method,
+    )
+    assert df is not None
 
     q_plateau_list_dict = dust_plateau_list_dict_unserialize(df.attrs)
 

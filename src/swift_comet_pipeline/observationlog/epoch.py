@@ -15,6 +15,7 @@ from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image
 
 
 Epoch: TypeAlias = pd.DataFrame
+EpochID: TypeAlias = str
 
 
 def read_epoch(epoch_path: pathlib.Path) -> Epoch:
@@ -36,6 +37,13 @@ def write_epoch(epoch: Epoch, epoch_path: pathlib.Path) -> None:
     # do any column processing of our own here
 
     write_observation_log(epoch, epoch_path)
+
+
+def is_epoch_stackable(epoch: Epoch) -> bool:
+    """
+    Checks that all uw1 and uvv images in this epoch are taken with the same DATAMODE keyword
+    """
+    return epoch.DATAMODE.nunique() == 1
 
 
 def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.ImageHDU:

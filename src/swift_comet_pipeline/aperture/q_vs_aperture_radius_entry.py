@@ -24,6 +24,8 @@ class QvsApertureRadiusEntry:
     num_OH_err: float
     q_H2O: float
     q_H2O_err: float
+    # TODO:
+    # q_H2O_vmag_empirical: float
 
 
 def q_vs_aperture_radius_entry_list_from_dataframe(

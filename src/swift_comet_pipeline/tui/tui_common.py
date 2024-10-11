@@ -1,11 +1,11 @@
 from rich import print as rprint
 from rich.console import Console
 
-from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
-from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
-from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import (
-    EpochProduct,
-)
+
+# @dataclass
+# class SCPMenuEntry:
+#     description: str
+#     status: SwiftCometPipelineStepStatus
 
 
 def get_float(prompt: str) -> float:
@@ -61,6 +61,32 @@ def bool_to_x_or_check(x: bool, rich_text: bool = True):
             return "✗"
 
 
+# def step_status_to_symbol(
+#     x: SwiftCometPipelineStepStatus, rich_text: bool = True
+# ) -> str:
+#     match x:
+#         case SwiftCometPipelineStepStatus.complete:
+#             if rich_text:
+#                 return "[green]✔[/green]"
+#             else:
+#                 return "✔"
+#         case SwiftCometPipelineStepStatus.not_complete:
+#             if rich_text:
+#                 return "[red]✗[/red]"
+#             else:
+#                 return "✗"
+#         case SwiftCometPipelineStepStatus.partial:
+#             if rich_text:
+#                 return "[yellow]~[/yellow]"
+#             else:
+#                 return "~"
+#         case SwiftCometPipelineStepStatus.invalid:
+#             if rich_text:
+#                 return "[red]![/red]"
+#             else:
+#                 return "!"
+
+
 def get_yes_no() -> bool:
     while True:
         raw_selection = input()
@@ -70,78 +96,66 @@ def get_yes_no() -> bool:
             return False
 
 
-def epoch_menu(data_ingestion_files: DataIngestionFiles) -> EpochProduct | None:
-    """Allows selection of an epoch via a text menu"""
-    if data_ingestion_files.epochs is None:
-        print("No epochs available!")
-        return None
+# def epoch_menu(scp: SwiftCometPipeline) -> EpochID | None:
+#     """Allows selection of an epoch via a text menu"""
+#     # if data_ingestion_files.epochs is None:
+#     #     print("No epochs available!")
+#     #     return None
+#
+#     if (
+#         scp.get_status(step=SwiftCometPipelineStepEnum.identify_epochs)
+#         != SwiftCometPipelineStepStatus.complete
+#     ):
+#         print("No epochs available!")
+#         return None
+#
+#     epoch_ids = scp.get_epoch_id_list()
+#     assert epoch_ids is not None
+#
+#     selection = get_selection(epoch_ids)
+#     if selection is None:
+#         return None
+#
+#     return epoch_ids[selection]
 
-    selection = get_selection(
-        [x.product_path.stem for x in data_ingestion_files.epochs]
-    )
-    if selection is None:
-        return None
 
-    return data_ingestion_files.epochs[selection]
-
-
-def stacked_epoch_menu(
-    pipeline_files: PipelineFiles,
-    require_background_analysis_to_exist: bool = False,
-    require_background_analysis_to_not_exist: bool = False,
-) -> EpochProduct | None:
-    """
-    The returned EpochProduct is the parent epoch that produced the selected stacked epoch!
-
-    Allows selection of a stacked epoch via a text menu, showing only epochs that have been stacked,
-    returning a path to the associated epoch that generated the stack, which is how we find products
-    associated with that epoch in PipelineFiles
-
-    If require_background_analysis_to_exist is set to True, then only epochs with completed background analysis are shown.
-    If it is false, only epochs without background analysis are shown.
-    If it is None, no filtering occurs
-    """
-
-    parent_epochs = pipeline_files.data_ingestion_files.epochs
-    if parent_epochs is None:
-        return None
-
-    stacked_epochs = []
-    for parent_epoch in parent_epochs:
-        if parent_epoch is None:
-            continue
-        epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-            parent_epoch=parent_epoch
-        )
-        if epoch_subpipeline is None:
-            continue
-        if epoch_subpipeline.all_images_stacked:
-            # stacked images for this epoch exist - do we require the background analysis to be done as well?
-            if (
-                require_background_analysis_to_exist
-                and not epoch_subpipeline.background_analyses_done
-            ):
-                continue
-            if (
-                require_background_analysis_to_not_exist
-                and epoch_subpipeline.background_analyses_done
-            ):
-                continue
-
-            stacked_epochs.append(parent_epoch)
-
-    if len(stacked_epochs) == 0:
-        print("No stacked epochs available that meet the conditions:")
-        print(
-            f"- Stacked images exist\n- {require_background_analysis_to_exist=}\n- {require_background_analysis_to_not_exist=}"
-        )
-        return None
-
-    selection = get_selection([x.product_path.stem for x in stacked_epochs])
-    if selection is None:
-        return None
-
-    return stacked_epochs[selection]
+# def filter_by_status(
+#     scp: SwiftCometPipeline,
+#     epoch_id_list: list[EpochID],
+#     step: SwiftCometPipelineStepEnum,
+#     step_status: SwiftCometPipelineStepStatus,
+#     filter_type: SwiftFilter | None = None,
+#     stacking_method: StackingMethod | None = None,
+# ) -> list[EpochID]:
+#
+#     return list(
+#         filter(
+#             lambda x: scp.get_status(
+#                 step=step,
+#                 epoch_id=x,
+#                 filter_type=filter_type,
+#                 stacking_method=stacking_method,
+#             )
+#             == step_status,
+#             epoch_id_list,
+#         )
+#     )
+#
+#
+# def stacked_epoch_menu(scp: SwiftCometPipeline) -> EpochID | None:
+#     epoch_id_list = scp.get_epoch_id_list()
+#     if epoch_id_list is None:
+#         return None
+#
+#     stacked_epochs = [x for x in epoch_id_list if scp.has_epoch_been_stacked(x)]
+#     if len(stacked_epochs) == 0:
+#         return None
+#
+#     selection = get_selection(stacked_epochs)
+#     if selection is None:
+#         return None
+#
+#     return stacked_epochs[selection]
 
 
 def wait_for_key(prompt: str = "Press enter to continue") -> None:
@@ -151,3 +165,149 @@ def wait_for_key(prompt: str = "Press enter to continue") -> None:
 def clear_screen() -> None:
     console = Console()
     console.clear()
+
+
+# def scp_menu_selection_plain(menu_entries: list[SCPMenuEntry]) -> SCPMenuEntry | None:
+#
+#     user_selection = None
+#
+#     while user_selection is None:
+#         rprint("[red]Selection (q to cancel and exit menu):[/red]")
+#         for i, entry in enumerate(menu_entries):
+#             status_string = step_status_to_symbol(entry.status)
+#             rprint(
+#                 f"\t[white]{i}:[/white]\t[blue]{entry.description}[/blue] [white][{status_string}[/white]]"
+#             )
+#
+#         raw_selection = input()
+#         if raw_selection == "q":
+#             return None
+#         try:
+#             selection = int(raw_selection)
+#         except ValueError:
+#             print("Numbers only, please")
+#             selection = -1
+#
+#         if selection in range(len(menu_entries)):
+#             user_selection = selection
+#
+#     return menu_entries[user_selection]
+#
+#
+# def scp_menu_selection(menu_entries: list[SCPMenuEntry]) -> SCPMenuEntry | None:
+#
+#     user_selection = None
+#     console = Console()
+#
+#     while user_selection is None:
+#         rprint("[red]Selection (q to cancel and exit menu):[/red]")
+#         menu_renderables = []
+#         for i, entry in enumerate(menu_entries):
+#             status_string = step_status_to_symbol(entry.status)
+#             p1 = f"\t[white]{i}:[/white]\t[blue]{entry.description}[/blue] [white][[/white]{status_string}[white]][/white]"
+#             menu_renderables.append(Panel(p1, expand=True))
+#
+#         console.print(Columns(menu_renderables))
+#
+#         raw_selection = input()
+#         if raw_selection == "q":
+#             return None
+#         try:
+#             selection = int(raw_selection)
+#         except ValueError:
+#             print("Numbers only, please")
+#             selection = -1
+#
+#         if selection in range(len(menu_entries)):
+#             user_selection = selection
+#
+#     return menu_entries[user_selection]
+#
+#
+# def subpipeline_selection_menu(
+#     scp: SwiftCometPipeline, status_marker: SwiftCometPipelineStepEnum
+# ) -> EpochID | None:
+#
+#     uw1_and_uvv = [SwiftFilter.uw1, SwiftFilter.uvv]
+#     sum_and_median = [StackingMethod.summation, StackingMethod.median]
+#
+#     epoch_ids = scp.get_epoch_id_list()
+#     if epoch_ids is None:
+#         return None
+#
+#     statuses = {}
+#     match status_marker:
+#         case SwiftCometPipelineStepEnum.epoch_stack:
+#             for epoch_id in epoch_ids:
+#                 statuses[epoch_id] = scp._status_list_to_single_status(
+#                     [
+#                         scp.get_status(
+#                             SwiftCometPipelineStepEnum.epoch_stack,
+#                             epoch_id=epoch_id,
+#                             filter_type=f,
+#                             stacking_method=s,
+#                         )
+#                         for f, s in product(uw1_and_uvv, sum_and_median)
+#                     ]
+#                 )
+#         case SwiftCometPipelineStepEnum.determine_background:
+#             for epoch_id in epoch_ids:
+#                 statuses[epoch_id] = scp._status_list_to_single_status(
+#                     [
+#                         scp.get_status(
+#                             SwiftCometPipelineStepEnum.determine_background,
+#                             epoch_id=epoch_id,
+#                             filter_type=f,
+#                             stacking_method=s,
+#                         )
+#                         for f, s in product(uw1_and_uvv, sum_and_median)
+#                     ]
+#                 )
+#         case SwiftCometPipelineStepEnum.background_subtract:
+#             for epoch_id in epoch_ids:
+#                 statuses[epoch_id] = scp._status_list_to_single_status(
+#                     [
+#                         scp.get_status(
+#                             SwiftCometPipelineStepEnum.background_subtract,
+#                             epoch_id=epoch_id,
+#                             filter_type=f,
+#                             stacking_method=s,
+#                         )
+#                         for f, s in product(uw1_and_uvv, sum_and_median)
+#                     ]
+#                 )
+#         case SwiftCometPipelineStepEnum.aperture_analysis:
+#             for epoch_id in epoch_ids:
+#                 statuses[epoch_id] = scp._status_list_to_single_status(
+#                     [
+#                         scp.get_status(
+#                             SwiftCometPipelineStepEnum.aperture_analysis,
+#                             epoch_id=epoch_id,
+#                             stacking_method=s,
+#                         )
+#                         for s in sum_and_median
+#                     ]
+#                 )
+#         case SwiftCometPipelineStepEnum.vectorial_analysis:
+#             for epoch_id in epoch_ids:
+#                 statuses[epoch_id] = scp._status_list_to_single_status(
+#                     [
+#                         scp.get_status(
+#                             SwiftCometPipelineStepEnum.vectorial_analysis,
+#                             epoch_id=epoch_id,
+#                             filter_type=f,
+#                             stacking_method=s,
+#                         )
+#                         for f, s in product(uw1_and_uvv, sum_and_median)
+#                     ]
+#                 )
+#
+#     menu_entries = [
+#         SCPMenuEntry(description=epoch_id, status=statuses[epoch_id])
+#         for epoch_id in epoch_ids
+#     ]
+#     selected = scp_menu_selection(menu_entries=menu_entries)
+#
+#     if selected is None:
+#         return None
+#     return selected.description

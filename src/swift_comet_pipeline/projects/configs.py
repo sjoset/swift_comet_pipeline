@@ -2,33 +2,15 @@ import yaml
 import pathlib
 import logging as log
 from typing import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 
 from rich import print as rprint
 
 from swift_comet_pipeline.modeling.vectorial_model_backend import VectorialModelBackend
 from swift_comet_pipeline.modeling.vectorial_model_grid import VectorialModelGridQuality
-from swift_comet_pipeline.tui.tui_common import get_yes_no
+from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.swift.swift_data import SwiftData
-
-
-@dataclass
-class SwiftProjectConfig:
-    swift_data_path: pathlib.Path
-    jpl_horizons_id: str
-    project_path: pathlib.Path
-    vectorial_model_quality: VectorialModelGridQuality
-    vectorial_model_backend: VectorialModelBackend
-
-
-# TODO: move this to a better place
-@dataclass
-class SwiftPipelineConfig:
-    solar_spectrum_path: pathlib.Path
-    effective_area_uw1_path: pathlib.Path
-    effective_area_uvv_path: pathlib.Path
-    oh_fluorescence_path: pathlib.Path
-    vectorial_model_path: pathlib.Path
+from swift_comet_pipeline.tui.tui_common import get_yes_no
 
 
 # TODO: this function is defined multiple times in different files: move it into its own file somewhere

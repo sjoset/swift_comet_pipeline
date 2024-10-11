@@ -4,7 +4,14 @@ import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
-from swift_comet_pipeline.pipeline.files.data_ingestion_files import DataIngestionFiles
+from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
+    SwiftCometPipelineStepStatus,
+)
+from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
+    SwiftCometPipelineStepEnum,
+)
 
 
 @dataclass
@@ -14,7 +21,8 @@ class OrbitPerihelion:
 
 
 def find_perihelion(
-    data_ingestion_files: DataIngestionFiles,
+    # data_ingestion_files: DataIngestionFiles,
+    scp: SwiftCometPipeline,
     t_start_search: Time | None = None,
     t_end_search: Time | None = None,
 ) -> list[OrbitPerihelion] | None:
@@ -25,13 +33,24 @@ def find_perihelion(
         t_start_search is not None and t_end_search is not None
     )
 
-    if not data_ingestion_files.comet_orbital_data.exists():
-        print("No comet orbital data found!")
+    # if not data_ingestion_files.comet_orbital_data.exists():
+    #     print("No comet orbital data found!")
+    #     return None
+    if (
+        scp.get_status(step=SwiftCometPipelineStepEnum.download_orbital_data)
+        != SwiftCometPipelineStepStatus.complete
+    ):
         return None
 
-    if data_ingestion_files.comet_orbital_data.data is None:
-        data_ingestion_files.comet_orbital_data.read()
-    raw_comet_df = data_ingestion_files.comet_orbital_data.data
+    # if data_ingestion_files.comet_orbital_data.data is None:
+    #     data_ingestion_files.comet_orbital_data.read()
+    comet_orbital_data_product = scp.get_product(
+        pf=PipelineFilesEnum.comet_orbital_data
+    )
+    assert comet_orbital_data_product is not None
+
+    comet_orbital_data_product.read_product_if_not_loaded()
+    raw_comet_df = comet_orbital_data_product.data
 
     if raw_comet_df is None:
         print("Couldn't read comet orbital data!")

@@ -61,9 +61,11 @@ def observation_log_schema() -> pa.Schema:
             pa.field("FITS_FILENAME", pa.string()),
             # heliocentric distance at time of observation, in AU
             pa.field("HELIO", pa.float64()),
-            # heliocentric velocity at time of observation, in km/s??  TODO
+            # heliocentric velocity at time of observation, in km/s
             pa.field("HELIO_V", pa.float64()),
+            # distance to comet, AU
             pa.field("OBS_DIS", pa.float64()),
+            # phase angle, degrees (Sun-Target-Object angle)
             pa.field("PHASE", pa.float64()),
             # coordinates given by Horizons for the center of the comet
             pa.field("RA", pa.float64()),
