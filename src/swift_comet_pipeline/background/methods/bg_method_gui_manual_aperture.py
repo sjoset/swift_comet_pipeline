@@ -10,9 +10,8 @@ from swift_comet_pipeline.background.background_determination_method import (
 )
 from swift_comet_pipeline.background.background_result import BackgroundResult
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
 from swift_comet_pipeline.background.methods.bg_method_aperture import (
-    bg_manual_aperture_mean,
     bg_manual_aperture_median,
 )
 
@@ -20,13 +19,6 @@ from swift_comet_pipeline.background.methods.bg_method_aperture import (
 def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     bg = BackgroundAperturePlacementPlot(img, filter_type=filter_type)
     bg.show()
-
-    # return bg_manual_aperture_mean(
-    #     img=img,
-    #     aperture_x=bg.aperture.get_center()[0],  # type: ignore
-    #     aperture_y=bg.aperture.get_center()[1],  # type: ignore
-    #     aperture_radius=bg.aperture.radius,
-    # )
 
     ap_x = float(bg.aperture.get_center()[0])  # type: ignore
     ap_y = float(bg.aperture.get_center()[1])  # type: ignore
@@ -40,7 +32,9 @@ def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
 
     return BackgroundResult(
         count_rate_per_pixel=bg_manual_aperture_median(
-            img=img, aperture_x=ap_x, aperture_y=ap_y, aperture_radius=ap_radius
+            img=img,
+            aperture_center=PixelCoord(x=ap_x, y=ap_y),
+            aperture_radius=ap_radius,
         ),
         params=params,
         method=BackgroundDeterminationMethod.gui_manual_aperture,
@@ -114,10 +108,12 @@ class BackgroundAperturePlacementPlot:
         return f"Background: {self.bg_count_rate:07.6f} counts per second per pixel"
 
     def recalc_background(self):
-        bgresult = bg_manual_aperture_mean(
+        aperture_center = PixelCoord(
+            x=self.aperture.get_center()[0], y=self.aperture.get_center()[1]  # type: ignore
+        )
+        bgresult = bg_manual_aperture_median(
             img=self.original_img,
-            aperture_x=self.aperture.get_center()[0],  # type: ignore
-            aperture_y=self.aperture.get_center()[1],  # type: ignore
+            aperture_center=aperture_center,
             aperture_radius=self.aperture.radius,
         )
         self.bg_count_rate = bgresult.value
