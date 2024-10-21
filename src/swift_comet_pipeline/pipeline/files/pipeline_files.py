@@ -46,8 +46,8 @@ from swift_comet_pipeline.pipeline.products.epoch_subpipeline.background_analysi
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.background_analysis_step.background_subtracted_fits_product import (
     BackgroundSubtractedFITSProduct,
 )
-from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.exposure_mask_product import (
-    ExposureMaskProduct,
+from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.exposure_map_product import (
+    ExposureMapProduct,
 )
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.stacked_epoch_product import (
     StackedEpochProduct,
@@ -100,7 +100,7 @@ class EpochSubpipelineFiles:
                 SubpipelineFileKey(
                     pf=PipelineFilesEnum.exposure_map, filter_type=filter_type
                 )
-            ] = ExposureMaskProduct(
+            ] = ExposureMapProduct(
                 product_path=self.base_project_path,
                 parent_epoch=self.parent_pre_stack_epoch,
                 filter_type=filter_type,

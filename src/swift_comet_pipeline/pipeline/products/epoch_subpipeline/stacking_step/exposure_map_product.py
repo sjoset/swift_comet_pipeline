@@ -13,7 +13,7 @@ from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
 
 
-class ExposureMaskProduct(EpochSubPipelineStackingProduct, FitsImageProductIO):
+class ExposureMapProduct(EpochSubPipelineStackingProduct, FitsImageProductIO):
 
     def __init__(
         self,
@@ -32,7 +32,7 @@ class ExposureMaskProduct(EpochSubPipelineStackingProduct, FitsImageProductIO):
 
         filter_string = filter_to_file_string(filter_type=filter_type)
         fits_filename = (
-            f"{parent_epoch.product_path.stem}_{filter_string}_exposure_mask.fits"
+            f"{parent_epoch.product_path.stem}_{filter_string}_exposure_map.fits"
         )
 
         self.product_path = self.product_path / pathlib.Path(fits_filename)
