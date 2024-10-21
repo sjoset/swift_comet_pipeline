@@ -210,15 +210,13 @@ def subtract_profiles(
 
     beta = beta_parameter(dust_redness)
 
-    uw1_params = get_filter_parameters(SwiftFilter.uw1)
-    uvv_params = get_filter_parameters(SwiftFilter.uvv)
+    # uw1_params = get_filter_parameters(SwiftFilter.uw1)
+    # uvv_params = get_filter_parameters(SwiftFilter.uvv)
 
-    # TODO: is this necessary? Ask Lucy or Bodewits
-    uvv_to_uw1_cf = uvv_params["cf"] / uw1_params["cf"]
+    # Filter conversion factors were based on measurements of Vega to convert count rate to flux - it is not relevant to us!
+    # uvv_to_uw1_cf = uvv_params["cf"] / uw1_params["cf"]
 
-    subtracted_pixels = (
-        uw1_profile.pixel_values - beta * uvv_to_uw1_cf * uvv_profile.pixel_values
-    )
+    subtracted_pixels = uw1_profile.pixel_values - beta * uvv_profile.pixel_values
 
     return CometRadialProfile(
         profile_axis_xs=uw1_profile.profile_axis_xs,

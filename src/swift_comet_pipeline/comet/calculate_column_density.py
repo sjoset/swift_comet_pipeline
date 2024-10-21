@@ -24,12 +24,14 @@ def surface_brightness_profile_to_column_density(
     helio_v: u.Quantity,
     helio_r: u.Quantity,
 ) -> np.ndarray:
+    # TODO: document
+
     delta_cm = delta.to(u.cm).value  # type: ignore
     helio_v_kms = helio_v.to(u.km / u.s).value  # type: ignore
     rh_au = helio_r.to(u.AU).value  # type: ignore
 
     # TODO: magic numbers
-    # specific to OH - this should be from Bodewits but ask Lucy to make sure
+    # specific to OH - this should be from Bodewits 2019 but ask Lucy to make sure
     alpha = 1.2750906353215913e-12
     flux = surface_brightness_profile * alpha
     lumi = flux * 4 * np.pi * delta_cm**2
@@ -47,6 +49,8 @@ def calculate_comet_column_density(
     dust_redness: DustReddeningPercent,
     r_min: u.Quantity = 1 * u.km,  # type: ignore
 ) -> ColumnDensity:
+    # TODO: document
+
     km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
     delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
     helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
