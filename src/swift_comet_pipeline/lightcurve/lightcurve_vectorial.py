@@ -57,6 +57,8 @@ def lightcurve_entry_from_vectorial_fits(
     fit_type: VectorialFitType,
     near_far_radius: u.Quantity,
 ) -> LightCurveEntry | None:
+    # TODO: if the extracted profile is not long enough, then there may be no data for far fit, and vectorial_fit crashes.
+    # Handle this case better!
 
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id

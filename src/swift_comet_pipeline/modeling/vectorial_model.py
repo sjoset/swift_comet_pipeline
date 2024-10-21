@@ -1,7 +1,6 @@
 from functools import cache
 from typing import Callable
 
-# from icecream import ic
 import numpy as np
 import astropy.units as u
 
@@ -59,6 +58,8 @@ def water_vectorial_model(
     helio_r: u.Quantity[u.AU],  # type: ignore
     water_grains: bool = False,
 ) -> VectorialModelResult:
+    # TODO: water grains modeling as slow-moving water parents did not work - remove code or try something else
+
     vmcache_path = get_vectorial_model_cache_path()
 
     # modeling parameters

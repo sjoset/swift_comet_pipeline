@@ -19,8 +19,7 @@ from swift_comet_pipeline.comet.comet_center_finding import (
     CometCenterFindingMethod,
     find_comet_center,
 )
-from swift_comet_pipeline.observationlog.epoch import Epoch, EpochID
-from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import PixelCoord
@@ -259,7 +258,7 @@ class EpochImagePlot(object):
         self.img_plot.set_data(self.current_image)
         image_height, image_width = self.current_image.shape  # type: ignore
         # extent = [left, right, bottom, top]
-        self.img_plot.set_extent(extent=[0, image_width, 0, image_height])
+        self.img_plot.set_extent(extent=[0, image_width, 0, image_height])  # type: ignore
         self.img_plot.set_cmap(self.colormap_by_veto())
         self.img_plot.set_clim(vmin=self.vmin, vmax=self.vmax)
 

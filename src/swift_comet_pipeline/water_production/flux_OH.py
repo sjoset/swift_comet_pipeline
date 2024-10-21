@@ -56,7 +56,7 @@ def beta_parameter(
 def OH_flux_from_count_rate(
     uw1: CountRate,
     uvv: CountRate,
-    beta: float,
+    beta: DustReddeningPercent,
 ) -> OHFlux:
     # this comes from an OH spectral model in Bodewits et. al 2019
     alpha = 1.2750906353215913e-12
