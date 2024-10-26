@@ -242,6 +242,8 @@ def subpipeline_selection_menu(
     scp: SwiftCometPipeline, status_marker: SwiftCometPipelineStepEnum
 ) -> EpochID | None:
 
+    # TODO: document
+
     uw1_and_uvv = [SwiftFilter.uw1, SwiftFilter.uvv]
     sum_and_median = [StackingMethod.summation, StackingMethod.median]
 

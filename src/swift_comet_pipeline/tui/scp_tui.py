@@ -145,16 +145,16 @@ def get_statuses(scp: SwiftCometPipeline) -> dict:
 # Description generator that appends the status
 def generate_description(step: SwiftCometPipelineStepEnum, status_map: dict) -> str:
     descriptions = {
-        SwiftCometPipelineStepEnum.observation_log: "Log observations from the Swift comet.",
-        SwiftCometPipelineStepEnum.identify_epochs: "Identify key epochs in the observation data.",
-        SwiftCometPipelineStepEnum.veto_images: "Review and veto specific images.",
-        SwiftCometPipelineStepEnum.download_orbital_data: "Download orbital data for further analysis.",
-        SwiftCometPipelineStepEnum.epoch_stack: "Stack images from a given epoch.",
-        SwiftCometPipelineStepEnum.determine_background: "Determine the background for epoch analysis.",
+        SwiftCometPipelineStepEnum.observation_log: "Generate observation log",
+        SwiftCometPipelineStepEnum.download_orbital_data: "Download orbital data",
+        SwiftCometPipelineStepEnum.identify_epochs: "Identify epochs",
+        SwiftCometPipelineStepEnum.veto_images: "Review and veto images",
+        SwiftCometPipelineStepEnum.epoch_stack: "Stack images",
+        SwiftCometPipelineStepEnum.determine_background: "Determine the background of stacked images",
         SwiftCometPipelineStepEnum.background_subtract: "Subtract background from stacked images",
-        SwiftCometPipelineStepEnum.aperture_analysis: "Perform aperture analysis on the stacked images.",
-        SwiftCometPipelineStepEnum.vectorial_analysis: "Run vectorial analysis on the comet images.",
-        SwiftCometPipelineStepEnum.build_lightcurves: "Generate lightcurves based on the analysis.",
+        SwiftCometPipelineStepEnum.aperture_analysis: "Aperture analysis on the stacked images",
+        SwiftCometPipelineStepEnum.vectorial_analysis: "Vectorial analysis on the stacked images.",
+        SwiftCometPipelineStepEnum.build_lightcurves: "Generate lightcurves",
     }
     # Get the base description and append the status
     base_description = descriptions.get(step, "No description available")

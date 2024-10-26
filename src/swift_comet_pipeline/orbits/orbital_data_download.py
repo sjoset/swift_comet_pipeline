@@ -20,9 +20,7 @@ def download_orbital_data(
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # # TODO: should this just return dataframes for earth and comet, or product objects?
-    # pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
+    # TODO: should this just return dataframes for earth and comet, or product objects?
 
     obs_log = scp.get_product_data(pf=PipelineFilesEnum.observation_log)
     assert obs_log is not None
@@ -31,7 +29,7 @@ def download_orbital_data(
     time_start = Time(np.min(obs_log["MID_TIME"])) - time_before_first_observation
     time_stop = Time(np.max(obs_log["MID_TIME"])) + time_after_last_observation
 
-    # print(f"Downloading orbital data from {time_start.ymdhms} to {time_stop.ymdhms}")
+    print(f"Downloading orbital data from {time_start.ymdhms} to {time_stop.ymdhms}")
 
     # make our dictionary for the horizons query
     epochs = {"start": time_start.iso, "stop": time_stop.iso, "step": "1d"}

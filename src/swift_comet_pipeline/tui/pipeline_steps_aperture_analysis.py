@@ -32,13 +32,11 @@ def menu_analyze_all_or_selection() -> str:
 def aperture_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # # TODO: select stacking method
-    # stacking_method = StackingMethod.summation
-
     epoch_id_list = scp.get_epoch_id_list()
     if epoch_id_list is None:
         return
 
+    # TODO: better menu selection with indicator of which StackingMethod has been completed
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
     selection = get_selection(stacking_methods)
     if selection is None:
@@ -54,15 +52,6 @@ def aperture_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
     menu_selection = menu_analyze_all_or_selection()
     if menu_selection == "q":
         return
-
-    # for epoch_id in epoch_id_list:
-    #     q_vs_aperture_radius_at_epoch(
-    #         scp=scp,
-    #         epoch_id=epoch_id,
-    #         dust_rednesses=dust_rednesses,
-    #         stacking_method=stacking_method,
-    #     )
-    #     print("")
 
     epoch_ids_to_analyze = None
 

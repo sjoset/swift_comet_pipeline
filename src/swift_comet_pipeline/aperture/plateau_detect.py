@@ -1,7 +1,6 @@
 from itertools import groupby
 from typing import List
 
-from icecream import ic
 import numpy as np
 from scipy.ndimage import uniform_filter1d
 
@@ -74,8 +73,6 @@ def find_production_plateaus(
     r_step = list(set(r_diffs))[0]
     physical_qs = np.array([qvsare.q_H2O for qvsare in q_vs_aperture_radius_list])
 
-    # ic(rs, r_diffs, r_step, physical_qs)
-
     positive_production_mask = physical_qs > 0.0
     physical_qs = physical_qs[positive_production_mask]
     if len(physical_qs) < 5:
@@ -103,7 +100,6 @@ def find_production_plateaus(
         if len(q_plateau_list) == 0:
             continue
 
-        # print(f"Found plateaus with threshold {cur_threshold:1.3e}...")
         physical_plateaus = [
             ProductionPlateau(
                 begin_r=rs[q.begin_index],
@@ -116,5 +112,4 @@ def find_production_plateaus(
 
         return physical_plateaus
 
-    # print("No plateaus found!")
     return []

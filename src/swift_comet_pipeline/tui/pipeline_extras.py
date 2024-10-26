@@ -52,6 +52,9 @@ class PipelineExtrasMenuEntry(StrEnum):
         "show distribution of production plateaus as a function of redness"
     )
 
+    # TODO:
+    show_stacked_images = "show stacked images from selected epoch"
+
     @classmethod
     def all_extras(cls):
         return [x for x in cls]

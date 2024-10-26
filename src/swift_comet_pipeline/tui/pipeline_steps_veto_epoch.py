@@ -46,10 +46,11 @@ def veto_epoch_step(swift_project_config: SwiftProjectConfig) -> None:
         epoch_title=epoch_id,
     )
 
-    print("Save changes?")
-    save_epoch = get_yes_no()
-    if not save_epoch:
-        return
+    # Just write out the results even if there was no change to save some key presses
+    # print("Save changes?")
+    # save_epoch = get_yes_no()
+    # if not save_epoch:
+    #     return
 
     # epoch_id.data = epoch_post_veto
     # epoch_id.write()
