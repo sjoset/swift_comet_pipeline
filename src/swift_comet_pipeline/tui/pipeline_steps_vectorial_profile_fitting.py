@@ -1,14 +1,11 @@
 import numpy as np
 
-# import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox, TextArea
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import astropy.units as u
 from astropy.time import Time
 from astropy.visualization import ZScaleInterval
-
-# from scipy.optimize import curve_fit
 
 from swift_comet_pipeline.comet.calculate_column_density import (
     calculate_comet_column_density,
@@ -22,11 +19,8 @@ from swift_comet_pipeline.modeling.vectorial_model_fit import (
     vectorial_fit,
 )
 
-# from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
-
-# from swift_comet_pipeline.pipeline.files.pipeline_files import PipelineFiles
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
@@ -36,7 +30,6 @@ from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
-    stacked_epoch_menu,
 )
 from swift_comet_pipeline.comet.comet_radial_profile import (
     radial_profile_from_dataframe_product,
@@ -255,61 +248,19 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         return
     stacking_method = stacking_methods[selection]
 
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipelines = pipeline_files.epoch_subpipelines
-
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-
     t_perihelion_list = find_perihelion(scp=scp)
     if t_perihelion_list is None:
         print("Could not find time of perihelion!")
         return
 
-    # if epoch_subpipelines is None:
-    #     # TODO: better error message
-    #     print("No epochs ready for this step!")
-    #     return
-
     epoch_id_selected = stacked_epoch_menu(scp=scp)
     if epoch_id_selected is None:
         return
-
-    # parent_epoch = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_exist=True
-    # )
-    # if parent_epoch is None:
-    #     return
-
-    # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-    #     parent_epoch=parent_epoch
-    # )
-    # if epoch_subpipeline is None:
-    #     return
-
-    # epoch_subpipeline.stacked_epoch.read()
-    # stacked_epoch = epoch_subpipeline.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     print("Error reading epoch!")
-    #     return
 
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
     )
     assert stacked_epoch is not None
-
-    # epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].read()
-    # epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].read()
-    # epoch_subpipeline.stacked_images[SwiftFilter.uw1, stacking_method].read()
-    # epoch_subpipeline.stacked_images[SwiftFilter.uvv, stacking_method].read()
-
-    # uw1_profile = radial_profile_from_dataframe_product(
-    #     df=epoch_subpipeline.extracted_profiles[SwiftFilter.uw1, stacking_method].data
-    # )
-    # uvv_profile = radial_profile_from_dataframe_product(
-    #     df=epoch_subpipeline.extracted_profiles[SwiftFilter.uvv, stacking_method].data
-    # )
 
     uw1_profile = scp.get_product_data(
         pf=PipelineFilesEnum.extracted_profile,
@@ -327,14 +278,6 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
     )
     assert uvv_profile is not None
     uvv_profile = radial_profile_from_dataframe_product(df=uvv_profile)
-
-    # uw1_stack = epoch_subpipeline.stacked_images[
-    #     SwiftFilter.uw1, stacking_method
-    # ].data.data
-    #
-    # uvv_stack = epoch_subpipeline.stacked_images[
-    #     SwiftFilter.uvv, stacking_method
-    # ].data.data
 
     uw1_stack = scp.get_product_data(
         pf=PipelineFilesEnum.stacked_image,

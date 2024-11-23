@@ -46,6 +46,7 @@ def observation_log_schema() -> pa.Schema:
             pa.field("MID_TIME", pa.string()),
             # Which SwiftFilter was used for this observation
             pa.field("FILTER", pa.string()),
+            # TODO: we probably don't need PA_PNT
             # Position angle, degrees of roll
             pa.field("PA_PNT", pa.float64()),
             # Right ascension, degrees

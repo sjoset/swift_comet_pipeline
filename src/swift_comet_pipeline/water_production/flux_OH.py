@@ -17,6 +17,7 @@ from swift_comet_pipeline.swift.count_rate import CountRate
 OHFlux: TypeAlias = ValueAndStandardDev
 
 
+# TODO: move this to a better spot
 def beta_parameter(
     dust_redness: DustReddeningPercent, solar_spectrum_time: Time | None = None
 ) -> float:

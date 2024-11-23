@@ -3,7 +3,7 @@ from itertools import product
 from typing import Any
 
 from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
-from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files import SwiftCometPipelineFiles
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct

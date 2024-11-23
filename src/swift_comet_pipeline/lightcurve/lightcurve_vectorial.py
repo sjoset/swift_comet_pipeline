@@ -13,7 +13,7 @@ from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEnt
 from swift_comet_pipeline.modeling.vectorial_model import water_vectorial_model
 from swift_comet_pipeline.modeling.vectorial_model_fit import vectorial_fit
 from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
-from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod

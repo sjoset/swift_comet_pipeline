@@ -12,6 +12,7 @@ from swift_comet_pipeline.image_manipulation.image_recenter import (
     center_image_on_coords,
     get_image_dimensions_to_center_on_pixel,
 )
+from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.observationlog.observation_log import (
     get_image_from_obs_log_row,
 )
@@ -30,8 +31,6 @@ from swift_comet_pipeline.swift.uvot_image import (
     SwiftPixelResolution,
 )
 from swift_comet_pipeline.observationlog.epoch import (
-    Epoch,
-    EpochID,
     epoch_stacked_image_to_fits,
     is_epoch_stackable,
 )

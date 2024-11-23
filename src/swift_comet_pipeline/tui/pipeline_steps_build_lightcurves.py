@@ -153,23 +153,23 @@ def build_aperture_lightcurves_bayesian_step(
     bayes_product.write()
 
 
-def parallel_vectorial_lightcurve_computer(
-    dust_redness: DustReddeningPercent,
-    scp: SwiftCometPipeline,
-    stacking_method: StackingMethod,
-    t_perihelion,
-    fit_type: VectorialFitType,
-    near_far_radius,
-) -> tuple[DustReddeningPercent, LightCurve | None]:
-
-    return dust_redness, lightcurve_from_vectorial_fits(
-        scp=scp,
-        stacking_method=stacking_method,
-        t_perihelion=t_perihelion,
-        dust_redness=dust_redness,
-        fit_type=fit_type,
-        near_far_radius=near_far_radius,
-    )
+# def parallel_vectorial_lightcurve_computer(
+#     dust_redness: DustReddeningPercent,
+#     scp: SwiftCometPipeline,
+#     stacking_method: StackingMethod,
+#     t_perihelion,
+#     fit_type: VectorialFitType,
+#     near_far_radius,
+# ) -> tuple[DustReddeningPercent, LightCurve | None]:
+#
+#     return dust_redness, lightcurve_from_vectorial_fits(
+#         scp=scp,
+#         stacking_method=stacking_method,
+#         t_perihelion=t_perihelion,
+#         dust_redness=dust_redness,
+#         fit_type=fit_type,
+#         near_far_radius=near_far_radius,
+#     )
 
 
 def build_vectorial_lightcurves_step(

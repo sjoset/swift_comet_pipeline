@@ -1,3 +1,4 @@
+from functools import cache
 import pathlib
 import numpy as np
 import pandas as pd
@@ -73,6 +74,7 @@ def get_sorce_spectrum(t: Time) -> SolarSpectrum:
     return ss
 
 
+@cache
 def solar_count_rate_in_filter(
     solar_spectrum_path: pathlib.Path,
     solar_spectrum_time: Time,

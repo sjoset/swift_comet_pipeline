@@ -1,21 +1,16 @@
 import pathlib
 import numpy as np
-import pandas as pd
 
-from typing import TypeAlias
 from astropy.io import fits
 from astropy.time import Time
 import astropy.units as u
 
+from swift_comet_pipeline.observationlog.epoch_typing import Epoch
 from swift_comet_pipeline.observationlog.observation_log import (
     read_observation_log,
     write_observation_log,
 )
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
-
-
-Epoch: TypeAlias = pd.DataFrame
-EpochID: TypeAlias = str
 
 
 def read_epoch(epoch_path: pathlib.Path) -> Epoch:

@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
 
-from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
     SwiftCometPipelineStepStatus,

@@ -1,3 +1,4 @@
+from functools import cache
 import pathlib
 from typing import TypeAlias
 
@@ -6,6 +7,7 @@ from swift_comet_pipeline.swift.swift_filter import read_effective_area
 DustReddeningPercent: TypeAlias = float
 
 
+@cache
 def reddening_correction(
     effective_area_uw1_path: pathlib.Path,
     effective_area_uvv_path: pathlib.Path,

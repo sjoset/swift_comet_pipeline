@@ -4,12 +4,12 @@ import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_unserialize,
 )
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
-from swift_comet_pipeline.observationlog.epoch import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 

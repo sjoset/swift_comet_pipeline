@@ -8,7 +8,7 @@ import numpy as np
 from astropy.time import Time
 
 from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
-from swift_comet_pipeline.observationlog.epoch import Epoch, EpochID
+from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import (
     PipelineFilesEnum,
     is_analysis_result_file,

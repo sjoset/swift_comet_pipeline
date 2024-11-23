@@ -30,6 +30,8 @@ pyvectorial-au = "^1.0.7"
 seaborn = "^0.13.2"
 scikit-image = "^0.24.0"
 questionary = "^2.0.1"
+scikit-learn = "^1.5.2"
+jupyterlab = "^4.2.5"
 
 [tool.poetry.scripts]
 scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'

@@ -106,21 +106,10 @@ def pipeline_extra_epoch_summary(
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
     epoch_id_selected = epoch_menu(scp=scp)
-    # epoch_product = epoch_menu(data_ingestion_files=data_ingestion_files)
-    # if epoch_product is None:
-    #     return
-    #
-    # epoch_product.read()
-    # epoch = epoch_product.data
-    # if epoch is None:
-    #     print("Error loading epoch!")
-    #     return
     epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_pre_stack, epoch_id=epoch_id_selected
     )

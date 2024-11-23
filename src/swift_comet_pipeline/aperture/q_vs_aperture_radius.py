@@ -25,7 +25,7 @@ from swift_comet_pipeline.background.background_result import (
     yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.observationlog.epoch import EpochID
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -36,7 +36,6 @@ from swift_comet_pipeline.swift.magnitude_from_countrate import (
 )
 from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
-from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
 from swift_comet_pipeline.water_production.flux_OH import (
     OH_flux_from_count_rate,

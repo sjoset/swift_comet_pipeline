@@ -5,7 +5,6 @@ import pandas as pd
 from scipy.integrate import simpson
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, get_filter_parameters
 from swift_comet_pipeline.swift.uvot_image import (
     PixelCoord,
     SwiftUVOTImage,
@@ -26,7 +25,9 @@ class CometRadialProfile:
     The stacking step adjusts the image pixels to be in count rate, so pixel_values will be an array of floats representing count rates
     """
 
-    # the distance from comet center of each sample along the line - these are x coordinates along the profile axis, with pixel_values being the y values
+    # TODO: rename profile_axis_xs or alias it to 'r'
+
+    # the distance from comet center of each sample along the line in pixels - these are x coordinates along the profile axis, with pixel_values being the y values
     # these are not simply [r=0, r=1, r=2, ...] but calculated from the x, y coordinates of the pixels involved
     profile_axis_xs: np.ndarray
     # the actual pixel values (count rates)
@@ -209,12 +210,6 @@ def subtract_profiles(
     # print(uw1_profile.profile_axis_xs - uvv_profile.profile_axis_xs)
 
     beta = beta_parameter(dust_redness)
-
-    # uw1_params = get_filter_parameters(SwiftFilter.uw1)
-    # uvv_params = get_filter_parameters(SwiftFilter.uvv)
-
-    # Filter conversion factors were based on measurements of Vega to convert count rate to flux - it is not relevant to us!
-    # uvv_to_uw1_cf = uvv_params["cf"] / uw1_params["cf"]
 
     subtracted_pixels = uw1_profile.pixel_values - beta * uvv_profile.pixel_values
 
