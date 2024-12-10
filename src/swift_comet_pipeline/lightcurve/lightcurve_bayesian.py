@@ -104,9 +104,14 @@ def bayesian_lightcurve_from_aperture_lightcurve(
     non_detection_probs = []
     for _, sub_df in filled_in_df.groupby("time_from_perihelion_days"):
         non_zero_prod_mask = sub_df.q != 0.0
+
+        # calculate the detection probability and divide by it to re-normalize the probability
+        # among valid production rates
+        detection_prob = np.sum(sub_df.redness_prior_prob[non_zero_prod_mask])
         # Expectation value of q, with sum taken over the redness
-        posterior_q = np.sum(sub_df.posterior_qs[non_zero_prod_mask])
+        posterior_q = np.sum(sub_df.posterior_qs[non_zero_prod_mask]) / detection_prob
         posterior_q_list.append(posterior_q)
+
         non_detection_prob = np.sum(sub_df.redness_prior_prob[~non_zero_prod_mask])
         non_detection_probs.append(non_detection_prob)
 

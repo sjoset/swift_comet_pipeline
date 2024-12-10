@@ -4,8 +4,5 @@ http://svo2.cab.inta-csic.es/svo/theory/fps3/index.php?mode=browse&gname=Swift&a
 Solar spectra:
 https://lasp.colorado.edu/lisird/data/sorce_ssi_l3
 
-Comet data in cometels.json.gz:
-https://www.minorplanetcenter.net/data
-
 horizons orbital data:
 https://ssd.jpl.nasa.gov/horizons/

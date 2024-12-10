@@ -1,3 +1,4 @@
+from functools import cache
 import pathlib
 from enum import StrEnum, auto
 from typing import Dict
@@ -147,6 +148,7 @@ class FilterEffectiveArea:
     responses: np.ndarray
 
 
+@cache
 def read_effective_area(effective_area_path: pathlib.Path) -> FilterEffectiveArea:
     # TODO: tag with astropy units, convert later? too slow?
     # or rename to ea_lambdas_nm

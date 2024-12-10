@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 from swift_comet_pipeline.swift.swift_filter import read_effective_area
 
+# in percent per 100 nm
 DustReddeningPercent: TypeAlias = float
 
 

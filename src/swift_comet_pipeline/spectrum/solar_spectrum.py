@@ -123,7 +123,7 @@ def solar_count_rate_in_filter(
         np.c_[lambdas, solar_irradiances_on_filter_lambdas.T], ea_responses_on_lambdas.T
     ]
 
-    # TODO: magic numbers
+    # TODO: magic numbers and rewrite this function - ask Lucy about these
     cr = (
         np.sum(spec[:, 0] * spec[:, 1] * spec[:, 2]) * dlambda * 1e7 * 5.034116651114543
     )
