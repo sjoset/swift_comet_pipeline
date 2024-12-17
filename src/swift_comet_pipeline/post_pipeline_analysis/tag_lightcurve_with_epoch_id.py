@@ -16,6 +16,8 @@ def tag_lightcurve_with_epoch_id(
     this may cause an issue.  A warning is printed in this case, but the dataframe is returned with no errors.
     """
 
+    # TODO: when splitting epochs into data/event mode, their dates will be exactly the same! Handle this case if possible.
+
     epoch_ids = scp.get_epoch_id_list()
     if epoch_ids is None:
         return None

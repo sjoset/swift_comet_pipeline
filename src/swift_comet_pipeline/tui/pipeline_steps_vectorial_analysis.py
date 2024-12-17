@@ -413,8 +413,8 @@ class RadialProfileSelectionPlot(object):
             distance_from_center_mesh=self.distance_from_center_mesh,
             empty_pixel_fill_value=1.0,
         )
-        self.uw1_divided_median_image = uw1_sub_img / uw1_div_img
-        self.uvv_divided_median_image = uvv_sub_img / uvv_div_img
+        self.uw1_divided_median_image = uw1_sub_img / (uw1_div_img + 1)
+        self.uvv_divided_median_image = uvv_sub_img / (uvv_div_img + 1)
 
         self.uw1_subtraction_plot.set_data(self.uw1_subtracted_median_image)
         self.uvv_subtraction_plot.set_data(self.uvv_subtracted_median_image)

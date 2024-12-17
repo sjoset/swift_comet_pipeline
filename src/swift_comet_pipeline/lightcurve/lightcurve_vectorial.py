@@ -121,6 +121,7 @@ def lightcurve_entry_from_vectorial_fits(
     )
 
     return LightCurveEntry(
+        epoch_id=epoch_id,
         observation_time=observation_time,
         time_from_perihelion_days=float(
             (observation_time - t_perihelion).to_value(u.day)  # type: ignore

@@ -5,10 +5,12 @@ import pandas as pd
 from astropy.time import Time
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 
 
 @dataclass
 class LightCurveEntry:
+    epoch_id: EpochID
     observation_time: Time
     time_from_perihelion_days: float
     rh_au: float

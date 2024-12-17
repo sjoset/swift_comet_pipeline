@@ -74,6 +74,7 @@ def lightcurve_entries_from_aperture_plateaus(
             q = (plateau.begin_q + plateau.end_q) / 2.0
             q_err = abs(plateau.end_q - plateau.begin_q) / 2.0
             lightcurve_entry = LightCurveEntry(
+                epoch_id=epoch_id,
                 observation_time=observation_time,
                 time_from_perihelion_days=time_from_perihelion_days,
                 rh_au=helio_r.to_value(u.AU),  # type: ignore

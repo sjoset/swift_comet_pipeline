@@ -11,10 +11,13 @@ from swift_comet_pipeline.lightcurve.lightcurve import (
     LightCurve,
     lightcurve_to_dataframe,
 )
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 
 
+# TODO: document these entries
 @dataclass
 class BayesianLightCurveEntry:
+    epoch_id: EpochID
     observation_time: Time
     time_from_perihelion_days: float
     rh_au: float
@@ -27,11 +30,12 @@ class BayesianLightCurveEntry:
 # mostly unused in analysis but in case we want to see internals of q interacting with dust prior
 @dataclass
 class WaterProductionPosteriorEntry:
-    dust_redness: DustReddeningPercent
+    epoch_id: EpochID
+    observation_time: Time
     time_from_perihelion_days: float
     rh_au: float
-    observation_time: Time
     q: float
+    dust_redness: DustReddeningPercent
     redness_prior_prob: float
     posterior_qs: float
 
@@ -57,7 +61,13 @@ def bayesian_lightcurve_from_aperture_lightcurve(
     # this collapses the lightcurve into having just one q(h2o) per time/redness pair by averaging the plateau's q(h2o)s.
     averaged_lc_df = (
         lc_df.groupby(
-            ["time_from_perihelion_days", "dust_redness", "rh_au", "observation_time"]
+            [
+                "epoch_id",
+                "time_from_perihelion_days",
+                "dust_redness",
+                "rh_au",
+                "observation_time",
+            ]
         )[["q"]]
         .mean()
         .reset_index()
@@ -69,19 +79,19 @@ def bayesian_lightcurve_from_aperture_lightcurve(
     # Entries for dust rednesses are missing if they came out to be a non-detection of water,
     # so fill in the rows with the missing redness value and a q(h2o) of zero
     filled_in_df_list = []
-    for _, sub_df in averaged_lc_df.groupby(["time_from_perihelion_days"]):
-        temp_df = (
-            sub_df.set_index("dust_redness").reindex(all_rednesses).reset_index().copy()
-        )
-        # missing dust rednesses came out to be a non-detection of production, so fill that in
-        temp_df[["q"]] = temp_df[["q"]].fillna(0.0)
-        # fill in the missing times by using the existing valid values: these should all be the same because we grouped by them
-        temp_df[["time_from_perihelion_days"]] = (
-            temp_df[["time_from_perihelion_days"]].ffill().bfill()
-        )
-        # similarly for rh_au and observation_time
-        temp_df[["rh_au"]] = temp_df[["rh_au"]].ffill().bfill()
-        temp_df[["observation_time"]] = temp_df[["observation_time"]].ffill().bfill()
+    for ep_id, sub_df in averaged_lc_df.groupby("epoch_id"):
+        # reindex to ensure all dust_redness values are present
+        temp_df = sub_df.set_index("dust_redness").reindex(all_rednesses).reset_index()
+
+        # Fill missing 'q' values with 0.0
+        temp_df["q"] = temp_df["q"].fillna(0.0)
+
+        temp_df["epoch_id"] = ep_id
+        temp_df["time_from_perihelion_days"] = sub_df["time_from_perihelion_days"].iloc[
+            0
+        ]
+        temp_df["rh_au"] = sub_df["rh_au"].iloc[0]
+        temp_df["observation_time"] = sub_df["observation_time"].iloc[0]
 
         filled_in_df_list.append(temp_df)
 
@@ -100,9 +110,10 @@ def bayesian_lightcurve_from_aperture_lightcurve(
     # calculate the water production times the prior redness probability
     filled_in_df["posterior_qs"] = filled_in_df.q * filled_in_df.redness_prior_prob
 
+    # for each epoch, we can now calculate our production values based on these probabilities
     posterior_q_list = []
     non_detection_probs = []
-    for _, sub_df in filled_in_df.groupby("time_from_perihelion_days"):
+    for ep_id, sub_df in filled_in_df.groupby("epoch_id"):
         non_zero_prod_mask = sub_df.q != 0.0
 
         # calculate the detection probability and divide by it to re-normalize the probability
@@ -117,6 +128,7 @@ def bayesian_lightcurve_from_aperture_lightcurve(
 
     result_df = pd.DataFrame(
         {
+            "epoch_id": filled_in_df.epoch_id.unique(),
             "time_from_perihelion_days": filled_in_df.time_from_perihelion_days.unique(),
             "posterior_q": posterior_q_list,
             "rh_au": filled_in_df.rh_au.unique(),
