@@ -42,6 +42,7 @@ def surface_brightness_profile_to_column_density(
     return column_density / (u.cm**2)  # type: ignore
 
 
+# TODO: rewrite for EpochSummary
 def calculate_comet_column_density(
     stacked_epoch: StackedEpoch,
     uw1_profile: CometRadialProfile,

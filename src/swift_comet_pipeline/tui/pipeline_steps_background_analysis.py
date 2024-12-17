@@ -60,8 +60,6 @@ def determine_background_step(swift_project_config: SwiftProjectConfig) -> None:
     stacked_image_set = get_stacked_image_set(scp=scp, epoch_id=selected_epoch_id)
     assert stacked_image_set is not None
 
-    # TODO: check for previous analysis and use that as bg_result
-
     bg_method = get_background_method_choice()
     if bg_method is None:
         return

@@ -1,3 +1,4 @@
+import itertools
 from typing import List
 
 import astropy.units as u
@@ -5,6 +6,7 @@ from astropy.time import Time
 
 from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
 from swift_comet_pipeline.observationlog.epoch import Epoch
+from swift_comet_pipeline.swift.uvot_image import SwiftImageDataMode
 
 
 def epochs_from_time_delta(
@@ -64,7 +66,38 @@ def epochs_from_time_delta(
         if obs_log.empty:
             break
 
-    # print(f"Total observations in observation log before slicing: {num_observations}")
-    # obs_sum = sum([len(x) for x in epoch_list])
-    # print(f"Total observations in all epochs after slicing: {obs_sum}")
+    return epoch_list
+
+
+def split_epoch_list_into_data_and_event_epochs(epoch_list: list[Epoch]) -> list[Epoch]:
+    """
+    Takes a list of epochs, and for each epoch, replaces it with a pair of epochs that include only
+    data mode or event mode images.
+    If the epoch does not contain either mode of data, it will disappear from the list.
+
+    """
+
+    # TODO: If the entire dataset has no data mode or event mode images, we should check for this and return None
+
+    split_epoch_list = []
+    for epoch in epoch_list:
+        split_epoch_list.append(split_epoch_into_data_and_event_epochs(epoch=epoch))
+
+    return list(itertools.chain.from_iterable(split_epoch_list))
+
+
+def split_epoch_into_data_and_event_epochs(epoch: Epoch) -> list[Epoch]:
+    """
+    Returns a list of two epochs: one epoch of only data mode images, the other of only event mode images.
+    List may be empty if epoch contains neither.
+    """
+
+    epoch_list = []
+    for datamode in [SwiftImageDataMode.data_mode, SwiftImageDataMode.event_mode]:
+        num_imgs = epoch.DATAMODE.value_counts().get(datamode, 0)
+        if num_imgs == 0:
+            continue
+        split_epoch = epoch[epoch.DATAMODE == datamode].copy()
+        epoch_list.append(split_epoch)
+
     return epoch_list

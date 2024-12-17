@@ -66,17 +66,6 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     # pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
     swift_data = SwiftData(data_path=swift_project_config.swift_data_path)
 
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipelines = pipeline_files.epoch_subpipelines
-
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-    #
-    # if epoch_subpipelines is None:
-    #     print("No epochs available to stack!")
-    #     return
-
     print_stacked_images_summary(scp=scp)
 
     epoch_ids = scp.get_epoch_id_list()
@@ -133,13 +122,6 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
         if scp.has_epoch_been_stacked(epoch_id_to_stack) and skip_if_stacked:
             print(f"Skipping {epoch_id_to_stack} - already stacked")
             continue
-
-        # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-        #     parent_epoch=parent_epoch
-        # )
-        # if epoch_subpipeline is None:
-        #     print(f"Could not find subpipeline for epoch {parent_epoch.epoch_id}")
-        #     continue
 
         rprint(Panel(f"Epoch {epoch_id_to_stack}:", expand=False))
         make_uw1_and_uvv_stacks(

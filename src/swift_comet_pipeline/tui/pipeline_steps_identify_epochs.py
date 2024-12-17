@@ -5,6 +5,7 @@ from swift_comet_pipeline.observationlog.gui_observation_log_slicing import (
 )
 from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
     epochs_from_time_delta,
+    split_epoch_list_into_data_and_event_epochs,
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -51,6 +52,9 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     epoch_list = epochs_from_time_delta(
         obs_log=filtered_obs_log, max_time_between_obs=dt
     )
+    # print(f"Pre-split epochs: {len(epoch_list)}")
+    epoch_list = split_epoch_list_into_data_and_event_epochs(epoch_list=epoch_list)
+    # print(f"Post-split epochs: {len(epoch_list)}")
 
     print("Save epochs?")
     save_epochs = get_yes_no()

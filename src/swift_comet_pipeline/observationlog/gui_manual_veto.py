@@ -282,6 +282,8 @@ class EpochImagePlot(object):
             + ")  "
             + f"{self.current_epoch_row.EXPOSURE:4.1f}"
             + " s exposure"
+            + f"  ({self.current_epoch_row.KM_PER_PIX} km/pix)"
+            + f"  delta: {self.current_epoch_row.OBS_DIS} AU"
         )
 
     def update_plot(self):

@@ -27,6 +27,7 @@ from swift_comet_pipeline.swift.swift_filter import (
     filter_to_string,
 )
 from swift_comet_pipeline.swift.uvot_image import (
+    SwiftImageDataMode,
     SwiftUVOTImage,
     SwiftPixelResolution,
 )
@@ -205,13 +206,6 @@ def make_uw1_and_uvv_stacks(
     uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
     sum_and_median = [StackingMethod.summation, StackingMethod.median]
 
-    # # read the parent epoch's observation log
-    # if self.parent_epoch.data is None:
-    #     self.parent_epoch.read()
-    # pre_veto_epoch = self.parent_epoch.data
-    # if pre_veto_epoch is None:
-    #     print(f"Could not read epoch {self.parent_epoch.epoch_id}!")
-    #     return
     pre_veto_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_pre_stack, epoch_id=epoch_id
     )
@@ -223,14 +217,14 @@ def make_uw1_and_uvv_stacks(
     else:
         post_veto_epoch = pre_veto_epoch
 
-    # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
-    if not is_epoch_stackable(epoch=post_veto_epoch):
-        print("Images in the requested stack have mixed data modes! Skipping.")
-        return
-    else:
-        print(
-            f"All images taken with FITS keyword DATAMODE={post_veto_epoch.DATAMODE.iloc[0].value}, stacking..."
-        )
+    # # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
+    # if not is_epoch_stackable(epoch=post_veto_epoch):
+    #     print("Images in the requested stack have mixed data modes! Skipping.")
+    #     return
+    # else:
+    #     print(
+    #         f"All images taken with FITS keyword DATAMODE={post_veto_epoch.DATAMODE.iloc[0].value}, stacking..."
+    #     )
 
     # now get just the uw1 and uvv images
     stacked_epoch_mask = np.logical_or(
@@ -239,7 +233,32 @@ def make_uw1_and_uvv_stacks(
     )
     epoch_to_stack = post_veto_epoch[stacked_epoch_mask]
 
-    # now epoch_to_stack has no vetoed images, and only contains uw1 or uvv images
+    # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
+    if not is_epoch_stackable(epoch=epoch_to_stack):
+        print("Images in the requested stack have mixed data modes!")
+        num_event_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
+            SwiftImageDataMode.event_mode
+        ]
+        num_data_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
+            SwiftImageDataMode.data_mode
+        ]
+        print(
+            f"Event mode images: {num_event_mode_imgs}\tData mode images: {num_data_mode_imgs}"
+        )
+        if num_event_mode_imgs > num_data_mode_imgs:
+            selected_data_mode = SwiftImageDataMode.event_mode
+        else:
+            selected_data_mode = SwiftImageDataMode.data_mode
+        print(f"Filtering images to use only {selected_data_mode.value} ...")
+        epoch_to_stack = epoch_to_stack[
+            epoch_to_stack.DATAMODE == selected_data_mode
+        ].copy()
+    else:
+        print(
+            f"All images taken with FITS keyword DATAMODE={epoch_to_stack.DATAMODE.iloc[0].value}, stacking..."
+        )
+
+    # now epoch_to_stack has no vetoed images, and only contains uw1 or uvv images of the same data mode
 
     epoch_pixel_resolution = epoch_to_stack.ARCSECS_PER_PIXEL.iloc[0]
     stacked_images = StackedUVOTImageSet({})
@@ -283,21 +302,6 @@ def make_uw1_and_uvv_stacks(
         img_one=exposure_maps[SwiftFilter.uw1],
         img_two=exposure_maps[SwiftFilter.uvv],
     )
-
-    # push all the data into the products for writing later
-    # self.stacked_epoch.data = epoch_to_stack
-    # for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
-    #     hdu = epoch_stacked_image_to_fits(
-    #         epoch=epoch_to_stack, img=stacked_images[(filter_type, stacking_method)]
-    #     )
-    #     self.stacked_images[filter_type, stacking_method].data = hdu
-    #
-    # self.exposure_map[SwiftFilter.uw1].data = epoch_stacked_image_to_fits(
-    #     epoch=epoch_to_stack, img=uw1_exp_map
-    # )
-    # self.exposure_map[SwiftFilter.uvv].data = epoch_stacked_image_to_fits(
-    #     epoch=epoch_to_stack, img=uvv_exp_map
-    # )
 
     # push all the data into the products for writing later
     epoch_post_stack_prod = scp.get_product(
@@ -347,7 +351,6 @@ def write_uw1_and_uvv_stacks(scp: SwiftCometPipeline, epoch_id: EpochID) -> None
     uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
     sum_and_median = [StackingMethod.summation, StackingMethod.median]
 
-    # self.stacked_epoch.write()
     stacked_epoch = scp.get_product(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
     )
@@ -371,12 +374,6 @@ def write_uw1_and_uvv_stacks(scp: SwiftCometPipeline, epoch_id: EpochID) -> None
         assert em_prod is not None
         em_prod.write()
 
-    # for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
-    #     self.stacked_images[filter_type, stacking_method].write()
-    #
-    # for filter_type in [SwiftFilter.uw1, SwiftFilter.uvv]:
-    #     self.exposure_map[filter_type].write()
-
 
 def get_stacked_image_set(
     scp: SwiftCometPipeline, epoch_id: EpochID
@@ -386,24 +383,18 @@ def get_stacked_image_set(
     uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
     sum_and_median = [StackingMethod.summation, StackingMethod.median]
 
-    # TODO: we should check if any of the data is None and return None if so - we don't have a valid set of stacked images somehow
     for f, s in product(uw1_and_uvv, sum_and_median):
-        img_prod = scp.get_product(
+        img_data = scp.get_product_data(
             pf=PipelineFilesEnum.stacked_image,
             epoch_id=epoch_id,
             filter_type=f,
             stacking_method=s,
         )
-        assert img_prod is not None
-        img_prod.read_product_if_not_loaded()
-        # if self.stacked_images[filter_type, stacking_method].data is None:
-        #     self.stacked_images[filter_type, stacking_method].read()
-
-        # the 'data' of the product includes a data.header for the FITS header, and data.data for the numpy image array
-        # stacked_image_set[filter_type, stacking_method] = self.stacked_images[
-        #     filter_type, stacking_method
-        # ].data.data
-        assert img_prod.data is not None
-        stacked_image_set[f, s] = img_prod.data.data
+        if img_data is None:
+            return None
+        # img_data includes img_data.header for the FITS header, and img_data.data for the numpy image array
+        if img_data.data is None:
+            return None
+        stacked_image_set[f, s] = img_data.data
 
     return stacked_image_set

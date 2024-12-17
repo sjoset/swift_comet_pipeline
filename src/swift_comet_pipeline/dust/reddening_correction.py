@@ -8,6 +8,7 @@ from swift_comet_pipeline.swift.swift_filter import read_effective_area
 DustReddeningPercent: TypeAlias = float
 
 
+# TODO: rewrite this to use the effective wavelength of each filter under the solar spectrum
 @cache
 def reddening_correction(
     effective_area_uw1_path: pathlib.Path,
@@ -47,7 +48,7 @@ def reddening_correction(
     wave_v = wave_v / ea_v
 
     # TODO: magic number
-    # get reddening correction factor: do this with proper units (when EA lambdas are in angstroms, this is 200000)
+    # TODO: get reddening correction factor: do this with proper units (when EA lambdas are in angstroms, this is 200000)
     middle_factor = (wave_v - wave_uw1) * dust_redness / 20000
 
     # Reference: eq. 3.36 and 3.39 in Xing thesis
