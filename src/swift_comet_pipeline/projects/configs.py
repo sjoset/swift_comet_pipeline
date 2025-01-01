@@ -1,7 +1,6 @@
 import yaml
 import pathlib
 import logging as log
-from typing import Callable
 from dataclasses import asdict
 
 from rich import print as rprint
@@ -42,7 +41,7 @@ def read_swift_project_config(
     config_path: pathlib.Path,
 ) -> SwiftProjectConfig | None:
     """
-    Returns a SwiftProjectConfig given the yaml config file path
+    Returns a SwiftProjectConfig given the yaml config file path, filling in optional values with defaults
     """
     config_yaml = _read_yaml(config_path)
     if config_yaml is None:
@@ -70,6 +69,12 @@ def read_swift_project_config(
         vectorial_model_backend=VectorialModelBackend(
             config_yaml["vectorial_model_backend"]
         ),
+        vectorial_fitting_requires_km=float(
+            config_yaml.get("vectorial_fitting_requires_km", 100_000)
+        ),
+        near_far_split_radius_km=float(
+            config_yaml.get("near_far_split_radius_km", 50_000)
+        ),
     )
     return project_config
 
@@ -78,15 +83,6 @@ def write_swift_project_config(
     config_path: pathlib.Path, swift_project_config: SwiftProjectConfig
 ) -> None:
     dict_to_write = asdict(swift_project_config)
-
-    # path_keys_to_convert = [
-    #     "swift_data_path",
-    #     "project_path",
-    # ]
-    # # TODO: convert_or_delete is from an older implementation where config values could have been missing,
-    # # but the config was re-worked and now we can just convert and assume the values are there without checking and deleting missing values
-    # for k in path_keys_to_convert:
-    #     convert_or_delete(dict_to_write, k, os.fspath)
 
     dict_to_write["vectorial_model_quality"] = str(
         dict_to_write["vectorial_model_quality"]
@@ -97,14 +93,6 @@ def write_swift_project_config(
             yaml.safe_dump(dict_to_write, stream)
         except yaml.YAMLError as exc:
             print(exc)
-
-
-def convert_or_delete(d: dict, k: str, conversion_function: Callable):
-    """Applies f to members of the dictionary, but deletes the members whose value is None"""
-    if d[k] is None:
-        del d[k]
-    else:
-        d[k] = conversion_function(d[k])
 
 
 def read_or_create_project_config(
@@ -170,14 +158,19 @@ def create_swift_project_config_from_input(
         f"Vectorial model backend {VectorialModelBackend.all_model_backends()}: "
     )
 
+    # TODO: finish questions for vectorial_fitting_requires_km and near_far_split_radius_km
+
     swift_project_config = SwiftProjectConfig(
         swift_data_path=swift_data_path,
         jpl_horizons_id=jpl_horizons_id,
         project_path=project_path,
         vectorial_model_quality=VectorialModelGridQuality(vm_quality),
         vectorial_model_backend=VectorialModelBackend(vm_backend),
+        vectorial_fitting_requires_km=float(100_000),
+        near_far_split_radius_km=float(50_000),
     )
 
+    print(f"Writing project config to {swift_project_config_path}...")
     write_swift_project_config(
         config_path=swift_project_config_path, swift_project_config=swift_project_config
     )

@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.lightcurve.lightcurve import (
-    LightCurve,
     dataframe_to_lightcurve,
     lightcurve_to_dataframe,
 )
@@ -180,18 +179,15 @@ def build_vectorial_lightcurves_step(
 
     # TODO: check for existence of files before computing
 
-    # pd.options.display.float_format = "{:3.2e}".format
-
     t_perihelion_list = find_perihelion(scp=scp)
     if t_perihelion_list is None:
         print("Could not find time of perihelion!")
         return
     t_perihelion = t_perihelion_list[0].t_perihelion
 
-    # TODO: magic number: make this an option in project config, with 50000 as a default
-    near_far_radius = 50000 * u.km  # type: ignore
+    near_far_radius = swift_project_config.near_far_split_radius_km * u.km  # type: ignore
+    print(f"Using near/far vectorial fitting split of {near_far_radius}...")
 
-    # TODO: magic numbers
     dust_rednesses = [
         DustReddeningPercent(x)
         for x in np.linspace(-100.0, 100.0, num=201, endpoint=True)

@@ -7,10 +7,10 @@ from swift_comet_pipeline.post_pipeline_analysis.column_density_above_background
 
 def column_density_has_enough_coverage(
     cd_bg: ColumnDensityAboveBackgroundAnalysis,
-    min_distance_coverage: u.Quantity = 100_000 * u.km,  # type: ignore
+    vectorial_fitting_requires: u.Quantity = 100_000 * u.km,  # type: ignore
 ) -> bool:
 
-    if cd_bg.last_usable_r < min_distance_coverage:
+    if cd_bg.last_usable_r < vectorial_fitting_requires:
         return False
 
     return True
@@ -30,7 +30,7 @@ def column_density_larger_than_psf_threshold(
 
 def vectorial_fitting_reliable(
     cd_bg: ColumnDensityAboveBackgroundAnalysis,
-    min_distance_coverage: u.Quantity = 100_000 * u.km,  # type: ignore
+    vectorial_fitting_requires: u.Quantity = 100_000 * u.km,  # type: ignore
     num_psfs_required: float = 3.0,
 ) -> bool:
     """
@@ -39,7 +39,7 @@ def vectorial_fitting_reliable(
     """
 
     if not column_density_has_enough_coverage(
-        cd_bg=cd_bg, min_distance_coverage=min_distance_coverage
+        cd_bg=cd_bg, vectorial_fitting_requires=vectorial_fitting_requires
     ) or not column_density_larger_than_psf_threshold(
         cd_bg=cd_bg, num_psfs_required=num_psfs_required
     ):
