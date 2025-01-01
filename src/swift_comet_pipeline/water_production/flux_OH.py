@@ -59,13 +59,12 @@ def OH_flux_from_count_rate(
     uvv: CountRate,
     beta: DustReddeningPercent,
 ) -> OHFlux:
-    # this comes from an OH spectral model in Bodewits et. al 2019
+    # this comes from an OH spectral model in Bodewits et. al 2019 by convolving the OH spectrum through the uw1 filter
+    # to convert count rate to flux
     alpha = 1.2750906353215913e-12
 
     oh_flux = alpha * (uw1.value - beta * uvv.value)
 
-    # TODO: check which of these is correct - ask Lucy
     oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + (uvv.sigma * beta) ** 2)
-    # oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + np.abs(beta) * uvv.sigma**2)
 
     return OHFlux(value=oh_flux, sigma=oh_flux_err)

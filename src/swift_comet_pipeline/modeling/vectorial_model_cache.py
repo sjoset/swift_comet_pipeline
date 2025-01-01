@@ -1,3 +1,4 @@
+import sys
 import pathlib
 
 from icecream import ic
@@ -44,6 +45,6 @@ def get_vectorial_model_cache_path() -> pathlib.Path:
         ic(
             "Asked for vectorial model cache path without initializing it first! This is a bug!"
         )
-        exit(1)
+        sys.exit(1)
 
     return __VMCACHE_PATH__
