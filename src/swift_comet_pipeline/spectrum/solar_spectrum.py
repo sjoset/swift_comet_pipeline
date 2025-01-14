@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from swift_comet_pipeline.swift.swift_filter import read_effective_area
 
 
+# TODO: irradiance is W/m^2, but the spectrum is defined in wavelength bins, which means the 'irradiance' values are actually irradiance per unit wavelength
+# The correct term is called 'spectral irradiance', so fix this!
 @dataclass
 class SolarSpectrum:
     # TODO: tag with astropy units or rename to lambdas_nm, irradiances_{unit}
@@ -84,7 +86,7 @@ def solar_count_rate_in_filter(
     use effective area and theoretical spectra to calculate count rate in a filter due to solar activity
     through a convolution of the solar spectrum with the filter effective area
     """
-    # large enough for beta to converge on its proper value
+    # large enough for beta to converge on its proper value - determined empirically
     num_interpolation_lambdas = 1000
 
     # read each file

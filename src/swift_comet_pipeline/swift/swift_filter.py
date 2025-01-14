@@ -7,6 +7,9 @@ from dataclasses import dataclass
 import numpy as np
 from astropy.io import fits
 
+# TODO: break this up into multiple files, one for each major data type:
+# SwiftFilter, FilterEffectiveArea, finish SwiftFilterParameters
+
 
 class SwiftFilter(StrEnum):
     uuu = auto()
@@ -44,6 +47,8 @@ filter_to_file_string_dict = {
 }
 
 
+# TODO: don't really need this one - clean it up if it's used anywhere
+# because we should just be explicit about what type of string we want from a SwiftFilter
 def filter_to_string(filter_type: SwiftFilter) -> str:
     return filter_to_file_string(filter_type)
 
@@ -164,6 +169,7 @@ def read_effective_area(effective_area_path: pathlib.Path) -> FilterEffectiveAre
     # handle some lambda values repeating (their corresponding responses are 0, which is wrong, so throw them out)
     # Construct new list of unique lambdas, and the responses are now a list because we see some twice.
     # The bad response values are 0.0, so we take the max between the 'good' value and this throwaway response value
+    # TODO: we con probably do this more efficiently
     new_lambdas = []
     new_responses = []
     for lmbda, r in zip(ea_lambdas, ea_responses):
@@ -180,3 +186,21 @@ def read_effective_area(effective_area_path: pathlib.Path) -> FilterEffectiveAre
     return FilterEffectiveArea(
         lambdas=np.array(new_lambdas), responses=np.array(new_responses)
     )
+
+
+# def effective_wavelength_of_filter_with_spectrum(
+#     lambdas: list[u.Quantity],
+#     responses: list[u.Quantity],
+#     solar_spectrum: SolarSpectrum
+# ):
+#     solar_irradiances_interpolation = interp1d(solar_spectrum.lambdas, solar_spectrum.irradiances)
+#     solar_irradiances_on_filter_lambdas = solar_irradiances_interpolation(lambdas)
+#
+#     dlambdas = set(np.diff(lambdas))
+#     if len(dlambdas) != 1:
+#         print(f"unequal dlambdas in filter!")
+#     dlambda = list(dlambdas)[0]
+#     total_response = np.sum(responses * solar_irradiances_on_filter_lambdas) * dlambda
+#     effective_wavelength = np.sum(lambdas * responses * solar_irradiances_on_filter_lambdas) * dlambda / total_response
+#
+#     return effective_wavelength.decompose().to(u.nm)
