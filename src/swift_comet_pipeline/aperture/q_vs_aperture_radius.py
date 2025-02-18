@@ -262,7 +262,6 @@ def get_production_plateaus_from_yaml(
 
 
 def q_vs_aperture_radius_at_epoch(
-    # epoch_subpipeline_files: EpochSubpipelineFiles,
     scp: SwiftCometPipeline,
     epoch_id: EpochID,
     stacking_method: StackingMethod,
@@ -281,14 +280,6 @@ def q_vs_aperture_radius_at_epoch(
         # wait_for_key()
         return
 
-    # epoch_id = epoch_subpipeline_files.parent_epoch.epoch_id
-
-    # epoch_subpipeline_files.stacked_epoch.read_product_if_not_loaded()
-    # stacked_epoch = epoch_subpipeline_files.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     # TODO: error message
-    #     return
-
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
     )
@@ -298,20 +289,6 @@ def q_vs_aperture_radius_at_epoch(
         f"Starting analysis of {epoch_id}: observation at {np.mean(stacked_epoch.HELIO)} AU"
     )
 
-    # # load background-subtracted images
-    # epoch_subpipeline_files.background_subtracted_images[
-    #     SwiftFilter.uw1, stacking_method
-    # ].read_product_if_not_loaded()
-    # epoch_subpipeline_files.background_subtracted_images[
-    #     SwiftFilter.uvv, stacking_method
-    # ].read_product_if_not_loaded()
-    #
-    # uw1_img = epoch_subpipeline_files.background_subtracted_images[
-    #     SwiftFilter.uw1, stacking_method
-    # ].data.data
-    # uvv_img = epoch_subpipeline_files.background_subtracted_images[
-    #     SwiftFilter.uvv, stacking_method
-    # ].data.data
     uw1_img = scp.get_product_data(
         pf=PipelineFilesEnum.background_subtracted_image,
         epoch_id=epoch_id,
@@ -333,22 +310,6 @@ def q_vs_aperture_radius_at_epoch(
         print("Error loading background-subtracted images!")
         return
 
-    # epoch_subpipeline_files.background_analyses[
-    #     SwiftFilter.uw1, stacking_method
-    # ].read_product_if_not_loaded()
-    # epoch_subpipeline_files.background_analyses[
-    #     SwiftFilter.uvv, stacking_method
-    # ].read_product_if_not_loaded()
-    # uw1_bg = yaml_dict_to_background_result(
-    #     epoch_subpipeline_files.background_analyses[
-    #         SwiftFilter.uw1, stacking_method
-    #     ].data
-    # )
-    # uvv_bg = yaml_dict_to_background_result(
-    #     epoch_subpipeline_files.background_analyses[
-    #         SwiftFilter.uvv, stacking_method
-    #     ].data
-    # )
     uw1_bg = scp.get_product_data(
         pf=PipelineFilesEnum.background_determination,
         epoch_id=epoch_id,
@@ -409,8 +370,6 @@ def q_vs_aperture_radius_at_epoch(
     df.attrs.update(dust_plateau_list_dict_serialize(q_plateau_list_dict))  # type: ignore
 
     rprint("[green]Writing q vs aperture radius results ...[/green]")
-    # epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].data = df
-    # epoch_subpipeline_files.qh2o_vs_aperture_radius_analyses[stacking_method].write()
     ap_analysis_product = scp.get_product(
         pf=PipelineFilesEnum.aperture_analysis,
         epoch_id=epoch_id,

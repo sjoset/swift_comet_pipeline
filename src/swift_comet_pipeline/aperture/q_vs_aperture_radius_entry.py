@@ -31,7 +31,7 @@ class QvsApertureRadiusEntry:
 def q_vs_aperture_radius_entry_list_from_dataframe(
     df: pd.DataFrame,
 ) -> list[QvsApertureRadiusEntry]:
-    return df.apply(lambda row: QvsApertureRadiusEntry(**row), axis=1).to_list()
+    return df.apply(lambda row: QvsApertureRadiusEntry(**row), axis=1).to_list()  # type: ignore
 
 
 def dataframe_from_q_vs_aperture_radius_entry_list(
