@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "swift_comet_pipeline"
-version = "0.1.6"
+version = "0.1.7"
 authors = [ "Shawn Oset" ]
 description = "Data reduction pipeline for determining water production rates from the Swift telescope's UVOT images"
 classifiers = ["Programming Language :: Python :: 3",]
@@ -32,7 +32,8 @@ questionary = "^2.0.1"
 scikit-learn = "^1.5.2"
 jupyterlab = "^4.2.5"
 pyabel = "^0.9.0"
-pyvectorial-au = ">=1.1.0"
+pyvectorial-au = "^1.1.1"
+comet-ice-sublimation = "^0.0.1"
 
 [tool.poetry.scripts]
 scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'
