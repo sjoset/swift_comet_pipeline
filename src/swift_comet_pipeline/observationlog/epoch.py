@@ -10,7 +10,8 @@ from swift_comet_pipeline.observationlog.observation_log import (
     read_observation_log,
     write_observation_log,
 )
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
+from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def read_epoch(epoch_path: pathlib.Path) -> Epoch:

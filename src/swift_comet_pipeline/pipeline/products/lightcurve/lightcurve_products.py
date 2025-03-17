@@ -5,7 +5,7 @@ from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProd
 from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import (
     CSVDataframePipelineProductIO,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 class LightCurveProduct(PipelineProduct):

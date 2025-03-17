@@ -4,10 +4,11 @@ from typing import List
 import numpy as np
 from scipy.ndimage import uniform_filter1d
 
-from swift_comet_pipeline.aperture.plateau import Plateau, ProductionPlateau
-from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
-    QvsApertureRadiusEntry,
-)
+from swift_comet_pipeline.types.plateau import Plateau, ProductionPlateau
+from swift_comet_pipeline.types.q_vs_aperture_radius_entry import QvsApertureRadiusEntry
+
+
+__all__ = ["find_production_plateaus"]
 
 
 # TODO: can we use this for a CometRadialProfile as well?

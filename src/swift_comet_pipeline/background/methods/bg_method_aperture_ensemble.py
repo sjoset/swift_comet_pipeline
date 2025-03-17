@@ -13,14 +13,17 @@ from astropy.visualization import (
 )
 from tqdm import tqdm
 
-from swift_comet_pipeline.background.background_result import BackgroundResult
-from swift_comet_pipeline.swift.count_rate import CountRatePerPixel
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
-from swift_comet_pipeline.background.background_determination_method import (
+from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
 )
+from swift_comet_pipeline.types.background_result import BackgroundResult
+from swift_comet_pipeline.types.count_rate import CountRatePerPixel
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
+
+__all__ = ["bg_walking_aperture_ensemble"]
 
 ApertureWalk: TypeAlias = list[PixelCoord]
 

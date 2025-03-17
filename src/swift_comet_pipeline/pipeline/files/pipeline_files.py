@@ -63,8 +63,8 @@ from swift_comet_pipeline.pipeline.products.lightcurve.lightcurve_products impor
     CompleteVectorialLightCurveProduct,
 )
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 @dataclass(frozen=True)

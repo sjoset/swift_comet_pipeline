@@ -6,13 +6,12 @@ import glob
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from typing import TypeAlias, List
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, SwiftUVOTImageType
-
-
-SwiftObservationID: TypeAlias = str
-SwiftOrbitID: TypeAlias = str
+from typing import List
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_ids import SwiftObservationID, SwiftOrbitID
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.types.swift_uvot_image_type import SwiftUVOTImageType
 
 
 def swift_orbit_id_from_obsid(obsid: SwiftObservationID) -> SwiftOrbitID:

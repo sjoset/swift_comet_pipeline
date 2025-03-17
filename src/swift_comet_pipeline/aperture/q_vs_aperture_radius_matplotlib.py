@@ -1,9 +1,7 @@
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.aperture.plateau import ProductionPlateau
-from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
-    QvsApertureRadiusEntry,
-)
+from swift_comet_pipeline.types.plateau import ProductionPlateau
+from swift_comet_pipeline.types.q_vs_aperture_radius_entry import QvsApertureRadiusEntry
 
 
 def show_q_vs_aperture_with_plateaus(

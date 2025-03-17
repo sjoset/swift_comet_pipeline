@@ -18,3 +18,5 @@ class SwiftCometPipelineStepEnum(StrEnum):
 
     # results
     build_lightcurves = auto()
+
+    extra_functions = auto()

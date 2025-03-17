@@ -1,7 +1,11 @@
-from swift_comet_pipeline.comet.comet_profile import CometProfile
-from swift_comet_pipeline.comet.comet_profile_fitting import fit_comet_profile_gaussian
-from swift_comet_pipeline.comet.comet_radial_profile import extract_comet_radial_profile
-from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.comet import extract_comet_radial_profile
+from swift_comet_pipeline.comet import fit_comet_profile_gaussian
+from swift_comet_pipeline.types import CometProfile
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
+
+
+# TODO: this is not used anywhere: deprecate?
 
 
 # TODO: re-write to take a pre-generated CometRadialProfile, and possibly the background information,

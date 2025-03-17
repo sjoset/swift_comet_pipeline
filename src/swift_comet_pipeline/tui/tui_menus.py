@@ -14,9 +14,9 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import get_selection
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 @dataclass

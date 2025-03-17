@@ -9,21 +9,21 @@ from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.stacking.stacked_uvot_image_set import show_stacked_image_set
+from swift_comet_pipeline.stacking.show_stacked_image_set import show_stacked_image_set
 from swift_comet_pipeline.stacking.stacking import (
     get_stacked_image_set,
     make_uw1_and_uvv_stacks,
     write_uw1_and_uvv_stacks,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
 from swift_comet_pipeline.tui.tui_common import (
     bool_to_x_or_check,
     get_yes_no,
 )
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 def print_stacked_images_summary(

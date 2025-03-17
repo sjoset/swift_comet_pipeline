@@ -3,6 +3,7 @@ import pandas as pd
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
 
 
+# TODO: we don't use this any more - deprecate
 class HDF5DataframePipelineProductIO(PipelineProduct):
     """
     Product for pd.DataFrame <----> hdf file

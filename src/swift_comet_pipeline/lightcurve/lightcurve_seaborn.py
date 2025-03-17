@@ -7,6 +7,7 @@ import numpy as np
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve
 
 
+# TODO: finish this or remove
 def show_lightcurve_seaborn(lc: LightCurve, best_lc: LightCurve | None = None) -> None:
 
     # because I don't understand seaborn's axis scaling with objects

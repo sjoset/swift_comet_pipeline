@@ -4,7 +4,8 @@ import numpy as np
 from astropy.visualization import ZScaleInterval
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def get_image_dimensions_to_center_on_pixel(

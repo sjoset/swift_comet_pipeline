@@ -10,16 +10,16 @@ from swift_comet_pipeline.swift.swift_data import (
     swift_observation_id_from_int,
     swift_orbit_id_from_obsid,
 )
-from swift_comet_pipeline.swift.swift_filter import (
-    SwiftFilter,
-    filter_to_obs_string,
-    obs_string_to_filter,
-)
-from swift_comet_pipeline.swift.uvot_image import (
-    SwiftUVOTImage,
+from swift_comet_pipeline.swift.swift_datamodes import (
     datamode_from_fits_keyword_string,
     float_to_pixel_resolution,
 )
+from swift_comet_pipeline.swift.swift_filter_to_string import (
+    filter_to_obs_string,
+    obs_string_to_filter,
+)
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 SwiftObservationLog: TypeAlias = pd.DataFrame

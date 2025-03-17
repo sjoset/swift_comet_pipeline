@@ -158,4 +158,4 @@ def dataframe_to_bayesian_lightcurve(df: pd.DataFrame) -> BayesianLightCurve:
     """
     Takes a dataframe with column names matching the variables in BayesianLightCurveEntry and returns a BayesianLightCurve
     """
-    return df.apply(lambda row: BayesianLightCurveEntry(**row), axis=1).to_list()
+    return df.apply(lambda row: BayesianLightCurveEntry(**row), axis=1).to_list()  # type: ignore

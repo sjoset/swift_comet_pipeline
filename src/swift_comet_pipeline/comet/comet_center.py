@@ -1,6 +1,6 @@
 import pandas as pd
 
-from swift_comet_pipeline.swift.uvot_image import PixelCoord
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
 
 
 def invalid_user_center_value() -> float:

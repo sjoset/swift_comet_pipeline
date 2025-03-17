@@ -16,7 +16,7 @@ from swift_comet_pipeline.post_pipeline_analysis.vectorial_fitting_reliable impo
     column_density_larger_than_psf_threshold,
     vectorial_fitting_reliable,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 # TODO: move this into a post-lightcurve building step, and make it return a Lightcurve plus columns instead of EpochSummary

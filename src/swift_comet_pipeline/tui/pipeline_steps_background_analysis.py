@@ -5,13 +5,6 @@ import numpy as np
 from astropy.io import fits
 from rich import print as rprint
 
-from swift_comet_pipeline.background.background_determination_method import (
-    BackgroundDeterminationMethod,
-)
-from swift_comet_pipeline.background.background_result import (
-    background_result_to_dict,
-    yaml_dict_to_background_result,
-)
 from swift_comet_pipeline.background.determine_background import determine_background
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -20,10 +13,18 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
 )
 from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking import get_stacked_image_set
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
+from swift_comet_pipeline.types.background_determination_method import (
+    BackgroundDeterminationMethod,
+)
+from swift_comet_pipeline.types.background_result import (
+    background_result_to_dict,
+    yaml_dict_to_background_result,
+)
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 # TODO: break this into two files
 

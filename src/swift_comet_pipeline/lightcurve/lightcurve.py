@@ -37,4 +37,4 @@ def dataframe_to_lightcurve(df: pd.DataFrame) -> LightCurve:
     """
     Takes a dataframe with column names matching the variables in LightCurveEntry and returns a LightCurve
     """
-    return df.apply(lambda row: LightCurveEntry(**row), axis=1).to_list()
+    return df.apply(lambda row: LightCurveEntry(**row), axis=1).to_list()  # type: ignore

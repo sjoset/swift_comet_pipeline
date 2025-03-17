@@ -9,8 +9,9 @@ from swift_comet_pipeline.pipeline.products.epoch_subpipeline.stacking_step.epoc
 from swift_comet_pipeline.pipeline.products.product_io_types.fits_product import (
     FitsImageProductIO,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 class ExposureMapProduct(EpochSubPipelineStackingProduct, FitsImageProductIO):

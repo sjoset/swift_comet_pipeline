@@ -1,20 +1,20 @@
 import numpy as np
 import astropy.units as u
 
-from swift_comet_pipeline.comet.column_density import ColumnDensity
-from swift_comet_pipeline.comet.comet_count_rate_profile import CometCountRateProfile
-from swift_comet_pipeline.comet.comet_radial_profile import (
-    CometRadialProfile,
+from swift_comet_pipeline.comet import (
+    countrate_profile_to_surface_brightness,
     subtract_profiles,
 )
-from swift_comet_pipeline.comet.comet_surface_brightness_profile import (
-    CometSurfaceBrightnessProfile,
-    countrate_profile_to_surface_brightness,
-)
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.fluorescence.hydroxyl_gfactor import hydroxyl_gfactor_1au
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
-from swift_comet_pipeline.swift.uvot_image import datamode_to_pixel_resolution
-from swift_comet_pipeline.water_production.fluorescence_OH import gfactor_1au
+from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types import (
+    ColumnDensity,
+    CometCountRateProfile,
+    CometRadialProfile,
+    CometSurfaceBrightnessProfile,
+)
 
 
 # TODO: add decorators to enforce the arguments are the correct Quantity
@@ -36,8 +36,8 @@ def surface_brightness_profile_to_column_density(
     flux = surface_brightness_profile * alpha
     lumi = flux * 4 * np.pi * delta_cm**2
 
-    gfactor = gfactor_1au(helio_v_kms=helio_v_kms) / rh_au**2
-    column_density = lumi / gfactor
+    gfactor_scaled = hydroxyl_gfactor_1au(helio_v_kms=helio_v_kms) / rh_au**2
+    column_density = lumi / gfactor_scaled
 
     return column_density / (u.cm**2)  # type: ignore
 

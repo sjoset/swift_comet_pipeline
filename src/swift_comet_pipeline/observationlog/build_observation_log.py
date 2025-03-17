@@ -19,14 +19,12 @@ from swift_comet_pipeline.swift.swift_data import (
     swift_observation_id_from_int,
     swift_orbit_id_from_obsid,
 )
-from swift_comet_pipeline.swift.swift_filter import (
-    SwiftFilter,
-    obs_string_to_filter,
-)
-from swift_comet_pipeline.swift.uvot_image import (
+from swift_comet_pipeline.swift.swift_datamodes import (
     datamode_from_fits_keyword_string,
     datamode_to_pixel_resolution,
 )
+from swift_comet_pipeline.swift.swift_filter_to_string import obs_string_to_filter
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 def build_observation_log(

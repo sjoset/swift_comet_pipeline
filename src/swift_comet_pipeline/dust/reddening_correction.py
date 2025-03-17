@@ -1,34 +1,29 @@
 from functools import cache
-import pathlib
-from typing import TypeAlias
 
-from swift_comet_pipeline.swift.swift_filter import read_effective_area
+import numpy as np
 
-# in percent per 100 nm
-DustReddeningPercent: TypeAlias = float
+from swift_comet_pipeline.swift.read_filter_effective_area import (
+    read_filter_effective_area,
+)
+from swift_comet_pipeline.types import DustReddeningPercent, SwiftFilter
 
 
-# TODO: rewrite this to use the effective wavelength of each filter under the solar spectrum
+__all__ = ["reddening_correction"]
+
+
 @cache
-def reddening_correction(
-    effective_area_uw1_path: pathlib.Path,
-    effective_area_uvv_path: pathlib.Path,
-    dust_redness: DustReddeningPercent,
-) -> float:
-    """
-    get the correction factor of beta for dust reddening
-    units of reddening: %/100nm
+def _pre_middle_factor() -> float:
 
-    where beta is the factor in (uw1 - beta * uvv)
-    """
+    ea_data_uw1 = read_filter_effective_area(filter_type=SwiftFilter.uw1)
+    ea_data_uvv = read_filter_effective_area(filter_type=SwiftFilter.uvv)
+    if ea_data_uw1 is None or ea_data_uvv is None:
+        return np.nan
 
-    ea_data_uw1 = read_effective_area(effective_area_path=effective_area_uw1_path)
-    uw1_lambdas = ea_data_uw1.lambdas
-    uw1_responses = ea_data_uw1.responses
+    uw1_lambdas = ea_data_uw1.lambdas_nm
+    uw1_responses = ea_data_uw1.responses_cm2
 
-    ea_data_uvv = read_effective_area(effective_area_path=effective_area_uvv_path)
-    uvv_lambdas = ea_data_uvv.lambdas
-    uvv_responses = ea_data_uvv.responses
+    uvv_lambdas = ea_data_uvv.lambdas_nm
+    uvv_responses = ea_data_uvv.responses_cm2
 
     wave_uw1 = 0
     ea_uw1 = 0
@@ -49,7 +44,22 @@ def reddening_correction(
 
     # TODO: magic number
     # TODO: get reddening correction factor: do this with proper units (when EA lambdas are in angstroms, this is 200000)
-    middle_factor = (wave_v - wave_uw1) * dust_redness / 20000
+    pre_middle_factor = (wave_v - wave_uw1) / 20000
+
+    # multiply by dust_redness in percent per 100 nm to get the 'middle factor' in reddening_correction()
+    return pre_middle_factor
+
+
+@cache
+def reddening_correction(dust_redness: DustReddeningPercent) -> float:
+    """
+    get the correction factor of beta for dust reddening
+    units of reddening: %/100nm
+
+    where beta is the factor in (uw1 - beta * uvv)
+    """
+
+    middle_factor = _pre_middle_factor() * dust_redness
 
     # Reference: eq. 3.36 and 3.39 in Xing thesis
     return (1 - middle_factor) / (1 + middle_factor)

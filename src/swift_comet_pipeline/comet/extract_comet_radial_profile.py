@@ -1,47 +1,12 @@
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 from scipy.integrate import simpson
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift.uvot_image import (
-    PixelCoord,
-    SwiftUVOTImage,
-    get_uvot_image_center,
-)
-from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
-from swift_comet_pipeline.water_production.flux_OH import beta_parameter
-
-
-@dataclass
-class CometRadialProfile:
-    """
-    Count rate values along a line extending from the comet center out to radius r at angle theta
-    Theta is measured from the positive x-axis (along a numpy row) counter-clockwise
-    One sample is taken of the profile per unit radial distance: If we want a cut of radius 20, we will have 20
-    (x, y) pairs sampled.  We will also have the comet center at radius zero for a total of 21 points in the resulting profile.
-
-    The stacking step adjusts the image pixels to be in count rate, so pixel_values will be an array of floats representing count rates
-    """
-
-    # TODO: rename profile_axis_xs or alias it to 'r'
-
-    # the distance from comet center of each sample along the line in pixels - these are x coordinates along the profile axis, with pixel_values being the y values
-    # these are not simply [r=0, r=1, r=2, ...] but calculated from the x, y coordinates of the pixels involved
-    profile_axis_xs: np.ndarray
-    # the actual pixel values (count rates)
-    pixel_values: np.ndarray
-
-    # the (x, y) pixel coordinates of each pixel sample along the profile
-    _xs: np.ndarray
-    _ys: np.ndarray
-    # The angle at which we cut, measured counter-clockwise from the positive x axis (to the right - along a row of the image),
-    # and how far this profile cut extends
-    _radius: int
-    _theta: float
-    # coordinates used for the center of the comet, in case we need those later
-    _comet_center: PixelCoord
+from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
+from swift_comet_pipeline.types import CometRadialProfile
+from swift_comet_pipeline.types.count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def extract_comet_radial_profile(
@@ -194,34 +159,6 @@ def radial_profile_to_image(
         extended_profile = profile.pixel_values
     img = extended_profile[distance_from_center_mesh]
     return img
-
-
-def subtract_profiles(
-    uw1_profile: CometRadialProfile,
-    uvv_profile: CometRadialProfile,
-    dust_redness: DustReddeningPercent,
-) -> CometRadialProfile:
-    # TODO: documentation
-
-    # function assumes radial profile from both filters is the same length radially
-    assert len(uw1_profile.profile_axis_xs) == len(uvv_profile.profile_axis_xs)
-
-    # should all be zero - the radial axes should be sampled the same way
-    # print(uw1_profile.profile_axis_xs - uvv_profile.profile_axis_xs)
-
-    beta = beta_parameter(dust_redness)
-
-    subtracted_pixels = uw1_profile.pixel_values - beta * uvv_profile.pixel_values
-
-    return CometRadialProfile(
-        profile_axis_xs=uw1_profile.profile_axis_xs,
-        pixel_values=subtracted_pixels,
-        _xs=uw1_profile._xs,
-        _ys=uw1_profile._ys,
-        _radius=uw1_profile._radius,
-        _theta=uw1_profile._theta,
-        _comet_center=uw1_profile._comet_center,
-    )
 
 
 def radial_profile_to_dataframe_product(

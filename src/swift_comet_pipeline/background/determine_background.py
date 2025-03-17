@@ -1,6 +1,3 @@
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
-from swift_comet_pipeline.background.background_result import BackgroundResult
 from swift_comet_pipeline.background.methods.bg_method_aperture_ensemble import (
     bg_walking_aperture_ensemble,
 )
@@ -10,9 +7,12 @@ from swift_comet_pipeline.background.methods.bg_method_gui_manual_aperture impor
 from swift_comet_pipeline.background.methods.bg_method_swift_constant import (
     bg_swift_constant,
 )
-from swift_comet_pipeline.background.background_determination_method import (
+from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
 )
+from swift_comet_pipeline.types.background_result import BackgroundResult
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def determine_background(

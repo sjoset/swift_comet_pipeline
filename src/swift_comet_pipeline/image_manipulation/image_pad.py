@@ -3,12 +3,13 @@ from typing import Tuple
 
 import numpy as np
 
-from swift_comet_pipeline.swift.uvot_image import (
-    SwiftUVOTImage,
+from swift_comet_pipeline.swift.get_uvot_image_center import (
     get_uvot_image_center_row_col,
 )
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
+# TODO: this could be simplified
 def pad_to_match_sizes(
     img_one: SwiftUVOTImage, img_two: SwiftUVOTImage
 ) -> Tuple[SwiftUVOTImage, SwiftUVOTImage]:

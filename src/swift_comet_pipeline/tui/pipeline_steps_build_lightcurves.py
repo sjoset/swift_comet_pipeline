@@ -26,8 +26,8 @@ from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.tui.tui_common import get_selection
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 def find_minimum_percent_error_in_lightcurve(

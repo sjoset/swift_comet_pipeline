@@ -21,8 +21,8 @@ from swift_comet_pipeline.comet.comet_center_finding import (
 )
 from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import PixelCoord
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 class EpochImageSlider(Slider):
@@ -102,14 +102,14 @@ class EpochImageSlider(Slider):
             self.pageRects[j].set_facecolor(self.facecolor)
         self.pageRects[i].set_facecolor(self.activecolor)
 
-    def next_image(self, event):
+    def next_image(self, _):
         image_index = int(self.val) + 1
         if (image_index < self.valmin) or (image_index >= self.num_images):
             return
         self.set_val(image_index)
         self._colorize(image_index)
 
-    def previous_image(self, event):
+    def previous_image(self, _):
         image_index = int(self.val) - 1
         if (image_index < self.valmin) or (image_index >= self.num_images):
             return
@@ -305,11 +305,11 @@ class EpochImagePlot(object):
         # self.mark_sources()
         return
 
-    def veto_current_image(self, event):
+    def veto_current_image(self, _):
         self.epoch.loc[self.current_image_index, "manual_veto"] = np.True_
         self.update_plot()
 
-    def approve_current_image(self, event):
+    def approve_current_image(self, _):
         self.epoch.loc[self.current_image_index, "manual_veto"] = np.False_
         self.update_plot()
 

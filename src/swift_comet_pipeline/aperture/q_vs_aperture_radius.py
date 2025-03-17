@@ -1,5 +1,4 @@
 from itertools import product, groupby
-from dataclasses import dataclass
 from typing import TypeAlias
 
 import numpy as np
@@ -8,49 +7,44 @@ from rich import print as rprint
 import astropy.units as u
 
 from swift_comet_pipeline.aperture.aperture_count_rate import aperture_count_rate
-from swift_comet_pipeline.aperture.plateau import (
-    ProductionPlateau,
-    dict_to_production_plateau,
-)
 from swift_comet_pipeline.aperture.plateau_detect import find_production_plateaus
 from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_serialize,
 )
-from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
-    QvsApertureRadiusEntry,
-    dataframe_from_q_vs_aperture_radius_entry_list,
-)
-from swift_comet_pipeline.background.background_result import (
-    BackgroundResult,
-    yaml_dict_to_background_result,
-)
+from swift_comet_pipeline.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.count_rate import CountRate
+from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.swift.magnitude_from_countrate import (
     magnitude_from_count_rate,
 )
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage, get_uvot_image_center
-from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
-from swift_comet_pipeline.water_production.flux_OH import (
-    OH_flux_from_count_rate,
-    beta_parameter,
+from swift_comet_pipeline.types.background_result import (
+    BackgroundResult,
+    yaml_dict_to_background_result,
 )
+from swift_comet_pipeline.types.countrate_vs_aperture_radius import (
+    CountrateVsApertureRadius,
+)
+from swift_comet_pipeline.types.plateau import (
+    ProductionPlateau,
+    dict_to_production_plateau,
+)
+from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
+    QvsApertureRadiusEntry,
+    dataframe_from_q_vs_aperture_radius_entry_list,
+)
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.water_production.fluorescence_OH import flux_OH_to_num_OH
+from swift_comet_pipeline.water_production.flux_OH import OH_flux_from_count_rate
 from swift_comet_pipeline.water_production.num_OH_to_Q import num_OH_to_Q_vectorial
 
 
 # TODO: make the visualization separate so we can load the csv and look at it later
-
-
-@dataclass
-class CountrateVsApertureRadius:
-    r_pixels: list[float]
-    count_rates: list[CountRate]
 
 
 ReddeningToProductionPlateauListDict: TypeAlias = dict[
@@ -102,6 +96,7 @@ def q_vs_aperture_radius(
 ) -> list[QvsApertureRadiusEntry] | None:
 
     # TODO: document function
+    # TODO: rewrite for epoch summary
 
     helio_r_au = np.mean(stacked_epoch.HELIO)
     helio_v_kms = np.mean(stacked_epoch.HELIO_V)
@@ -348,23 +343,6 @@ def q_vs_aperture_radius_at_epoch(
     sorted_q_vs_r = sorted(q_vs_r, key=by_dust_redness)  # type: ignore
 
     q_plateau_list_dict = get_production_plateaus(sorted_q_vs_r=sorted_q_vs_r)
-
-    # for dust_redness in dust_rednesses:
-    #     print(f"{dust_redness=}")
-    #     if q_plateau_list_dict[dust_redness] is not None:
-    #         print(f"{q_plateau_list_dict[dust_redness]}")
-    #     else:
-    #         print("None found")
-
-    # km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    # for dust_redness, q_vs_aperture_radius_entry_at_redness in groupby(sorted_q_vs_r, key=by_dust_redness):  # type: ignore
-    #     qvarear = list(q_vs_aperture_radius_entry_at_redness)
-    #
-    #     show_q_vs_aperture_with_plateaus(
-    #         q_vs_aperture_radius_list=qvarear,
-    #         q_plateau_list=q_plateau_list_dict[dust_redness],
-    #         km_per_pix=km_per_pix,
-    #     )
 
     df = dataframe_from_q_vs_aperture_radius_entry_list(sorted_q_vs_r)
     df.attrs.update(dust_plateau_list_dict_serialize(q_plateau_list_dict))  # type: ignore

@@ -14,8 +14,8 @@ from swift_comet_pipeline.post_pipeline_analysis.column_density_above_background
 from swift_comet_pipeline.post_pipeline_analysis.comet_column_density import (
     get_comet_column_density,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.uvot_image import datamode_to_pixel_resolution
+from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 def column_density_above_background(

@@ -1,21 +1,19 @@
 from functools import cache
-from typing import TypeAlias
 
 import astropy.units as u
 
-from swift_comet_pipeline.error.error_propogation import ValueAndStandardDev
 from swift_comet_pipeline.modeling.vectorial_model import (
     num_OH_from_vectorial_model_result,
     water_vectorial_model,
 )
-from swift_comet_pipeline.water_production.fluorescence_OH import NumOH
-
-
-NumQH2O: TypeAlias = ValueAndStandardDev
+from swift_comet_pipeline.types.hydroxyl_molecule_count import HydroxylMoleculeCount
+from swift_comet_pipeline.types.water_molecule_count import WaterMoleculeCount
 
 
 @cache
-def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: NumOH) -> NumQH2O:
+def num_OH_to_Q_vectorial(
+    helio_r_au: float, num_OH: HydroxylMoleculeCount
+) -> WaterMoleculeCount:
     base_q = 1.0e29 / u.s  # type: ignore
     helio_r = helio_r_au * u.AU  # type: ignore
 
@@ -26,4 +24,4 @@ def num_OH_to_Q_vectorial(helio_r_au: float, num_OH: NumOH) -> NumQH2O:
     q = base_q.value / predicted_to_actual
     q_err = (base_q.value / predicted_num_OH) * num_OH.sigma
 
-    return NumQH2O(value=q, sigma=q_err)
+    return WaterMoleculeCount(value=q, sigma=q_err)

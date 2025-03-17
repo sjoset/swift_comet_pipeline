@@ -1,19 +1,13 @@
 from itertools import product
-from typing import TypeAlias
-from dataclasses import dataclass
 
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
-
-
-StackedUVOTImageSet: TypeAlias = dict[
-    tuple[SwiftFilter, StackingMethod], SwiftUVOTImage
-]
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
+from swift_comet_pipeline.types.stacked_uvot_image_set import StackedUVOTImageSet
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 def show_stacked_image_set(stacked_image_set: StackedUVOTImageSet, epoch_id: str = ""):

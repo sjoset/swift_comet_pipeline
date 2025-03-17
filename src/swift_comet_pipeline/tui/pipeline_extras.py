@@ -11,9 +11,6 @@ from swift_comet_pipeline.aperture.q_vs_aperture_kde_seaborn import (
 from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
     get_production_plateaus_from_yaml,
 )
-from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
-    q_vs_aperture_radius_entry_list_from_dataframe,
-)
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_seaborn import (
     show_q_vs_aperture_radius_seaborn,
 )
@@ -25,19 +22,19 @@ from swift_comet_pipeline.lightcurve.lightcurve_matplotlib import show_lightcurv
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.post_pipeline_analysis.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
 )
 from swift_comet_pipeline.tui.pipeline_extras_status import pipeline_extra_status
-from swift_comet_pipeline.tui.tui_common import (
-    clear_screen,
-    get_selection,
-    wait_for_key,
-)
+from swift_comet_pipeline.tui.tui_common import clear_screen, get_selection
 from swift_comet_pipeline.tui.tui_menus import stacked_epoch_menu
+from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
+    q_vs_aperture_radius_entry_list_from_dataframe,
+)
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 class PipelineExtrasMenuEntry(StrEnum):
@@ -92,8 +89,6 @@ def pipeline_extras_menu(swift_project_config: SwiftProjectConfig) -> None:
         else:
             exit_menu = True
 
-        wait_for_key()
-
 
 def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
@@ -121,7 +116,6 @@ def show_aperture_lightcurve(swift_project_config: SwiftProjectConfig) -> None:
     vectorial_near_fit_df = scp.get_product_data(
         pf=PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
         stacking_method=stacking_method,
-        # fit_type=VectorialFitType.near_fit,
     )
     if vectorial_near_fit_df is None:
         return
@@ -171,30 +165,10 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipeline_files = pipeline_files.epoch_subpipelines
-
     # TODO: stacking method selection
     stacking_method = StackingMethod.summation
 
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-    #
-    # if epoch_subpipeline_files is None:
-    #     print("No epochs available to stack!")
-    #     return
-
     # TODO: selection menu for which fits to see
-
-    # # all vectorial fits
-    # pipeline_files.complete_vectorial_lightcurves[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # complete_vectorial_df = pipeline_files.complete_vectorial_lightcurves[
-    #     stacking_method
-    # ].data
 
     complete_vectorial_df = scp.get_product_data(
         pf=PipelineFilesEnum.complete_vectorial_lightcurve,
@@ -207,6 +181,7 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     # pull out all near fits
     near_fit_df = complete_vectorial_df[
         [
+            "epoch_id",
             "observation_time",
             "time_from_perihelion_days",
             "rh_au",
@@ -220,18 +195,9 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     )
     vectorial_near_lcs = dataframe_to_lightcurve(df=near_fit_df)
 
-    # # best near-fit lightcurve
-    # pipeline_files.best_near_fit_lightcurves[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # vectorial_best_near_fit_df = pipeline_files.best_near_fit_lightcurves[
-    #     stacking_method
-    # ].data
-
     vectorial_best_near_fit_df = scp.get_product_data(
         pf=PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
         stacking_method=stacking_method,
-        # fit_type=VectorialFitType.near_fit,
     )
     if vectorial_best_near_fit_df is None:
         return
@@ -240,6 +206,7 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     # pull out all far fits
     far_fit_df = complete_vectorial_df[
         [
+            "epoch_id",
             "observation_time",
             "time_from_perihelion_days",
             "rh_au",
@@ -251,18 +218,9 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
     far_fit_df = far_fit_df.rename(columns={"far_fit_q": "q", "far_fit_q_err": "q_err"})
     vectorial_far_lcs = dataframe_to_lightcurve(df=far_fit_df)
 
-    # # best far-fit lightcurve
-    # pipeline_files.best_far_fit_lightcurves[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # vectorial_best_far_fit_df = pipeline_files.best_far_fit_lightcurves[
-    #     stacking_method
-    # ].data
-
     vectorial_best_far_fit_df = scp.get_product_data(
         pf=PipelineFilesEnum.best_far_fit_vectorial_lightcurve,
         stacking_method=stacking_method,
-        # fit_type=VectorialFitType.far_fit,
     )
     if vectorial_best_far_fit_df is None:
         return
@@ -301,39 +259,9 @@ def show_vectorial_lightcurves(swift_project_config: SwiftProjectConfig) -> None
 
 def show_q_histograms_vs_redness(swift_project_config: SwiftProjectConfig) -> None:
 
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipeline_files = pipeline_files.epoch_subpipelines
-
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-    #
-    # if epoch_subpipeline_files is None:
-    #     print("No epochs available to stack!")
-    #     return
-
-    # parent_epoch = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_exist=True
-    # )
-    # if parent_epoch is None:
-    #     return
-
     epoch_id_selected = stacked_epoch_menu(scp=scp)
-
-    # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-    #     parent_epoch=parent_epoch
-    # )
-    # if epoch_subpipeline is None:
-    #     return
-
-    # epoch_subpipeline.stacked_epoch.read()
-    # stacked_epoch = epoch_subpipeline.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     print("Error reading epoch!")
-    #     return
 
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
@@ -342,11 +270,6 @@ def show_q_histograms_vs_redness(swift_project_config: SwiftProjectConfig) -> No
 
     # TODO: stacking method
     stacking_method = StackingMethod.summation
-
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # df = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data
 
     df = scp.get_product_data(
         pf=PipelineFilesEnum.aperture_analysis,
@@ -364,53 +287,23 @@ def show_q_histograms_vs_redness(swift_project_config: SwiftProjectConfig) -> No
     )
 
 
-def show_q_vs_aperture_radius(swift_project_config: SwiftProjectConfig) -> None:
-
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipeline_files = pipeline_files.epoch_subpipelines
+def show_q_vs_aperture_radius(
+    swift_project_config: SwiftProjectConfig,
+    stacking_method: StackingMethod = StackingMethod.summation,
+) -> None:
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-    #
-    # if epoch_subpipeline_files is None:
-    #     print("No epochs available to stack!")
-    #     return
-
     epoch_id_selected = stacked_epoch_menu(scp=scp)
+    if epoch_id_selected is None:
+        return
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
     )
     assert stacked_epoch is not None
 
-    # parent_epoch = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_exist=True
-    # )
-    # if parent_epoch is None:
-    #     return
-    #
-    # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-    #     parent_epoch=parent_epoch
-    # )
-    # if epoch_subpipeline is None:
-    #     return
-
-    # epoch_subpipeline.stacked_epoch.read()
-    # stacked_epoch = epoch_subpipeline.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     print("Error reading epoch!")
-    #     return
-
-    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    stacking_method = StackingMethod.summation
-
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # df = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data
+    epoch_sum = get_epoch_summary(scp=scp, epoch_id=epoch_id_selected)
+    assert epoch_sum is not None
 
     df = scp.get_product_data(
         pf=PipelineFilesEnum.aperture_analysis,
@@ -425,7 +318,7 @@ def show_q_vs_aperture_radius(swift_project_config: SwiftProjectConfig) -> None:
     show_q_vs_aperture_radius_seaborn(
         q_vs_aperture_radius_list=q_vs_r,
         q_plateau_list_dict=q_plateau_list_dict,
-        km_per_pix=km_per_pix,
+        km_per_pix=epoch_sum.km_per_pix,
     )
 
 
@@ -433,41 +326,11 @@ def show_plateau_distribution(swift_project_config: SwiftProjectConfig) -> None:
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-    # data_ingestion_files = pipeline_files.data_ingestion_files
-    # epoch_subpipeline_files = pipeline_files.epoch_subpipelines
-    #
-    # if data_ingestion_files.epochs is None:
-    #     print("No epochs found!")
-    #     return
-    #
-    # if epoch_subpipeline_files is None:
-    #     print("No epochs available to stack!")
-    #     return
-
     epoch_id_selected = stacked_epoch_menu(scp=scp)
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
     )
     assert stacked_epoch is not None
-
-    # parent_epoch = stacked_epoch_menu(
-    #     pipeline_files=pipeline_files, require_background_analysis_to_exist=True
-    # )
-    # if parent_epoch is None:
-    #     return
-    #
-    # epoch_subpipeline = pipeline_files.epoch_subpipeline_from_parent_epoch(
-    #     parent_epoch=parent_epoch
-    # )
-    # if epoch_subpipeline is None:
-    #     return
-    #
-    # epoch_subpipeline.stacked_epoch.read()
-    # stacked_epoch = epoch_subpipeline.stacked_epoch.data
-    # if stacked_epoch is None:
-    #     print("Error reading epoch!")
-    #     return
 
     km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
     stacking_method = StackingMethod.summation
@@ -478,11 +341,6 @@ def show_plateau_distribution(swift_project_config: SwiftProjectConfig) -> None:
         stacking_method=stacking_method,
     )
     assert df is not None
-
-    # epoch_subpipeline.qh2o_vs_aperture_radius_analyses[
-    #     stacking_method
-    # ].read_product_if_not_loaded()
-    # df = epoch_subpipeline.qh2o_vs_aperture_radius_analyses[stacking_method].data
 
     q_vs_r = q_vs_aperture_radius_entry_list_from_dataframe(df=df)
     q_plateau_list_dict = get_production_plateaus_from_yaml(yaml_dict=df.attrs)

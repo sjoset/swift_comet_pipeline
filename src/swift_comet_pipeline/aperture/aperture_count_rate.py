@@ -1,11 +1,9 @@
 import numpy as np
 from photutils.aperture import ApertureStats, CircularAperture
 
-from swift_comet_pipeline.swift.uvot_image import (
-    PixelCoord,
-    SwiftUVOTImage,
-)
-from swift_comet_pipeline.swift.count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.types.count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def aperture_count_rate(

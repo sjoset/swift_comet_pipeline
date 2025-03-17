@@ -1,7 +1,8 @@
 from photutils.aperture import ApertureStats, CircularAperture
 from photutils.aperture.stats import SigmaClip
-from swift_comet_pipeline.swift.count_rate import CountRatePerPixel
-from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.types.count_rate import CountRatePerPixel
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def bg_manual_aperture_stats(

@@ -5,15 +5,17 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 from matplotlib.widgets import Slider
 
-from swift_comet_pipeline.background.background_determination_method import (
-    BackgroundDeterminationMethod,
-)
-from swift_comet_pipeline.background.background_result import BackgroundResult
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-from swift_comet_pipeline.swift.uvot_image import PixelCoord, SwiftUVOTImage
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.background.methods.bg_method_aperture import (
     bg_manual_aperture_median,
 )
+from swift_comet_pipeline.types.background_determination_method import (
+    BackgroundDeterminationMethod,
+)
+from swift_comet_pipeline.types.background_result import BackgroundResult
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):

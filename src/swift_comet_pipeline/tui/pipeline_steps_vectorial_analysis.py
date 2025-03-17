@@ -8,10 +8,14 @@ from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 from rich import print as rprint
 
-from swift_comet_pipeline.background.background_result import (
-    BackgroundResult,
-    yaml_dict_to_background_result,
+from swift_comet_pipeline.comet.extract_comet_radial_profile import (
+    calculate_distance_from_center_mesh,
+    count_rate_from_comet_radial_profile,
+    extract_comet_radial_median_profile_from_cone,
+    radial_profile_to_dataframe_product,
+    radial_profile_to_image,
 )
+from swift_comet_pipeline.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
@@ -20,37 +24,29 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.count_rate import CountRate
 from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import (
-    PixelCoord,
-    SwiftUVOTImage,
-    get_uvot_image_center,
-)
+from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
+from swift_comet_pipeline.types.background_result import (
+    BackgroundResult,
+    yaml_dict_to_background_result,
+)
+from swift_comet_pipeline.types.count_rate import CountRate
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.water_production.fluorescence_OH import (
     flux_OH_to_num_OH,
 )
-from swift_comet_pipeline.water_production.flux_OH import (
-    OH_flux_from_count_rate,
-    beta_parameter,
-)
+from swift_comet_pipeline.water_production.flux_OH import OH_flux_from_count_rate
 from swift_comet_pipeline.water_production.num_OH_to_Q import (
     num_OH_to_Q_vectorial,
 )
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
     wait_for_key,
-)
-from swift_comet_pipeline.comet.comet_radial_profile import (
-    calculate_distance_from_center_mesh,
-    count_rate_from_comet_radial_profile,
-    extract_comet_radial_median_profile_from_cone,
-    radial_profile_to_dataframe_product,
-    radial_profile_to_image,
 )
 
 

@@ -2,7 +2,37 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from swift_comet_pipeline.comet.comet_radial_profile import CometRadialProfile
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+
+
+@dataclass
+class CometRadialProfile:
+    """
+    Count rate values along a line extending from the comet center out to radius r at angle theta
+    Theta is measured from the positive x-axis (along a numpy row) counter-clockwise
+    One sample is taken of the profile per unit radial distance: If we want a cut of radius 20, we will have 20
+    (x, y) pairs sampled.  We will also have the comet center at radius zero for a total of 21 points in the resulting profile.
+
+    The stacking step adjusts the image pixels to be in count rate, so pixel_values will be an array of floats representing count rates
+    """
+
+    # TODO: rename profile_axis_xs or alias it to 'r'
+
+    # the distance from comet center of each sample along the line in pixels - these are x coordinates along the profile axis, with pixel_values being the y values
+    # these are not simply [r=0, r=1, r=2, ...] but calculated from the x, y coordinates of the pixels involved
+    profile_axis_xs: np.ndarray
+    # the actual pixel values (count rates)
+    pixel_values: np.ndarray
+
+    # the (x, y) pixel coordinates of each pixel sample along the profile
+    _xs: np.ndarray
+    _ys: np.ndarray
+    # The angle at which we cut, measured counter-clockwise from the positive x axis (to the right - along a row of the image),
+    # and how far this profile cut extends
+    _radius: int
+    _theta: float
+    # coordinates used for the center of the comet, in case we need those later
+    _comet_center: PixelCoord
 
 
 @dataclass

@@ -1,10 +1,9 @@
-from swift_comet_pipeline.background.background_determination_method import (
+from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
 )
-from swift_comet_pipeline.background.background_result import BackgroundResult
-from swift_comet_pipeline.swift.count_rate import CountRatePerPixel
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.types import BackgroundResult, SwiftFilter
+from swift_comet_pipeline.types.count_rate import CountRatePerPixel
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def bg_swift_constant(

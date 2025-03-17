@@ -1,10 +1,10 @@
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
 
-from swift_comet_pipeline.swift.count_rate import CountRatePerPixel
-from swift_comet_pipeline.background.background_determination_method import (
+from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
 )
+from swift_comet_pipeline.types.count_rate import CountRatePerPixel
 
 
 @dataclass

@@ -4,8 +4,8 @@ from swift_comet_pipeline.pipeline.products.data_ingestion.epoch_product import 
 from swift_comet_pipeline.pipeline.products.epoch_subpipeline.epoch_subpipeline_product import (
     EpochSubPipelineProduct,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 class EpochSubPipelineAnalysisProduct(EpochSubPipelineProduct):

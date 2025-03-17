@@ -11,7 +11,7 @@ from swift_comet_pipeline.aperture.plateau_serialize import (
 )
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 def lightcurve_from_aperture_plateaus(

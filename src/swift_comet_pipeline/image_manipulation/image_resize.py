@@ -1,4 +1,4 @@
-from swift_comet_pipeline.swift.uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def stretch_image(img: SwiftUVOTImage, stretch_factor: int) -> SwiftUVOTImage:

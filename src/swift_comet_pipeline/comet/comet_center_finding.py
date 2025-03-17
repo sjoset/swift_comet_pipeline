@@ -2,24 +2,14 @@ import numpy as np
 
 from photutils.aperture import CircularAperture, ApertureStats
 
-from enum import StrEnum, auto
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter, filter_to_file_string
-
-from swift_comet_pipeline.swift.uvot_image import (
-    PixelCoord,
-    SwiftUVOTImage,
-    get_uvot_image_center,
+from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
+from swift_comet_pipeline.types.comet_center_finding_method import (
+    CometCenterFindingMethod,
 )
-
-
-class CometCenterFindingMethod(StrEnum):
-    pixel_center = auto()
-    aperture_centroid = auto()
-    aperture_peak = auto()
-
-    @classmethod
-    def all_methods(cls):
-        return [x for x in cls]
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def find_comet_center(

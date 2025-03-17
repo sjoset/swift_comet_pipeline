@@ -10,7 +10,6 @@ import pandas as pd
 from astropy.wcs.wcs import FITSFixedWarning
 from argparse import ArgumentParser
 
-# import questionary
 from rich.console import Console
 from rich.text import Text
 
@@ -24,6 +23,7 @@ from swift_comet_pipeline.projects.configs import (
     read_or_create_project_config,
 )
 from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
+from swift_comet_pipeline.tui.pipeline_extras import pipeline_extras_menu
 from swift_comet_pipeline.tui.pipeline_steps_aperture_analysis import (
     aperture_analysis_step,
 )
@@ -97,43 +97,6 @@ def process_args():
     return args
 
 
-# # Example description generator for each enum entry
-# def generate_description(step: SwiftCometPipelineStep) -> str:
-#     descriptions = {
-#         SwiftCometPipelineStep.observation_log: "Log observations from the Swift comet.",
-#         SwiftCometPipelineStep.identify_epochs: "Identify key epochs in the observation data.",
-#         SwiftCometPipelineStep.veto_images: "Review and veto specific images.",
-#         SwiftCometPipelineStep.download_orbital_data: "Download orbital data for further analysis.",
-#         SwiftCometPipelineStep.determine_background: "Determine the background for epoch analysis.",
-#         SwiftCometPipelineStep.epoch_stack: "Stack images from a given epoch.",
-#         SwiftCometPipelineStep.aperture_analysis: "Perform aperture analysis on the stacked images.",
-#         SwiftCometPipelineStep.vectorial_analysis: "Run vectorial analysis on the comet images.",
-#         SwiftCometPipelineStep.build_lightcurves: "Generate lightcurves based on the analysis."
-#     }
-#     return descriptions.get(step, "No description available")
-#
-#
-# def select_pipeline_step(
-#     swift_project_config: SwiftProjectConfig,
-# ) -> PipelineStepsMenuEntry | None:
-#
-#     # Create the reverse dictionary where descriptions are keys
-#     description_to_menu_entry = {
-#         generate_description(entry): entry for entry in PipelineStepsMenuEntry
-#     }
-#
-#     # Ask the user to choose an option, directly using the descriptions
-#     selected_description = questionary.select(
-#         "Select a pipeline step:",
-#         choices=list(
-#             description_to_menu_entry.keys()
-#         ),  # Present descriptions to the user
-#     ).ask()
-#
-#     # Use the selected description to find and return the corresponding PipelineStepsMenuEntry
-#     return description_to_menu_entry.get(selected_description)
-
-
 def get_statuses(scp: SwiftCometPipeline) -> dict:
     status_map = {}
     for x in SwiftCometPipelineStepEnum.__members__.values():
@@ -153,13 +116,13 @@ def generate_description(step: SwiftCometPipelineStepEnum, status_map: dict) -> 
         SwiftCometPipelineStepEnum.determine_background: "Determine the background of stacked images",
         SwiftCometPipelineStepEnum.background_subtract: "Subtract background from stacked images",
         SwiftCometPipelineStepEnum.aperture_analysis: "Aperture analysis on the stacked images",
-        SwiftCometPipelineStepEnum.vectorial_analysis: "Vectorial analysis on the stacked images.",
+        SwiftCometPipelineStepEnum.vectorial_analysis: "Vectorial analysis on the stacked images",
         SwiftCometPipelineStepEnum.build_lightcurves: "Generate lightcurves",
+        SwiftCometPipelineStepEnum.extra_functions: "Inspect pipeline status",
     }
     # Get the base description and append the status
     base_description = descriptions.get(step, "No description available")
     status = status_map[step]
-    # print(f"{step} --> {base_description}")
     return f"{base_description} [Status: {status}]"
 
 
@@ -172,22 +135,19 @@ def choose_pipeline_step(
     console = Console()
     status_map = get_statuses(scp)
 
-    # Create a dictionary that maps descriptions to the enum values
+    # dictionary that maps descriptions to the enum values
     description_to_pipeline_step = {
         generate_description(step, status_map): step
         for step in SwiftCometPipelineStepEnum
     }
 
-    # Add a custom 'Exit' option
     exit_option = "Exit"
     descriptions = list(description_to_pipeline_step.keys()) + [exit_option]
 
-    # Print the menu using rich
     console.print(Text("Select a pipeline step:", style="bold magenta"))
     for i, description in enumerate(descriptions, 1):
         console.print(f"[bold]{i}.[/bold] {description}")
 
-    # Prompt the user to select an option
     while True:
         try:
             choice = int(input("\nEnter the number of your choice: "))
@@ -195,7 +155,7 @@ def choose_pipeline_step(
                 selected_description = descriptions[choice - 1]
                 if selected_description == exit_option:
                     console.print("[yellow]Exiting the menu...[/yellow]")
-                    return None  # Or handle the exit logic as needed
+                    return None
                 else:
                     return description_to_pipeline_step.get(selected_description)
             else:
@@ -253,14 +213,10 @@ def main():
                 vectorial_analysis_step(swift_project_config=swift_project_config)
             case SwiftCometPipelineStepEnum.build_lightcurves:
                 build_lightcurves_step(swift_project_config=swift_project_config)
+            case SwiftCometPipelineStepEnum.extra_functions:
+                pipeline_extras_menu(swift_project_config=swift_project_config)
             case None:
                 exit_program = True
-
-        # elif step == SwiftCometPipelineStepEnum.extra_functions:
-        #     pipeline_extras_menu(swift_project_config=swift_project_config)
-        # else:
-        #     exit_program = True
-        # wait_for_key()
 
 
 if __name__ == "__main__":

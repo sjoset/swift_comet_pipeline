@@ -18,24 +18,21 @@ from swift_comet_pipeline.observationlog.observation_log import (
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.stacking.stacked_uvot_image_set import StackedUVOTImageSet
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.swift.swift_filter import (
-    SwiftFilter,
+from swift_comet_pipeline.swift.swift_filter_to_string import (
     filter_to_file_string,
-    filter_to_string,
-)
-from swift_comet_pipeline.swift.uvot_image import (
-    SwiftImageDataMode,
-    SwiftUVOTImage,
-    SwiftPixelResolution,
 )
 from swift_comet_pipeline.observationlog.epoch import (
     epoch_stacked_image_to_fits,
     is_epoch_stackable,
 )
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
+from swift_comet_pipeline.types.stacked_uvot_image_set import StackedUVOTImageSet
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
+from swift_comet_pipeline.types.swift_pixel_resolution import SwiftPixelResolution
+from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def determine_stacking_image_size(
@@ -237,18 +234,18 @@ def make_uw1_and_uvv_stacks(
     if not is_epoch_stackable(epoch=epoch_to_stack):
         print("Images in the requested stack have mixed data modes!")
         num_event_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
-            SwiftImageDataMode.event_mode
+            SwiftImageMode.event_mode
         ]
         num_data_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
-            SwiftImageDataMode.data_mode
+            SwiftImageMode.data_mode
         ]
         print(
             f"Event mode images: {num_event_mode_imgs}\tData mode images: {num_data_mode_imgs}"
         )
         if num_event_mode_imgs > num_data_mode_imgs:
-            selected_data_mode = SwiftImageDataMode.event_mode
+            selected_data_mode = SwiftImageMode.event_mode
         else:
-            selected_data_mode = SwiftImageDataMode.data_mode
+            selected_data_mode = SwiftImageMode.data_mode
         print(f"Filtering images to use only {selected_data_mode.value} ...")
         epoch_to_stack = epoch_to_stack[
             epoch_to_stack.DATAMODE == selected_data_mode
@@ -266,7 +263,7 @@ def make_uw1_and_uvv_stacks(
 
     # do the stacking
     for filter_type in uw1_and_uvv:
-        print(f"Stacking for filter {filter_to_string(filter_type)} ...")
+        print(f"Stacking for filter {filter_to_file_string(filter_type)} ...")
 
         # now narrow down the data to just one filter at a time
         filter_mask = epoch_to_stack["FILTER"] == filter_type

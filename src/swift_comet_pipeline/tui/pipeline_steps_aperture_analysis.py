@@ -11,9 +11,9 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
 from swift_comet_pipeline.tui.tui_common import get_selection
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 def menu_analyze_all_or_selection() -> str:

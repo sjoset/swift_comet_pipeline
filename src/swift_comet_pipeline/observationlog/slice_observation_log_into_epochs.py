@@ -6,7 +6,7 @@ from astropy.time import Time
 
 from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
 from swift_comet_pipeline.observationlog.epoch import Epoch
-from swift_comet_pipeline.swift.uvot_image import SwiftImageDataMode
+from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
 
 
 def epochs_from_time_delta(
@@ -22,7 +22,7 @@ def epochs_from_time_delta(
     while True:
         max_index = len(obs_log) - 1
 
-        t_start = Time(obs_log.iloc[0].MID_TIME) - 1 * u.s
+        t_start = Time(obs_log.iloc[0].MID_TIME) - 1 * u.s  # type: ignore
 
         # keep checking if next observation is within max_time_delta
         prev_index = 0
@@ -30,7 +30,7 @@ def epochs_from_time_delta(
             prev_time = Time(obs_log.iloc[prev_index].MID_TIME)
             if max_index == 0:
                 # this is the only row left, so set t_end and break
-                t_end = prev_time + 1 * u.s
+                t_end = prev_time + 1 * u.s  # type: ignore
                 break
 
             cur_index = prev_index + 1
@@ -40,12 +40,12 @@ def epochs_from_time_delta(
 
             # is the time delta to the next observation too large?  Use the previous as the stopping point
             if delta_t > max_time_between_obs:
-                t_end = prev_time + 1 * u.s
+                t_end = prev_time + 1 * u.s  # type: ignore
                 break
 
             # is the current index the last row?  Use this last row as the stopping point
             if cur_index == max_index:
-                t_end = cur_time + 1 * u.s
+                t_end = cur_time + 1 * u.s  # type: ignore
                 break
 
             prev_index = cur_index
@@ -93,7 +93,7 @@ def split_epoch_into_data_and_event_epochs(epoch: Epoch) -> list[Epoch]:
     """
 
     epoch_list = []
-    for datamode in [SwiftImageDataMode.data_mode, SwiftImageDataMode.event_mode]:
+    for datamode in [SwiftImageMode.data_mode, SwiftImageMode.event_mode]:
         num_imgs = epoch.DATAMODE.value_counts().get(datamode, 0)
         if num_imgs == 0:
             continue

@@ -9,7 +9,7 @@ from swift_comet_pipeline.pipeline.products.epoch_subpipeline.analysis_step.epoc
 from swift_comet_pipeline.pipeline.products.product_io_types.yaml_product import (
     YAMLDictPipelineProductIO,
 )
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 class QFromProfileExtractionAnalysis(

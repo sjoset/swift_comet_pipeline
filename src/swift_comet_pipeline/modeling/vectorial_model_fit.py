@@ -5,7 +5,7 @@ import astropy.units as u
 from pyvectorial_au.model_output.vectorial_model_result import VectorialModelResult
 from scipy.optimize import curve_fit
 
-from swift_comet_pipeline.comet.column_density import ColumnDensity
+from swift_comet_pipeline.types.column_density import ColumnDensity
 
 
 @dataclass

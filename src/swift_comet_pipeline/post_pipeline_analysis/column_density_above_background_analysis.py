@@ -4,8 +4,8 @@ import astropy.units as u
 
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.uvot_image import SwiftPixelResolution
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_pixel_resolution import SwiftPixelResolution
 
 
 @dataclass

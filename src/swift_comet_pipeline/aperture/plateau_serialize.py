@@ -1,10 +1,10 @@
 from dataclasses import asdict
 
-from swift_comet_pipeline.aperture.plateau import (
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.types.plateau import (
     ProductionPlateau,
     dict_to_production_plateau,
 )
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 
 
 def dust_plateau_list_dict_serialize(

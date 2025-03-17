@@ -5,11 +5,11 @@ import seaborn as sns
 from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
     ReddeningToProductionPlateauListDict,
 )
-from swift_comet_pipeline.aperture.q_vs_aperture_radius_entry import (
+from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
     QvsApertureRadiusEntry,
     dataframe_from_q_vs_aperture_radius_entry_list,
 )
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 
 
 def show_plateau_distribution_seaborn(

@@ -1,23 +1,19 @@
 import numpy as np
 import astropy.units as u
 
-from swift_comet_pipeline.background.background_result import (
-    yaml_dict_to_background_result,
-)
+from swift_comet_pipeline.comet import countrate_profile_to_surface_brightness
 from swift_comet_pipeline.comet.calculate_column_density import (
     surface_brightness_profile_to_column_density,
 )
-from swift_comet_pipeline.comet.comet_surface_brightness_profile import (
-    countrate_profile_to_surface_brightness,
-)
+from swift_comet_pipeline.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
-from swift_comet_pipeline.swift.uvot_image import datamode_to_pixel_resolution
-from swift_comet_pipeline.water_production.flux_OH import beta_parameter
+from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.background_result import yaml_dict_to_background_result
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 def background_oh_equivalent_column_density(

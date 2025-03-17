@@ -24,8 +24,8 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.projects.configs import SwiftProjectConfig
-from swift_comet_pipeline.stacking.stacking_method import StackingMethod
-from swift_comet_pipeline.swift.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 class SwiftCometPipeline:
@@ -126,6 +126,8 @@ class SwiftCometPipeline:
                     epoch_id=epoch_id,
                     stacking_method=stacking_method,
                 )
+            case SwiftCometPipelineStepEnum.extra_functions:
+                return SwiftCometPipelineStepStatus.invalid
 
     def _status_list_to_single_status(
         self, stats: list[SwiftCometPipelineStepStatus]
@@ -227,6 +229,8 @@ class SwiftCometPipeline:
                     for e, s in product(epochs, self.sum_and_median)
                 ]
                 return self._status_list_to_single_status(stats)
+            case SwiftCometPipelineStepEnum.extra_functions:
+                return SwiftCometPipelineStepStatus.invalid
 
     def _get_observation_log_status(self) -> SwiftCometPipelineStepStatus:
         obs_log_exists = self.pipeline_files.exists(
@@ -434,14 +438,13 @@ class SwiftCometPipeline:
         epoch_id: EpochID | None = None,
         filter_type: SwiftFilter | None = None,
         stacking_method: StackingMethod | None = None,
-        fit_type: VectorialFitType | None = None,
+        _: VectorialFitType | None = None,
     ) -> PipelineProduct | None:
         return self.pipeline_files.get_product(
             pf=pf,
             epoch_id=epoch_id,
             filter_type=filter_type,
             stacking_method=stacking_method,
-            # fit_type=fit_type,
         )
 
     def get_product_data(
