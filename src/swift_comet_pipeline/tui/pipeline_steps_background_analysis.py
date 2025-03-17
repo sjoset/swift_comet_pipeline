@@ -11,7 +11,6 @@ from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.stacking.stacking import get_stacked_image_set
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import wait_for_key
@@ -25,6 +24,7 @@ from swift_comet_pipeline.types.background_result import (
 )
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 # TODO: break this into two files
 

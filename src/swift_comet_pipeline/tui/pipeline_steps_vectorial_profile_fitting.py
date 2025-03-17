@@ -23,7 +23,6 @@ from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
@@ -32,6 +31,7 @@ from swift_comet_pipeline.tui.tui_menus import stacked_epoch_menu
 from swift_comet_pipeline.types.column_density import ColumnDensity
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
@@ -236,9 +236,6 @@ def vectorial_fitting_plots(
 
 
 def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
-    # TODO: check for existence of files before trying to load them
-    # pipeline_files = PipelineFiles(swift_project_config.project_path)
-
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
     stacking_methods = [StackingMethod.summation, StackingMethod.median]
@@ -306,7 +303,7 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
         )
         exit(1)
 
-    # TODO: make this an option in the config
+    # TODO: PRIO: use config value!
     near_far_radius = 50000 * u.km  # type: ignore
     # dust_rednesses = np.linspace(0.0, 40.0, num=17, endpoint=True)
     # TODO: priority: should this be -100 to 100 for the bayesian step later?

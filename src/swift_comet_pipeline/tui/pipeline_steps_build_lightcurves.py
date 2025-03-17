@@ -21,13 +21,13 @@ from swift_comet_pipeline.lightcurve.lightcurve_bayesian import (
 from swift_comet_pipeline.lightcurve.lightcurve_vectorial import (
     lightcurve_from_vectorial_fits,
 )
-from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.tui.tui_common import get_selection
 from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
+from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
 def find_minimum_percent_error_in_lightcurve(

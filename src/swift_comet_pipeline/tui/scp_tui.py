@@ -12,17 +12,23 @@ from argparse import ArgumentParser
 
 from rich.console import Console
 from rich.text import Text
+from rich import print as rprint
 
 from swift_comet_pipeline.modeling.vectorial_model import vectorial_model_settings_init
+from swift_comet_pipeline.modeling.vectorial_model_backend import VectorialModelBackend
+from swift_comet_pipeline.modeling.vectorial_model_grid import VectorialModelGridQuality
 from swift_comet_pipeline.orbits.orbital_data_download import download_orbital_data
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.projects.configs import (
-    read_or_create_project_config,
+from swift_comet_pipeline.projects.read_swift_project_config import (
+    read_swift_project_config,
 )
-from swift_comet_pipeline.projects.swift_project_config import SwiftProjectConfig
+from swift_comet_pipeline.projects.write_swift_project_config import (
+    write_swift_project_config,
+)
+from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.tui.pipeline_extras import pipeline_extras_menu
 from swift_comet_pipeline.tui.pipeline_steps_aperture_analysis import (
     aperture_analysis_step,
@@ -43,8 +49,9 @@ from swift_comet_pipeline.tui.pipeline_steps_vectorial_analysis import (
 )
 from swift_comet_pipeline.tui.pipeline_steps_veto_epoch import veto_epoch_step
 from swift_comet_pipeline.tui.pipeline_steps_epoch_stacking import epoch_stacking_step
-from swift_comet_pipeline.tui.tui_common import clear_screen
+from swift_comet_pipeline.tui.tui_common import clear_screen, get_yes_no
 from swift_comet_pipeline.tui.tui_menus import step_status_to_symbol
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 # class PipelineStepsMenuEntry(StrEnum):
 #     observation_log = "generate observation log"
@@ -95,6 +102,87 @@ def process_args():
         log.basicConfig(format="%(levelname)s: %(message)s")
 
     return args
+
+
+def read_or_create_project_config(
+    swift_project_config_path: pathlib.Path,
+) -> SwiftProjectConfig | None:
+    # check if project config exists, and offer to create if not
+    if not swift_project_config_path.exists():
+        print(
+            f"Config file {swift_project_config_path} does not exist! Would you like to create one now? (y/n)"
+        )
+        create_config = get_yes_no()
+        if create_config:
+            create_swift_project_config_from_input(
+                swift_project_config_path=swift_project_config_path
+            )
+        else:
+            return
+
+    # load the project config
+    swift_project_config = read_swift_project_config(swift_project_config_path)
+    if swift_project_config is None:
+        print(f"Error reading config file {swift_project_config_path}, exiting.")
+        return None
+
+    return swift_project_config
+
+
+def create_swift_project_config_from_input(
+    swift_project_config_path: pathlib.Path,
+) -> None:
+    """
+    Collect info on the data directories and how to identify the comet through JPL horizons,
+    and write it to a yaml config
+    """
+
+    swift_data_path = pathlib.Path(input("Directory of the downloaded swift data: "))
+
+    # try to validate that this path actually has data before accepting
+    test_of_swift_data = SwiftData(data_path=swift_data_path)
+    num_obsids = len(test_of_swift_data.get_all_observation_ids())
+    if num_obsids == 0:
+        rprint(
+            "There doesn't seem to be data in the necessary format at [blue]{swift_data_path}[/blue]!"
+        )
+    else:
+        rprint(
+            f"Found appropriate data with a total of [green]{num_obsids}[/green] observation IDs"
+        )
+
+    project_path = pathlib.Path(
+        input("Directory to store results and intermediate products: ")
+    )
+
+    jpl_horizons_id = input("JPL Horizons ID of the comet: ")
+
+    # TODO: this fails on invalid input, make it more robust
+    vm_quality = input(
+        f"Vectorial model quality {VectorialModelGridQuality.all_qualities()}: "
+    )
+
+    # TODO: this fails on invalid input, make it more robust
+    vm_backend = input(
+        f"Vectorial model backend {VectorialModelBackend.all_model_backends()}: "
+    )
+
+    # TODO: finish questions for vectorial_fitting_requires_km and near_far_split_radius_km
+
+    swift_project_config = SwiftProjectConfig(
+        swift_data_path=swift_data_path,
+        jpl_horizons_id=jpl_horizons_id,
+        project_path=project_path,
+        vectorial_model_quality=VectorialModelGridQuality(vm_quality),
+        vectorial_model_backend=VectorialModelBackend(vm_backend),
+        vectorial_fitting_requires_km=float(100_000),
+        near_far_split_radius_km=float(50_000),
+    )
+
+    print(f"Writing project config to {swift_project_config_path}...")
+    write_swift_project_config(
+        config_path=swift_project_config_path, swift_project_config=swift_project_config
+    )
 
 
 def get_statuses(scp: SwiftCometPipeline) -> dict:

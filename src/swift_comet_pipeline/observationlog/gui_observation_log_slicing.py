@@ -34,7 +34,7 @@ class EpochTimeWindowSelect(object):
             valmin=1.0,
             valmax=96.0,
             valstep=1.0,
-            valinit=initial_dt.to_value(u.hour),
+            valinit=initial_dt.to_value(u.hour),  # type: ignore
         )
         self.slider.on_changed(self.slider_update)
 
@@ -82,7 +82,7 @@ class EpochTimeWindowSelect(object):
         )
 
     def slider_update(self, new_dt_hours):
-        if int(new_dt_hours) == self.dt.to_value(u.hour):
+        if int(new_dt_hours) == self.dt.to_value(u.hour):  # type: ignore
             return
         self.do_plot(int(new_dt_hours) * u.hour)  # type: ignore
         return

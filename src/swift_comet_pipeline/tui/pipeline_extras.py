@@ -23,7 +23,6 @@ from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.post_pipeline_analysis.epoch_summary import get_epoch_summary
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
@@ -35,6 +34,7 @@ from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
     q_vs_aperture_radius_entry_list_from_dataframe,
 )
 from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 class PipelineExtrasMenuEntry(StrEnum):

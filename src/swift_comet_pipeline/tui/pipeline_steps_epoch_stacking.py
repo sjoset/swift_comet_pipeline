@@ -16,7 +16,6 @@ from swift_comet_pipeline.stacking.stacking import (
     write_uw1_and_uvv_stacks,
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.tui.tui_common import (
     bool_to_x_or_check,
     get_yes_no,
@@ -24,6 +23,7 @@ from swift_comet_pipeline.tui.tui_common import (
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def print_stacked_images_summary(

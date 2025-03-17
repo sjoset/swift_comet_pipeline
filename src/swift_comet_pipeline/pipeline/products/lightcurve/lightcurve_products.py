@@ -1,11 +1,11 @@
 import pathlib
 
-from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
 from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import (
     CSVDataframePipelineProductIO,
 )
 from swift_comet_pipeline.types.stacking_method import StackingMethod
+from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
 class LightCurveProduct(PipelineProduct):

@@ -2,11 +2,13 @@ from importlib.metadata import version
 
 __version__ = version("swift_comet_pipeline")
 
-# from .types import *
+from .types import *
+
+# from .aperture import *
 
 # from .swift import *
 # from .projects import *
-#
+
 # from .aperture import *
 # from .background import *
 # from .comet import *

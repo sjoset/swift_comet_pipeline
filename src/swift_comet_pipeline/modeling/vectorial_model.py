@@ -38,13 +38,13 @@ from swift_comet_pipeline.modeling.vectorial_model_grid import (
     make_vectorial_model_grid,
     vectorial_model_grid_quality_init,
 )
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def vectorial_model_settings_init(
     swift_project_config: SwiftProjectConfig,
 ) -> None:
-    vectorial_model_cache_init(swift_project_config=swift_project_config)
+    vectorial_model_cache_init(project_path=swift_project_config.project_path)
     vectorial_model_grid_quality_init(
         quality=swift_project_config.vectorial_model_quality
     )
@@ -109,6 +109,7 @@ def water_vectorial_model(
 
 
 def num_OH_from_vectorial_model_result(vmr: VectorialModelResult) -> float:
+    # TODO: this should return HydroxylMoleculeCount - just set error to zero for now
 
     # total fragments = 4 * pi * integral of volume density at r * r^2
     def integrand(r_m: float, volume_density_interpolation_function: Callable):

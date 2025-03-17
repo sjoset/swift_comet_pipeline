@@ -1,18 +1,9 @@
-from enum import StrEnum, auto
-
 from icecream import ic
 from pyvectorial_au.model_input.vectorial_model_config import VectorialModelGrid
 
-
-class VectorialModelGridQuality(StrEnum):
-    low = auto()
-    medium = auto()
-    high = auto()
-    very_high = auto()
-
-    @classmethod
-    def all_qualities(cls):
-        return [str(x) for x in cls]
+from swift_comet_pipeline.types.vectorial_model_grid_quality import (
+    VectorialModelGridQuality,
+)
 
 
 __VMGRID_QUALITY__: VectorialModelGridQuality | None = None

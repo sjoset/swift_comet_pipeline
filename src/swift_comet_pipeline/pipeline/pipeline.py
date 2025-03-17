@@ -2,7 +2,6 @@ import functools
 from itertools import product
 from typing import Any
 
-from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files import SwiftCometPipelineFiles
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
@@ -23,9 +22,10 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
+from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
 class SwiftCometPipeline:

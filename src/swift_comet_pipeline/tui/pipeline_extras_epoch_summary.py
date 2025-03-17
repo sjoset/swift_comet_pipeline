@@ -8,7 +8,6 @@ from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.post_pipeline_analysis.epoch_summary import get_epoch_summary
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.observationlog.observation_log import (
     get_image_path_from_obs_log_row,
 )
@@ -17,6 +16,7 @@ from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_str
 from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.tui.tui_menus import epoch_menu
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def get_sto(scp: SwiftCometPipeline, epoch_id: EpochID) -> float:

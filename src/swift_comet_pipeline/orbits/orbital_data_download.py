@@ -5,7 +5,7 @@ import astropy.units as u
 
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 # TODO: add dataclass for these orbital vector dataframes

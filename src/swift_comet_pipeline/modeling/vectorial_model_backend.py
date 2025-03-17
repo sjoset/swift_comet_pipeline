@@ -1,17 +1,6 @@
-from enum import StrEnum, auto
-
 from icecream import ic
 
-
-class VectorialModelBackend(StrEnum):
-    sbpy = auto()
-    rust = auto()
-    # We don't include fortran here because pyvectorial_au does not support running it in parallel currently
-    # fortran = auto()
-
-    @classmethod
-    def all_model_backends(cls):
-        return [x for x in cls]
+from swift_comet_pipeline.types.vectorial_model_backend import VectorialModelBackend
 
 
 __VMBACKEND__: VectorialModelBackend | None = None

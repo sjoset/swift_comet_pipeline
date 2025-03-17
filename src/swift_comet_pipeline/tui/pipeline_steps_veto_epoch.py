@@ -7,8 +7,8 @@ from swift_comet_pipeline.observationlog.gui_manual_veto import manual_veto
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.swift.swift_data import SwiftData
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.tui.tui_menus import epoch_menu
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def veto_epoch_step(swift_project_config: SwiftProjectConfig) -> None:

@@ -1,21 +1,10 @@
-from dataclasses import dataclass
-
 import numpy as np
 import astropy.units as u
 from pyvectorial_au.model_output.vectorial_model_result import VectorialModelResult
 from scipy.optimize import curve_fit
 
 from swift_comet_pipeline.types.column_density import ColumnDensity
-
-
-@dataclass
-class VectorialModelFit:
-    # water production that best matches comet column density
-    best_fit_Q: u.Quantity
-    # err of the associated fit
-    best_fit_Q_err: u.Quantity
-    # column density resulting from this fit
-    vectorial_column_density: ColumnDensity
+from swift_comet_pipeline.types.vectorial_model_fit import VectorialModelFit
 
 
 def fit_vectorial_model_to_comet_column_density(

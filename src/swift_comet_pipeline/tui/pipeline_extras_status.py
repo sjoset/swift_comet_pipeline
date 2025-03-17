@@ -10,11 +10,11 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps import (
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import bool_to_x_or_check
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def pipeline_extra_status(swift_project_config: SwiftProjectConfig) -> None:

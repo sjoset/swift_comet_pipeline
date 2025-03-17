@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import TypeAlias
 
-# __all__ = ["HalleyMarcusCurveEntry", "HalleyMarcusCurve"]
-
 
 @dataclass
 class HalleyMarcusCurveEntry:

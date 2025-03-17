@@ -23,7 +23,6 @@ from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
-from swift_comet_pipeline.projects.configs import SwiftProjectConfig
 from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
 from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
@@ -36,6 +35,7 @@ from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 from swift_comet_pipeline.water_production.fluorescence_OH import (
     flux_OH_to_num_OH,

@@ -12,12 +12,12 @@ from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.modeling.vectorial_model import water_vectorial_model
 from swift_comet_pipeline.modeling.vectorial_model_fit import vectorial_fit
-from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
 def lightcurve_from_vectorial_fits(

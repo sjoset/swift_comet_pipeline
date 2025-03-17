@@ -7,7 +7,6 @@ from itertools import product
 import numpy as np
 from astropy.time import Time
 
-from swift_comet_pipeline.modeling.vectorial_model_fit_type import VectorialFitType
 from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import (
     PipelineFilesEnum,
@@ -65,6 +64,7 @@ from swift_comet_pipeline.pipeline.products.lightcurve.lightcurve_products impor
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
 @dataclass(frozen=True)
