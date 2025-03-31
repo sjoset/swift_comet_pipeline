@@ -6,11 +6,6 @@ import pandas as pd
 import astropy.units as u
 from tqdm import tqdm
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.lightcurve.lightcurve import (
-    dataframe_to_lightcurve,
-    lightcurve_to_dataframe,
-)
 from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
     lightcurve_from_aperture_plateaus,
 )
@@ -25,6 +20,11 @@ from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.tui.tui_common import get_selection
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
+from swift_comet_pipeline.types.lightcurve import (
+    dataframe_to_lightcurve,
+    lightcurve_to_dataframe,
+)
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType

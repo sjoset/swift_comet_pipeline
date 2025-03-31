@@ -1,20 +1,20 @@
 import numpy as np
 import astropy.units as u
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.post_pipeline_analysis.background_oh_production import (
+from swift_comet_pipeline.pipeline_utils.comet_column_density import (
+    get_comet_column_density_from_extracted_profile,
+)
+from swift_comet_pipeline.post_processing.background_oh_production import (
     background_oh_equivalent_column_density,
 )
-from swift_comet_pipeline.post_pipeline_analysis.column_density_above_background_analysis import (
+from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.column_density_above_background_analysis import (
     ColumnDensityAboveBackgroundAnalysis,
 )
-from swift_comet_pipeline.post_pipeline_analysis.comet_column_density import (
-    get_comet_column_density,
-)
-from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
@@ -35,7 +35,7 @@ def column_density_above_background(
         return None
     bg_oh_cd_cm2 = background_oh_cd.to_value(1 / u.cm**2)  # type: ignore
 
-    comet_coldens = get_comet_column_density(
+    comet_coldens = get_comet_column_density_from_extracted_profile(
         scp=scp,
         epoch_id=epoch_id,
         dust_redness=dust_redness,

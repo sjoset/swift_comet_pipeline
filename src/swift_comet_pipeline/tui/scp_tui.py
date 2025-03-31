@@ -268,8 +268,8 @@ def main():
     )
 
     if swift_project_config is None:
-        print("Could not load a valid configuration! Exiting.")
-        return
+        print("Could not load a valid project configuration! Exiting.")
+        return 1
 
     # set up the cache db and other stuff
     vectorial_model_settings_init(swift_project_config=swift_project_config)

@@ -1,6 +1,8 @@
-from swift_comet_pipeline.comet import extract_comet_radial_profile
-from swift_comet_pipeline.comet import fit_comet_profile_gaussian
-from swift_comet_pipeline.types import CometProfile
+from swift_comet_pipeline.comet.comet_profile_fitting import fit_comet_profile_gaussian
+from swift_comet_pipeline.comet.extract_comet_radial_profile import (
+    extract_comet_radial_profile,
+)
+from swift_comet_pipeline.types.comet_profile import CometProfile
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 

@@ -14,7 +14,6 @@ from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
 from swift_comet_pipeline.aperture.q_vs_aperture_radius_seaborn import (
     show_q_vs_aperture_radius_seaborn,
 )
-from swift_comet_pipeline.lightcurve.lightcurve import dataframe_to_lightcurve
 from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
     lightcurve_from_aperture_plateaus,
 )
@@ -22,7 +21,7 @@ from swift_comet_pipeline.lightcurve.lightcurve_matplotlib import show_lightcurv
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.post_pipeline_analysis.epoch_summary import get_epoch_summary
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
     pipeline_extra_epoch_summary,
     pipeline_extra_latex_table_summary,
@@ -30,6 +29,7 @@ from swift_comet_pipeline.tui.pipeline_extras_epoch_summary import (
 from swift_comet_pipeline.tui.pipeline_extras_status import pipeline_extra_status
 from swift_comet_pipeline.tui.tui_common import clear_screen, get_selection
 from swift_comet_pipeline.tui.tui_menus import stacked_epoch_menu
+from swift_comet_pipeline.types.lightcurve import dataframe_to_lightcurve
 from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
     q_vs_aperture_radius_entry_list_from_dataframe,
 )

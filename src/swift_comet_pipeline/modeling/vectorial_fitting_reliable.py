@@ -1,6 +1,6 @@
 import astropy.units as u
 
-from swift_comet_pipeline.post_pipeline_analysis.column_density_above_background import (
+from swift_comet_pipeline.types.column_density_above_background_analysis import (
     ColumnDensityAboveBackgroundAnalysis,
 )
 

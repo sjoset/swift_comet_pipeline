@@ -1,3 +1,4 @@
+from functools import cache
 import astropy.units as u
 
 from comet_ice_sublimation.model_input import SublimationModelInput
@@ -23,6 +24,7 @@ def make_sublimation_model_input(
     )
 
 
+@cache
 def estimate_active_area(
     q: u.Quantity, rh: u.Quantity, sub_solar_latitude: u.Quantity
 ) -> u.Quantity:

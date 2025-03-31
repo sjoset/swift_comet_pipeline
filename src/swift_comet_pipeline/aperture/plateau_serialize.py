@@ -1,6 +1,6 @@
 from dataclasses import asdict
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.plateau import (
     ProductionPlateau,
     dict_to_production_plateau,

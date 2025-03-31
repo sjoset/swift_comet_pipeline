@@ -24,7 +24,6 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
 from swift_comet_pipeline.types.background_result import (
@@ -32,6 +31,7 @@ from swift_comet_pipeline.types.background_result import (
     yaml_dict_to_background_result,
 )
 from swift_comet_pipeline.types.count_rate import CountRate
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter

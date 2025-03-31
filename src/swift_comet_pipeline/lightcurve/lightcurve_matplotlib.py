@@ -3,10 +3,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.lightcurve.lightcurve import (
-    LightCurve,
-    lightcurve_to_dataframe,
-)
+from swift_comet_pipeline.types.lightcurve import LightCurve, lightcurve_to_dataframe
 
 
 def show_lightcurve_mpl(lc: LightCurve, best_lc: LightCurve | None = None) -> None:

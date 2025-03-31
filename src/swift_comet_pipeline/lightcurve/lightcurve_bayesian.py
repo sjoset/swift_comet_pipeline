@@ -6,12 +6,9 @@ import pandas as pd
 from scipy.stats import norm
 from astropy.time import Time
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
-from swift_comet_pipeline.lightcurve.lightcurve import (
-    LightCurve,
-    lightcurve_to_dataframe,
-)
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
+from swift_comet_pipeline.types.lightcurve import LightCurve, lightcurve_to_dataframe
 
 
 # TODO: document these entries

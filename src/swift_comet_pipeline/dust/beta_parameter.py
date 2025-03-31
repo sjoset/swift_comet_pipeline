@@ -1,4 +1,4 @@
-from swift_comet_pipeline.dust import reddening_correction
+from swift_comet_pipeline.dust.reddening_correction import reddening_correction
 from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
     read_swift_pipeline_config,
 )

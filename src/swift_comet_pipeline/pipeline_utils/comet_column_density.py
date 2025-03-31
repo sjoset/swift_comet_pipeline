@@ -7,17 +7,17 @@ from swift_comet_pipeline.comet.calculate_column_density import (
 from swift_comet_pipeline.comet.extract_comet_radial_profile import (
     radial_profile_from_dataframe_product,
 )
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.types.column_density import ColumnDensity
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
 @cache
-def get_comet_column_density(
+def get_comet_column_density_from_extracted_profile(
     scp: SwiftCometPipeline,
     epoch_id: EpochID,
     dust_redness: DustReddeningPercent,

@@ -9,8 +9,8 @@ from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_unserialize,
 )
-from swift_comet_pipeline.lightcurve.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
+from swift_comet_pipeline.types.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 

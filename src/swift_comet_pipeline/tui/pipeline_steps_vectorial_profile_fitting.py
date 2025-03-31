@@ -23,12 +23,12 @@ from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.tui.tui_common import (
     get_selection,
 )
 from swift_comet_pipeline.tui.tui_menus import stacked_epoch_menu
 from swift_comet_pipeline.types.column_density import ColumnDensity
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig

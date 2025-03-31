@@ -2,8 +2,8 @@ from typing import TypeAlias
 
 import numpy as np
 
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.types.count_rate import CountRate
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.error_propogation import ValueAndStandardDev
 
 

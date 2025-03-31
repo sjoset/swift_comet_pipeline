@@ -12,7 +12,6 @@ from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_serialize,
 )
 from swift_comet_pipeline.dust.beta_parameter import beta_parameter
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
@@ -28,6 +27,7 @@ from swift_comet_pipeline.types.background_result import (
 from swift_comet_pipeline.types.countrate_vs_aperture_radius import (
     CountrateVsApertureRadius,
 )
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.plateau import (
     ProductionPlateau,
     dict_to_production_plateau,

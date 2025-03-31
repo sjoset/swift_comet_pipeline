@@ -5,13 +5,13 @@ from rich.panel import Panel
 from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
     q_vs_aperture_radius_at_epoch,
 )
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.tui.tui_common import get_selection
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 

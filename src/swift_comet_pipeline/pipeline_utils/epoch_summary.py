@@ -1,27 +1,12 @@
-from dataclasses import dataclass
-
 import numpy as np
-import pandas as pd
 from astropy.time import Time
 
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-
-
-@dataclass
-class EpochSummary:
-    epoch_id: EpochID
-    observation_time: pd.Timestamp
-    epoch_length: pd.Timedelta
-    rh_au: float
-    helio_v_kms: float
-    delta_au: float
-    phase_angle_deg: float
-    km_per_pix: float
-    arcsecs_per_pix: float
-    time_from_perihelion: pd.Timedelta
+from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.epoch_summary import EpochSummary
 
 
 def get_epoch_summary(
@@ -47,6 +32,7 @@ def get_epoch_summary(
         return None
     t_perihelion = t_perihelion_list[0].t_perihelion
     t_p = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
+    pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
 
     return EpochSummary(
         epoch_id=epoch_id,
@@ -59,4 +45,5 @@ def get_epoch_summary(
         km_per_pix=km_per_pix,
         arcsecs_per_pix=arcsecs_per_pix,
         time_from_perihelion=t_p,
+        pixel_resolution=pixel_resolution,
     )

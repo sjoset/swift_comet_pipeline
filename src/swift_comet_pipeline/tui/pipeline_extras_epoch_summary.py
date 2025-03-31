@@ -7,10 +7,10 @@ from astroquery.jplhorizons import Horizons
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
-from swift_comet_pipeline.post_pipeline_analysis.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.observationlog.observation_log import (
     get_image_path_from_obs_log_row,
 )
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import wait_for_key

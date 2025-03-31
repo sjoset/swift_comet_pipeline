@@ -1,11 +1,10 @@
 import numpy as np
 import astropy.units as u
 
-from swift_comet_pipeline.comet import (
+from swift_comet_pipeline.comet.countrate_profile_to_surface_brightness import (
     countrate_profile_to_surface_brightness,
-    subtract_profiles,
 )
-from swift_comet_pipeline.dust.reddening_correction import DustReddeningPercent
+from swift_comet_pipeline.comet.subtract_comet_profiles import subtract_profiles
 from swift_comet_pipeline.fluorescence.hydroxyl_gfactor import hydroxyl_gfactor_1au
 from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
@@ -15,6 +14,7 @@ from swift_comet_pipeline.types import (
     CometRadialProfile,
     CometSurfaceBrightnessProfile,
 )
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 
 
 # TODO: add decorators to enforce the arguments are the correct Quantity
@@ -30,8 +30,8 @@ def surface_brightness_profile_to_column_density(
     helio_v_kms = helio_v.to(u.km / u.s).value  # type: ignore
     rh_au = helio_r.to(u.AU).value  # type: ignore
 
-    # TODO: magic numbers
-    # specific to OH - this should be from Bodewits 2019 but ask Lucy to make sure
+    # TODO: magic numbers: cite
+    # alpha is specific to OH - this should be from Bodewits 2019
     alpha = 1.2750906353215913e-12
     flux = surface_brightness_profile * alpha
     lumi = flux * 4 * np.pi * delta_cm**2
