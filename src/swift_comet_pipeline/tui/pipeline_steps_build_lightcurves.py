@@ -11,7 +11,6 @@ from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
 )
 from swift_comet_pipeline.lightcurve.lightcurve_bayesian import (
     bayesian_lightcurve_from_aperture_lightcurve,
-    bayesian_lightcurve_to_dataframe,
 )
 from swift_comet_pipeline.lightcurve.lightcurve_vectorial import (
     lightcurve_from_vectorial_fits,
@@ -20,6 +19,9 @@ from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.tui.tui_common import get_selection
+from swift_comet_pipeline.types.bayesian_lightcurve import (
+    bayesian_lightcurve_to_dataframe,
+)
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.lightcurve import (
     dataframe_to_lightcurve,

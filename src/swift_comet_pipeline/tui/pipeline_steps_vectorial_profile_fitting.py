@@ -318,7 +318,9 @@ def vectorial_fitting_step(swift_project_config: SwiftProjectConfig) -> None:
     whole_fits = {}
     for dust_redness in dust_rednesses:
         ccds[dust_redness] = calculate_comet_column_density(
-            stacked_epoch=stacked_epoch,
+            # stacked_epoch=stacked_epoch,
+            scp=scp,
+            epoch_id=epoch_id_selected,
             uw1_profile=uw1_profile,
             uvv_profile=uvv_profile,
             dust_redness=dust_redness,

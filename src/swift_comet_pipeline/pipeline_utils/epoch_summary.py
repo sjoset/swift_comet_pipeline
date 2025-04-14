@@ -1,5 +1,6 @@
 import numpy as np
-from astropy.time import Time
+import astropy.units as u
+from astropy.time import Time, TimeDelta
 
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
@@ -31,7 +32,9 @@ def get_epoch_summary(
         print("Could not find time of perihelion!")
         return None
     t_perihelion = t_perihelion_list[0].t_perihelion
-    t_p = Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion
+    t_p = TimeDelta(
+        (Time(np.mean(stacked_epoch.MID_TIME)) - t_perihelion), format="datetime"
+    )
     pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
 
     return EpochSummary(

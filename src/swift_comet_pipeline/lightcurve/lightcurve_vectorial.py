@@ -94,7 +94,9 @@ def lightcurve_entry_from_vectorial_fits(
         exit(1)
 
     ccd = calculate_comet_column_density(
-        stacked_epoch=stacked_epoch,
+        # stacked_epoch=stacked_epoch,
+        scp=scp,
+        epoch_id=epoch_id,
         uw1_profile=uw1_profile,
         uvv_profile=uvv_profile,
         dust_redness=dust_redness,

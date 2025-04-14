@@ -135,6 +135,9 @@ def pipeline_extra_epoch_summary(
     print("-----Stacked epoch-----")
     print(stacked_epoch)
 
+    print(get_epoch_summary(scp=scp, epoch_id=epoch_id_selected))
+    wait_for_key()
+
 
 def pipeline_extra_latex_table_summary(
     swift_project_config: SwiftProjectConfig,

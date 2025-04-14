@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 
+from astropy.time import TimeDelta
 import pandas as pd
 
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
@@ -17,7 +18,7 @@ class EpochSummary:
     phase_angle_deg: float
     km_per_pix: float
     arcsecs_per_pix: float
-    time_from_perihelion: pd.Timedelta
+    time_from_perihelion: TimeDelta
     pixel_resolution: SwiftPixelResolution
 
 

@@ -6,8 +6,9 @@ from swift_comet_pipeline.comet.countrate_profile_to_surface_brightness import (
 )
 from swift_comet_pipeline.comet.subtract_comet_profiles import subtract_profiles
 from swift_comet_pipeline.fluorescence.hydroxyl_gfactor import hydroxyl_gfactor_1au
-from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
-from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.observationlog.epoch_typing import EpochID
+from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.types import (
     ColumnDensity,
     CometCountRateProfile,
@@ -42,9 +43,9 @@ def surface_brightness_profile_to_column_density(
     return column_density / (u.cm**2)  # type: ignore
 
 
-# TODO: rewrite for EpochSummary
 def calculate_comet_column_density(
-    stacked_epoch: StackedEpoch,
+    scp: SwiftCometPipeline,
+    epoch_id: EpochID,
     uw1_profile: CometRadialProfile,
     uvv_profile: CometRadialProfile,
     dust_redness: DustReddeningPercent,
@@ -52,11 +53,14 @@ def calculate_comet_column_density(
 ) -> ColumnDensity:
     # TODO: document
 
-    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
-    helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
-    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
-    pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
+    # km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
+    # delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
+    # helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
+    # helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
+    # pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
+
+    epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
+    assert epoch_summary is not None
 
     subtracted_profile = subtract_profiles(
         uw1_profile=uw1_profile,
@@ -64,7 +68,9 @@ def calculate_comet_column_density(
         dust_redness=dust_redness,
     )
 
-    subtracted_profile_rs_km = subtracted_profile.profile_axis_xs * km_per_pix
+    subtracted_profile_rs_km = (
+        subtracted_profile.profile_axis_xs * epoch_summary.km_per_pix
+    )
 
     profile_mask = subtracted_profile_rs_km > r_min.to(u.km).value  # type: ignore
 
@@ -75,15 +81,15 @@ def calculate_comet_column_density(
 
     surface_brightness_profile = countrate_profile_to_surface_brightness(
         countrate_profile=countrate_profile,
-        pixel_resolution=pixel_resolution,
-        delta=delta,
+        pixel_resolution=epoch_summary.pixel_resolution,
+        delta=epoch_summary.delta_au * u.AU,  # type: ignore
     )
 
     comet_column_density_values = surface_brightness_profile_to_column_density(
         surface_brightness_profile=surface_brightness_profile,
-        delta=delta,
-        helio_v=helio_v,
-        helio_r=helio_r,
+        delta=epoch_summary.delta_au * u.AU,  # type: ignore
+        helio_v=epoch_summary.helio_v_kms * u.km / u.s,  # type: ignore
+        helio_r=epoch_summary.rh_au * u.AU,  # type: ignore
     )
 
     comet_column_density = ColumnDensity(

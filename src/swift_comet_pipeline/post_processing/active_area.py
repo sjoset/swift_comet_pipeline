@@ -4,10 +4,6 @@ import numpy as np
 import pandas as pd
 import astropy.units as u
 
-from swift_comet_pipeline.lightcurve.lightcurve_bayesian import (
-    BayesianLightCurve,
-    bayesian_lightcurve_to_dataframe,
-)
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.post_processing.post_processing_steps import (
