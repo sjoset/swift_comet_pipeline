@@ -53,12 +53,6 @@ def calculate_comet_column_density(
 ) -> ColumnDensity:
     # TODO: document
 
-    # km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-    # delta = np.mean(stacked_epoch.OBS_DIS) * u.AU  # type: ignore
-    # helio_v = np.mean(stacked_epoch.HELIO_V) * (u.km / u.s)  # type: ignore
-    # helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
-    # pixel_resolution = datamode_to_pixel_resolution(stacked_epoch.DATAMODE[0])
-
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
     assert epoch_summary is not None
 

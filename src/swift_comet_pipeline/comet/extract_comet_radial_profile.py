@@ -77,6 +77,7 @@ def extract_comet_radial_median_profile_from_cone(
         img=img, comet_center=comet_center, r=r, theta=theta
     )
     middle_radial_profile.pixel_values = median_pixels
+    middle_radial_profile._cone_size = cone_size
 
     return middle_radial_profile
 
@@ -180,6 +181,7 @@ def radial_profile_to_dataframe_product(
         {
             "radius": profile._radius,
             "theta": profile._theta,
+            "cone_size": profile._cone_size,
             "comet_center_x": profile._comet_center.x,
             "comet_center_y": profile._comet_center.y,
         }
@@ -199,6 +201,7 @@ def radial_profile_from_dataframe_product(df: pd.DataFrame) -> CometRadialProfil
         _ys=df.y_pixel.values,
         _radius=df.attrs["radius"],
         _theta=df.attrs["theta"],
+        _cone_size=df.attrs["cone_size"],
         _comet_center=PixelCoord(
             x=df.attrs["comet_center_x"], y=df.attrs["comet_center_y"]
         ),

@@ -20,6 +20,8 @@ def subtract_profiles(
 
     subtracted_pixels = uw1_profile.pixel_values - beta * uvv_profile.pixel_values
 
+    assert uw1_profile._cone_size == uvv_profile._cone_size
+
     return CometRadialProfile(
         profile_axis_xs=uw1_profile.profile_axis_xs,
         pixel_values=subtracted_pixels,
@@ -27,5 +29,6 @@ def subtract_profiles(
         _ys=uw1_profile._ys,
         _radius=uw1_profile._radius,
         _theta=uw1_profile._theta,
+        _cone_size=uw1_profile._cone_size,
         _comet_center=uw1_profile._comet_center,
     )
