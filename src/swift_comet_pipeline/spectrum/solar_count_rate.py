@@ -7,7 +7,9 @@ from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
     read_swift_pipeline_config,
 )
 from swift_comet_pipeline.spectrum.solar_spectrum import read_fixed_solar_spectrum
-from swift_comet_pipeline.swift import read_filter_effective_area
+from swift_comet_pipeline.swift.read_filter_effective_area import (
+    read_filter_effective_area,
+)
 from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
