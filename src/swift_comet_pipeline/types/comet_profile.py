@@ -18,6 +18,8 @@ class CometRadialProfile:
 
     # TODO: rename profile_axis_xs or alias it to 'r'
 
+    # TODO: add a field to store the cone size: maybe two fields to store theta + cone and theta - cone
+
     # the distance from comet center of each sample along the line in pixels - these are x coordinates along the profile axis, with pixel_values being the y values
     # these are not simply [r=0, r=1, r=2, ...] but calculated from the x, y coordinates of the pixels involved
     profile_axis_xs: np.ndarray
@@ -33,6 +35,9 @@ class CometRadialProfile:
     _theta: float
     # coordinates used for the center of the comet, in case we need those later
     _comet_center: PixelCoord
+    # If this profile was produced as a median in a conical region, this is half of the total angle of the cone opening,
+    # so that _theta + _cone_size and _theta - _cone_size give the angular extent of the extraction cone
+    _cone_size: float = 0
 
 
 @dataclass

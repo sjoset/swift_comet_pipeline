@@ -42,3 +42,4 @@ from .vectorial_model_fit import *
 from .water_molecule_count import *
 from .lightcurve import *
 from .bayesian_lightcurve import *
+from .uw1_uvv_pair import *
