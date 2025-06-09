@@ -43,7 +43,7 @@ def is_epoch_stackable(epoch: Epoch) -> bool:
 
 
 def epoch_stacked_image_to_fits(epoch: Epoch, img: SwiftUVOTImage) -> fits.ImageHDU:
-    # TODO: relocate this function
+    # TODO: relocate this function and rewrite for EpochSummary
 
     hdu = fits.ImageHDU(data=img)
 
