@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Oset"
+  given-names: "Shawn"
+  orcid: "https://orcid.org/0000-0001-6422-1038"
+title: "swift_comet_pipeline"
+version: 0.2.2
+date-released: 2025-06-05
+url: "https://github.com/sjoset/swift_comet_pipeline"
