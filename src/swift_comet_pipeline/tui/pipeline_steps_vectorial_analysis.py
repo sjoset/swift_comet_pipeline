@@ -8,6 +8,7 @@ from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 from rich import print as rprint
 
+from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 from swift_comet_pipeline.comet.extract_comet_radial_profile import (
     calculate_distance_from_center_mesh,
     count_rate_from_comet_radial_profile,
@@ -24,12 +25,13 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
+from swift_comet_pipeline.pipeline_utils.get_uw1_and_uvv import (
+    get_uw1_and_uvv_background_results,
+    get_uw1_and_uvv_background_subtracted_images,
+)
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
-from swift_comet_pipeline.types.background_result import (
-    BackgroundResult,
-    yaml_dict_to_background_result,
-)
+from swift_comet_pipeline.types.background_result import BackgroundResult
 from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
@@ -522,44 +524,17 @@ def profile_selection_plot(
         return None
     t_perihelion = t_perihelion_list[0].t_perihelion
 
-    uw1_img = scp.get_product_data(
-        pf=PipelineFilesEnum.background_subtracted_image,
-        epoch_id=selected_epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
+    bg_sub_imgs = get_uw1_and_uvv_background_subtracted_images(
+        scp=scp, epoch_id=selected_epoch_id, stacking_method=stacking_method
     )
-    assert uw1_img is not None
-    uw1_img = uw1_img.data
-    uvv_img = scp.get_product_data(
-        pf=PipelineFilesEnum.background_subtracted_image,
-        epoch_id=selected_epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
-    )
-    assert uvv_img is not None
-    uvv_img = uvv_img.data
+    assert bg_sub_imgs is not None
+    uw1_img, uvv_img = uw1uvv_getter(bg_sub_imgs)
 
-    if uw1_img is None or uvv_img is None:
-        print("Error loading background-subtracted images!")
-        wait_for_key()
-        return
-
-    uw1_bg = scp.get_product_data(
-        pf=PipelineFilesEnum.background_determination,
-        epoch_id=selected_epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
+    bg_results = get_uw1_and_uvv_background_results(
+        scp=scp, epoch_id=selected_epoch_id, stacking_method=stacking_method
     )
-    assert uw1_bg is not None
-    uw1_bg = yaml_dict_to_background_result(raw_yaml=uw1_bg)
-    uvv_bg = scp.get_product_data(
-        pf=PipelineFilesEnum.background_determination,
-        epoch_id=selected_epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
-    )
-    assert uvv_bg is not None
-    uvv_bg = yaml_dict_to_background_result(raw_yaml=uvv_bg)
+    assert bg_results is not None
+    uw1_bg, uvv_bg = uw1uvv_getter(bg_results)
 
     rpsp = RadialProfileSelectionPlot(
         stacked_epoch=stacked_epoch,
