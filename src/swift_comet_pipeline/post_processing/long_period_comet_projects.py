@@ -1,6 +1,7 @@
 import pathlib
 
 
+# TODO: this doesn't belong here!
 def get_long_period_comet_configs(base_dir_path: pathlib.Path) -> list[pathlib.Path]:
 
     long_period_prefix = "C_"

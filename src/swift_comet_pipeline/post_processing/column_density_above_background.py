@@ -25,6 +25,7 @@ from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
+# TODO: this file probably belongs in background/
 def background_oh_equivalent_column_density(
     scp: SwiftCometPipeline,
     epoch_id: EpochID,
