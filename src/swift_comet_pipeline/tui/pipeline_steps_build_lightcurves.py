@@ -295,6 +295,10 @@ def build_vectorial_lightcurves_step(
     df_far = df_far.rename(columns={"q": "far_fit_q", "q_err": "far_fit_q_err"})
     df_full = df_full.rename(columns={"q": "full_fit_q", "q_err": "full_fit_q_err"})
 
+    df_near.rh_au = df_near.rh_au * np.sign(df_near.time_from_perihelion_days)
+    df_far.rh_au = df_far.rh_au * np.sign(df_far.time_from_perihelion_days)
+    df_full.rh_au = df_full.rh_au * np.sign(df_full.time_from_perihelion_days)
+
     # drop the duplicated columns: each df has its own time_from_perihelion and observation_time columns
     complete_vectorial_lightcurves_df = pd.concat([df_near, df_far, df_full], axis=1)
     complete_vectorial_lightcurves_df = complete_vectorial_lightcurves_df.loc[

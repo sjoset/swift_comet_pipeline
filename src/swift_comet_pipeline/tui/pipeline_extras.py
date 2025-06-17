@@ -50,7 +50,7 @@ class PipelineExtrasMenuEntry(StrEnum):
     )
 
     # TODO:
-    show_stacked_images = "show stacked images from selected epoch"
+    # show_stacked_images = "show stacked images from selected epoch"
 
     @classmethod
     def all_extras(cls):
