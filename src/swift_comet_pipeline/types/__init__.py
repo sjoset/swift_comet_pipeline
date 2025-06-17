@@ -1,5 +1,6 @@
 # primitives
 from .background_determination_method import *
+from .bayesian_expectation import *
 from .column_density import *
 from .comet_center_finding_method import *
 from .comet_count_rate_profile import *
