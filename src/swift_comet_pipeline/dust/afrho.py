@@ -13,6 +13,8 @@ def calculate_afrho(
     delta: u.Quantity, rh: u.Quantity, rho: u.Quantity, magnitude_uvv: float
 ) -> u.Quantity:
 
+    # TODO: cite this
+
     # get the magnitude of solar spectrum run through the uvv filter
     solar_uvv_count_rate_1au = solar_count_rate_in_filter_1au(SwiftFilter.uvv)
     solar_uvv_mag_1au = magnitude_from_count_rate(

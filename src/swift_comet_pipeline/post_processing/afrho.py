@@ -260,6 +260,7 @@ def do_profile_post_processing_afrho(
         filter_type=SwiftFilter.uvv,
         stacking_method=stacking_method,
     )
+    assert uvv_profile is not None
     uvv_profile = uvv_profile.sort_values("r_km").reset_index(drop=True)  # type: ignore
 
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
