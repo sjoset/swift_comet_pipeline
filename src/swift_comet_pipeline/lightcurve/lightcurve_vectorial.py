@@ -1,22 +1,22 @@
-import numpy as np
 from astropy.time import Time
 import astropy.units as u
 
+from swift_comet_pipeline.pipeline_utils.get_uw1_and_uvv import (
+    get_uw1_and_uvv_extracted_radial_profiles,
+)
+from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 from swift_comet_pipeline.comet.calculate_column_density import (
     calculate_comet_column_density,
 )
-from swift_comet_pipeline.comet.extract_comet_radial_profile import (
-    radial_profile_from_dataframe_product,
-)
+
 from swift_comet_pipeline.modeling.vectorial_model import water_vectorial_model
 from swift_comet_pipeline.modeling.vectorial_model_fit import vectorial_fit
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
-from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.lightcurve import LightCurve, LightCurveEntry
 from swift_comet_pipeline.types.stacking_method import StackingMethod
-from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
 
@@ -60,30 +60,18 @@ def lightcurve_entry_from_vectorial_fits(
     # TODO: if the extracted profile is not long enough, then there may be no data for far fit, and vectorial_fit crashes.
     # Handle this case better!
 
-    stacked_epoch = scp.get_product_data(
-        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
-    )
-    assert stacked_epoch is not None
+    # TODO: use get_epoch_summary and uw1_uvv getter
 
-    helio_r = np.mean(stacked_epoch.HELIO) * u.AU  # type: ignore
-    observation_time = Time(np.mean(stacked_epoch.MID_TIME))
+    es = get_epoch_summary(scp=scp, epoch_id=epoch_id)
+    assert es is not None
+    helio_r = es.rh_au * u.AU  # type: ignore
+    observation_time = Time(es.observation_time)
 
-    uw1_profile = scp.get_product_data(
-        pf=PipelineFilesEnum.extracted_profile,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
+    profs = get_uw1_and_uvv_extracted_radial_profiles(
+        scp=scp, epoch_id=epoch_id, stacking_method=stacking_method
     )
-    assert uw1_profile is not None
-    uw1_profile = radial_profile_from_dataframe_product(uw1_profile)
-    uvv_profile = scp.get_product_data(
-        pf=PipelineFilesEnum.extracted_profile,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
-    )
-    assert uvv_profile is not None
-    uvv_profile = radial_profile_from_dataframe_product(uvv_profile)
+    assert profs is not None
+    uw1_profile, uvv_profile = uw1uvv_getter(profs)
 
     model_Q = 1e29 / u.s  # type: ignore
     vmr = water_vectorial_model(base_q=model_Q, helio_r=helio_r)
@@ -94,7 +82,6 @@ def lightcurve_entry_from_vectorial_fits(
         exit(1)
 
     ccd = calculate_comet_column_density(
-        # stacked_epoch=stacked_epoch,
         scp=scp,
         epoch_id=epoch_id,
         uw1_profile=uw1_profile,
