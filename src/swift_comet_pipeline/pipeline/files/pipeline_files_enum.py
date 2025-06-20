@@ -37,6 +37,7 @@ class PipelineFilesEnum(StrEnum):
     best_near_fit_vectorial_lightcurve = auto()
     best_far_fit_vectorial_lightcurve = auto()
     best_full_fit_vectorial_lightcurve = auto()
+    unified_lightcurve = auto()
 
 
 def is_data_ingestion_file(pfe: PipelineFilesEnum) -> bool:
@@ -60,6 +61,7 @@ def is_analysis_result_file(pfe: PipelineFilesEnum) -> bool:
         PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
         PipelineFilesEnum.best_far_fit_vectorial_lightcurve,
         PipelineFilesEnum.best_full_fit_vectorial_lightcurve,
+        PipelineFilesEnum.unified_lightcurve,
     ]:
         return True
     else:

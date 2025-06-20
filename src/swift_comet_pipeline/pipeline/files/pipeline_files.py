@@ -60,6 +60,7 @@ from swift_comet_pipeline.pipeline.products.lightcurve.lightcurve_products impor
     # BayesianVectorialLightCurveProduct,
     BestRednessLightCurveProduct,
     CompleteVectorialLightCurveProduct,
+    UnifiedLightCurveProduct,
 )
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
 from swift_comet_pipeline.types.stacking_method import StackingMethod
@@ -438,6 +439,14 @@ class AnalysisFiles:
                 stacking_method=stacking_method,
                 fit_type=VectorialFitType.full_fit,
             )
+            self.analysis_products[
+                AnalysisFileKey(
+                    PipelineFilesEnum.unified_lightcurve,
+                    stacking_method=stacking_method,
+                )
+            ] = UnifiedLightCurveProduct(
+                product_path=self.base_project_path, stacking_method=stacking_method
+            )
 
     def get_product(self, key: AnalysisFileKey):
         return self.analysis_products[key]
@@ -603,9 +612,6 @@ class SwiftCometPipelineFiles:
                 return None
             return self.analysis_products.get_product(
                 AnalysisFileKey(pf=pf, stacking_method=stacking_method)
-                # AnalysisFileKey(
-                #     pf=pf, stacking_method=stacking_method, fit_type=fit_type
-                # )
             )
 
         if is_epoch_subpipeline_file(pf):

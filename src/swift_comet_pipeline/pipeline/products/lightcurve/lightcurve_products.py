@@ -1,9 +1,12 @@
 import pathlib
 
+# from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.products.pipeline_product import PipelineProduct
 from swift_comet_pipeline.pipeline.products.product_io_types.csv_product import (
     CSVDataframePipelineProductIO,
 )
+
+# from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.vectorial_model_fit_type import VectorialFitType
 
@@ -111,3 +114,36 @@ class BayesianApertureLightCurveProduct(
         self.product_path = self.product_path / pathlib.Path(
             f"bayesian_aperture_lightcurve_{self.stacking_method}.csv"
         )
+
+
+class UnifiedLightCurveProduct(CSVDataframePipelineProductIO, LightCurveProduct):
+    """
+    Contains production values at various dust redness priors at every epoch: it is a further-processed version of the ApertureLightCurveProduct
+    """
+
+    # TODO: describe columns
+
+    def __init__(
+        self,
+        product_path: pathlib.Path,
+        stacking_method: StackingMethod,
+    ):
+        super().__init__(product_path=product_path, stacking_method=stacking_method)
+
+        # self.dust_prior_mean = dust_prior_mean
+        # self.dust_prior_sigma = dust_prior_sigma
+        # self.vectorial_fit_source = vectorial_fit_source
+
+        self.product_path = self.product_path / pathlib.Path(
+            # f"unified_lightcurve_{self.stacking_method}_{self.vectorial_fit_source.value}_prior_mean_{self.dust_prior_mean}_prior_sigma_{self.dust_prior_sigma}.csv"
+            f"unified_lightcurve_{self.stacking_method}.csv"
+        )
+
+    # def write(
+    #     self,
+    #     dust_prior_mean: DustReddeningPercent,
+    #     dust_prior_sigma: DustReddeningPercent,
+    #     vectorial_fit_source: PipelineFilesEnum,
+    # ):
+    #
+    #     super().write()

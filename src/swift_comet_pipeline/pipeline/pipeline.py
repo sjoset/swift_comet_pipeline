@@ -393,6 +393,7 @@ class SwiftCometPipeline:
             PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
             PipelineFilesEnum.best_far_fit_vectorial_lightcurve,
             PipelineFilesEnum.best_full_fit_vectorial_lightcurve,
+            PipelineFilesEnum.unified_lightcurve,
         ]
         pipeline_file_exists = functools.partial(
             self.pipeline_files.exists,
