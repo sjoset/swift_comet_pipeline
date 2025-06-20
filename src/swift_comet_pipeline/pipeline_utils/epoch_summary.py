@@ -1,3 +1,5 @@
+from functools import cache
+
 import numpy as np
 from astropy.time import Time, TimeDelta
 
@@ -52,6 +54,7 @@ def get_unstacked_epoch_summary(
     )
 
 
+@cache
 def get_epoch_summary(
     scp: SwiftCometPipeline, epoch_id: EpochID
 ) -> EpochSummary | None:

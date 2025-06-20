@@ -6,6 +6,10 @@ import pandas as pd
 import astropy.units as u
 from tqdm import tqdm
 
+from swift_comet_pipeline.dust.dust_redness_prior import (
+    get_dust_redness_mean_prior,
+    get_dust_redness_sigma_prior,
+)
 from swift_comet_pipeline.lightcurve.lightcurve_aperture import (
     lightcurve_from_aperture_plateaus,
 )
@@ -18,6 +22,9 @@ from swift_comet_pipeline.lightcurve.lightcurve_vectorial import (
 from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.post_processing.unified_lightcurve import (
+    build_unified_lightcurve,
+)
 from swift_comet_pipeline.tui.tui_common import get_selection
 from swift_comet_pipeline.types.bayesian_lightcurve import (
     bayesian_lightcurve_to_dataframe,
@@ -38,6 +45,7 @@ def find_minimum_percent_error_in_lightcurve(
     # TODO: document this function and its inputs
 
     positive_production_mask = df.q > 0.0
+    # positive_redness_mask = df.dust_redness > 0.0
 
     by_epoch = df[positive_production_mask].groupby("time_from_perihelion_days")
 
@@ -70,6 +78,10 @@ def build_lightcurves_step(swift_project_config: SwiftProjectConfig) -> None:
     )
 
     build_vectorial_lightcurves_step(
+        swift_project_config=swift_project_config, stacking_method=stacking_method
+    )
+
+    build_unified_lightcurve_step(
         swift_project_config=swift_project_config, stacking_method=stacking_method
     )
 
@@ -154,32 +166,26 @@ def build_aperture_lightcurves_bayesian_step(
     bayes_product.write()
 
 
-# def parallel_vectorial_lightcurve_computer(
-#     dust_redness: DustReddeningPercent,
-#     scp: SwiftCometPipeline,
-#     stacking_method: StackingMethod,
-#     t_perihelion,
-#     fit_type: VectorialFitType,
-#     near_far_radius,
-# ) -> tuple[DustReddeningPercent, LightCurve | None]:
-#
-#     return dust_redness, lightcurve_from_vectorial_fits(
-#         scp=scp,
-#         stacking_method=stacking_method,
-#         t_perihelion=t_perihelion,
-#         dust_redness=dust_redness,
-#         fit_type=fit_type,
-#         near_far_radius=near_far_radius,
-#     )
-
-
 def build_vectorial_lightcurves_step(
     swift_project_config: SwiftProjectConfig, stacking_method: StackingMethod
 ) -> None:
 
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
 
-    # TODO: check for existence of files before computing
+    vectorial_fit_product_types = [
+        PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
+        PipelineFilesEnum.best_far_fit_vectorial_lightcurve,
+        PipelineFilesEnum.best_full_fit_vectorial_lightcurve,
+        PipelineFilesEnum.complete_vectorial_lightcurve,
+    ]
+    if all(
+        [
+            scp.exists(pf=vfpt, stacking_method=stacking_method)
+            for vfpt in vectorial_fit_product_types
+        ]
+    ):
+        print("All vectorial lightcurves exist, skipping.")
+        return
 
     t_perihelion_list = find_perihelion(scp=scp)
     if t_perihelion_list is None:
@@ -195,6 +201,7 @@ def build_vectorial_lightcurves_step(
         for x in np.linspace(-100.0, 100.0, num=201, endpoint=True)
     ]
 
+    precompute_t_start = time.perf_counter()
     print("Precomputing vectorial models...")
     _ = lightcurve_from_vectorial_fits(
         scp=scp,
@@ -204,103 +211,92 @@ def build_vectorial_lightcurves_step(
         fit_type=VectorialFitType.near_fit,
         near_far_radius=near_far_radius,
     )
+    precompute_t_end = time.perf_counter()
+    print(f"All models done in {precompute_t_end - precompute_t_start:.2f} seconds")
 
     print("Starting lightcurve calculations...")
     all_fit_start = time.perf_counter()
-    near_fit_lcs = {}
-    far_fit_lcs = {}
-    full_fit_lcs = {}
-    dust_progress_bar = tqdm(dust_rednesses)
-    for dust_redness in dust_progress_bar:
-        dust_progress_bar.set_description(f"Dust redness: {dust_redness}")
-        near_fit_lcs[dust_redness] = lightcurve_from_vectorial_fits(
-            scp=scp,
-            stacking_method=stacking_method,
-            t_perihelion=t_perihelion,
-            dust_redness=dust_redness,
-            fit_type=VectorialFitType.near_fit,
-            near_far_radius=near_far_radius,
+    fitted_vectorial_lcs = {}
+    fit_types_and_rednesses = list(
+        product(VectorialFitType.all_types(), dust_rednesses)
+    )
+    dust_progress_bar = tqdm(
+        fit_types_and_rednesses, total=len(fit_types_and_rednesses)
+    )
+    for fitting_kind, dust_redness in dust_progress_bar:
+        dust_progress_bar.set_description(
+            f"Fit type: {fitting_kind.value}, Dust redness: {dust_redness}"
         )
-        far_fit_lcs[dust_redness] = lightcurve_from_vectorial_fits(
-            scp=scp,
-            stacking_method=stacking_method,
-            t_perihelion=t_perihelion,
-            dust_redness=dust_redness,
-            fit_type=VectorialFitType.far_fit,
-            near_far_radius=near_far_radius,
-        )
-        full_fit_lcs[dust_redness] = lightcurve_from_vectorial_fits(
-            scp=scp,
-            stacking_method=stacking_method,
-            t_perihelion=t_perihelion,
-            dust_redness=dust_redness,
-            fit_type=VectorialFitType.full_fit,
-            near_far_radius=near_far_radius,
+        fitted_vectorial_lcs[fitting_kind, dust_redness] = (
+            lightcurve_from_vectorial_fits(
+                scp=scp,
+                stacking_method=stacking_method,
+                t_perihelion=t_perihelion,
+                dust_redness=dust_redness,
+                fit_type=fitting_kind,
+                near_far_radius=near_far_radius,
+            )
         )
     all_fit_end = time.perf_counter()
     print(f"All fits done in {all_fit_end - all_fit_start:.2f} seconds")
 
-    df_near = pd.concat(
-        [lightcurve_to_dataframe(lc=near_fit_lcs[x]) for x in dust_rednesses]
-    )
-    df_far = pd.concat(
-        [lightcurve_to_dataframe(lc=far_fit_lcs[x]) for x in dust_rednesses]
-    )
-    df_full = pd.concat(
-        [lightcurve_to_dataframe(lc=full_fit_lcs[x]) for x in dust_rednesses]
-    )
+    fit_dfs = {}
+    best_fit_dfs = {}
+    for fit_type in VectorialFitType.all_types():
+        fit_dfs[fit_type] = pd.concat(
+            [
+                lightcurve_to_dataframe(lc=fitted_vectorial_lcs[fit_type, x])
+                for x in dust_rednesses
+            ]
+        )
+        best_fit_dfs[fit_type] = find_minimum_percent_error_in_lightcurve(
+            df=fit_dfs[fit_type],
+            production_column_name="q",
+            production_err_column_name="q_err",
+        )
 
-    best_near_fit_lightcurve_df = find_minimum_percent_error_in_lightcurve(
-        df=df_near,
-        production_column_name="q",
-        production_err_column_name="q_err",
-    )
-    best_far_fit_lightcurve_df = find_minimum_percent_error_in_lightcurve(
-        df=df_far,
-        production_column_name="q",
-        production_err_column_name="q_err",
-    )
-    best_full_fit_lightcurve_df = find_minimum_percent_error_in_lightcurve(
-        df=df_full,
-        production_column_name="q",
-        production_err_column_name="q_err",
-    )
-
-    print("Lightcurve for near-nucleus fitting with best redness:")
-    print(best_near_fit_lightcurve_df)
-    print("Lightcurve for far-nucleus fitting with best redness:")
-    print(best_far_fit_lightcurve_df)
-    print("Lightcurve for full-nucleus fitting with best redness:")
-    print(best_full_fit_lightcurve_df)
-
-    for lc_df_data, pf in zip(
-        [
-            best_near_fit_lightcurve_df,
-            best_far_fit_lightcurve_df,
-            best_full_fit_lightcurve_df,
-        ],
-        [
+    vectorial_fitting_pairs = [
+        (
+            VectorialFitType.near_fit,
             PipelineFilesEnum.best_near_fit_vectorial_lightcurve,
-            PipelineFilesEnum.best_far_fit_vectorial_lightcurve,
+        ),
+        (VectorialFitType.far_fit, PipelineFilesEnum.best_far_fit_vectorial_lightcurve),
+        (
+            VectorialFitType.full_fit,
             PipelineFilesEnum.best_full_fit_vectorial_lightcurve,
-        ],
-    ):
-        p = scp.get_product(pf=pf, stacking_method=stacking_method)
+        ),
+    ]
+
+    # write out the vectorial best-fit lightcurves for each fitting type
+    for fit_type, product_type in vectorial_fitting_pairs:
+        p = scp.get_product(pf=product_type, stacking_method=stacking_method)
         assert p is not None
-        p.data = lc_df_data
+        p.data = best_fit_dfs[fit_type]
         p.write()
 
-    # rename conflicting columns so that we can combine them all into one dataframe
-    df_near = df_near.rename(columns={"q": "near_fit_q", "q_err": "near_fit_q_err"})
-    df_far = df_far.rename(columns={"q": "far_fit_q", "q_err": "far_fit_q_err"})
-    df_full = df_full.rename(columns={"q": "full_fit_q", "q_err": "full_fit_q_err"})
+    # full vectorial fitting data for each fit type: rename columns to reflect their fitting type,
+    # and we can combine them into one dataframe for the 'complete' lightcurve below
+    renaming_pairs = [
+        (VectorialFitType.near_fit, "near_fit_q", "near_fit_q_err"),
+        (VectorialFitType.far_fit, "far_fit_q", "far_fit_q_err"),
+        (VectorialFitType.full_fit, "full_fit_q", "full_fit_q_err"),
+    ]
+    for fit_type, q_col, q_err_col in renaming_pairs:
+        fit_dfs[fit_type] = fit_dfs[fit_type].rename(
+            columns={"q": q_col, "q_err": q_err_col}
+        )
 
-    df_near.rh_au = df_near.rh_au * np.sign(df_near.time_from_perihelion_days)
-    df_far.rh_au = df_far.rh_au * np.sign(df_far.time_from_perihelion_days)
-    df_full.rh_au = df_full.rh_au * np.sign(df_full.time_from_perihelion_days)
+    # tag heliocentric distance with a negative sign before perihelion
+    for fit_type in VectorialFitType.all_types():
+        fit_dfs[fit_type] = fit_dfs[fit_type].rh_au * np.sign(
+            fit_dfs[fit_type].time_from_perihelion_days
+        )
 
     # drop the duplicated columns: each df has its own time_from_perihelion and observation_time columns
-    complete_vectorial_lightcurves_df = pd.concat([df_near, df_far, df_full], axis=1)
+    # complete_vectorial_lightcurves_df = pd.concat([df_near, df_far, df_full], axis=1)
+    complete_vectorial_lightcurves_df = pd.concat(
+        [fit_dfs[fit_type] for fit_type in VectorialFitType.all_types()], axis=1
+    )
     complete_vectorial_lightcurves_df = complete_vectorial_lightcurves_df.loc[
         :, ~complete_vectorial_lightcurves_df.columns.duplicated()
     ]
@@ -312,3 +308,34 @@ def build_vectorial_lightcurves_step(
     assert lc_complete is not None
     lc_complete.data = complete_vectorial_lightcurves_df
     lc_complete.write()
+
+
+def build_unified_lightcurve_step(
+    swift_project_config: SwiftProjectConfig, stacking_method: StackingMethod
+) -> None:
+    scp = SwiftCometPipeline(swift_project_config=swift_project_config)
+
+    print("TODO: get bayesian options for dust redness")
+    print("Building unified lightcurve...")
+    vectorial_fit_source = PipelineFilesEnum.best_far_fit_vectorial_lightcurve
+
+    ulc = build_unified_lightcurve(
+        scp=scp,
+        stacking_method=stacking_method,
+        vectorial_fitting_requires_km=swift_project_config.vectorial_fitting_requires_km,
+        vectorial_fit_source=vectorial_fit_source,
+        dust_redness_prior_mean=get_dust_redness_mean_prior(),
+        dust_redness_prior_sigma=get_dust_redness_sigma_prior(),
+    )
+    if ulc is None:
+        print("Unable to build unified lightcurve!")
+        return
+
+    # print(ulc)
+
+    ulc_product = scp.get_product(
+        PipelineFilesEnum.unified_lightcurve, stacking_method=stacking_method
+    )
+    assert ulc_product is not None
+    ulc_product.data = lightcurve_to_dataframe(lc=ulc)
+    ulc_product.write()

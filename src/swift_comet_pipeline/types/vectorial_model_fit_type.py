@@ -7,5 +7,5 @@ class VectorialFitType(StrEnum):
     full_fit = auto()
 
     @classmethod
-    def all_image_types(cls):
+    def all_types(cls):
         return [x for x in cls]

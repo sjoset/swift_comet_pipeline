@@ -6,6 +6,10 @@ import pandas as pd
 from scipy.stats import norm
 from tqdm import tqdm
 
+from swift_comet_pipeline.dust.dust_redness_prior import (
+    get_dust_redness_mean_prior,
+    get_dust_redness_sigma_prior,
+)
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -21,23 +25,22 @@ from swift_comet_pipeline.types.bayesian_expectation import (
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.lightcurve import LightCurve, dataframe_to_lightcurve
 from swift_comet_pipeline.types.stacking_method import StackingMethod
-from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
 def get_epoch_vectorial_fitting_reliability_expectation(
     scp: SwiftCometPipeline,
-    swift_project_config: SwiftProjectConfig,
     epoch_id: EpochID,
     stacking_method: StackingMethod,
     dust_prior_pdf: Callable,
     dust_rednesses: list[DustReddeningPercent],
+    vectorial_fitting_requires_km: float,
 ) -> BayesianExpectationResultFromDataframe:
     df = do_vectorial_fitting_reliability_post_processing(
         scp=scp,
         stacking_method=stacking_method,
         epoch_id=epoch_id,
         dust_rednesses=dust_rednesses,
-        vectorial_fitting_requires_km=swift_project_config.vectorial_fitting_requires_km,
+        vectorial_fitting_requires_km=vectorial_fitting_requires_km,
         num_psfs_required=3,
     )
     assert df is not None
@@ -51,13 +54,46 @@ def get_epoch_vectorial_fitting_reliability_expectation(
 
 
 def build_unified_lightcurve(
-    swift_project_config: SwiftProjectConfig,
     scp: SwiftCometPipeline,
     stacking_method: StackingMethod,
-    dust_prior_mean: DustReddeningPercent,
-    dust_prior_sigma: DustReddeningPercent,
+    vectorial_fitting_requires_km: float,
     vectorial_fit_source: PipelineFilesEnum,
+    dust_redness_prior_mean: DustReddeningPercent,
+    dust_redness_prior_sigma: DustReddeningPercent,
 ) -> LightCurve | None:
+
+    # TODO: we need to fill in the production error bars when we take from the bayesian:
+    # take the production values from the mean +/- sigma? and quote that for now until we can
+    # fold in aperture photometry errors?
+    ap_df_raw = scp.get_product_data(
+        pf=PipelineFilesEnum.aperture_lightcurve, stacking_method=stacking_method
+    )
+    assert ap_df_raw is not None
+    ap_df_raw = ap_df_raw.reset_index(drop=True).set_index("epoch_id")
+
+    # multiple entries at a given redness for when multiple production plateaus are found, so average over them for our result
+    bayes_q_low_df = (
+        ap_df_raw[
+            ap_df_raw.dust_redness
+            == (dust_redness_prior_mean - dust_redness_prior_sigma)
+        ]
+        .groupby("epoch_id")
+        .q.mean()
+    )
+    bayes_q_high_df = (
+        ap_df_raw[
+            ap_df_raw.dust_redness
+            == (dust_redness_prior_mean + dust_redness_prior_sigma)
+        ]
+        .groupby("epoch_id")
+        .q.mean()
+    )
+    bayes_q = (
+        ap_df_raw[ap_df_raw.dust_redness == dust_redness_prior_mean]
+        .groupby("epoch_id")
+        .q.mean()
+    )
+    bayes_q_errs = ((bayes_q_low_df + bayes_q_high_df) / 2 - bayes_q).abs()
 
     # get bayesian aperture results
     bayes_df_raw = scp.get_product_data(
@@ -68,12 +104,16 @@ def build_unified_lightcurve(
         print("Could not find bayesian aperture analysis!")
         return None
 
+    # get the selected redness calculations and copy the water production column to a name we expect
     bayes_aperture_df = bayes_df_raw[
-        (bayes_df_raw.dust_mean == dust_prior_mean)
-        & (bayes_df_raw.dust_sigma == dust_prior_sigma)
+        (bayes_df_raw.dust_mean == dust_redness_prior_mean)
+        & (bayes_df_raw.dust_sigma == dust_redness_prior_sigma)
     ]
     bayes_aperture_df = bayes_aperture_df.reset_index(drop=True).set_index("epoch_id")
     bayes_aperture_df.insert(loc=1, column="q", value=bayes_aperture_df.posterior_q)
+    bayes_aperture_df["q_err"] = bayes_q_errs
+    bayes_aperture_df["dust_redness"] = dust_redness_prior_mean
+    # bayes_aperture_df["data_source"] = "bayesian_apertures"
 
     # get vectorial results
     lc_df = scp.get_product_data(
@@ -93,6 +133,7 @@ def build_unified_lightcurve(
     else:
         print("vectorial_fit_source error while building unified lightcurve!")
         return None
+    # lc_df["data_source"] = "vectorial_model"
 
     epoch_ids = scp.get_epoch_id_list()
     assert epoch_ids is not None
@@ -102,31 +143,22 @@ def build_unified_lightcurve(
         for x in np.linspace(-100.0, 100.0, num=201, endpoint=True)
     ]
 
-    # do all of the post-processing for vectorial reliability here
-    for epoch_id in tqdm(epoch_ids):
-        do_vectorial_fitting_reliability_post_processing(
-            scp=scp,
-            stacking_method=stacking_method,
-            epoch_id=epoch_id,
-            dust_rednesses=dust_rednesses,
-            vectorial_fitting_requires_km=swift_project_config.vectorial_fitting_requires_km,
-            num_psfs_required=3,  # TODO: magic number
-        )
-
     # build the gaussian pdf we use for bayesian expectation, with the rednesses we are evaluating over
-    dust_prior = norm(loc=float(dust_prior_mean), scale=dust_prior_sigma)
+    dust_prior = norm(
+        loc=float(dust_redness_prior_mean), scale=dust_redness_prior_sigma
+    )
 
     # build dataframe about whether vectorial fitting is reliable enough to be used
     vfr_dict = {
         x: get_epoch_vectorial_fitting_reliability_expectation(
-            swift_project_config=swift_project_config,
             scp=scp,
             epoch_id=x,
             stacking_method=stacking_method,
-            dust_prior_pdf=dust_prior.pdf,
+            dust_prior_pdf=dust_prior.pdf,  # type: ignore
             dust_rednesses=dust_rednesses,
+            vectorial_fitting_requires_km=vectorial_fitting_requires_km,
         )
-        for x in epoch_ids
+        for x in tqdm(epoch_ids)
     }
     vfr_df = pd.DataFrame.from_dict(
         {k: asdict(v) for k, v in vfr_dict.items()}, orient="index"
