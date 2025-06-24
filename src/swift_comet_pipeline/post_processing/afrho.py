@@ -87,7 +87,7 @@ class CalculateApertureAfrho(ApertureEpochPostProcessingStep):
         assert afrho_correction is not None
         df[self.aperture_afrho_cm_zero_col] = df[
             self.aperture_afrho_cm_col
-        ] * afrho_correction(df_in.phase_angle_deg)
+        ] / afrho_correction(df_in.phase_angle_deg)
 
         df.remove_columns(["delta", "rh", "rho"])
         df_out = df.to_pandas()
@@ -240,7 +240,7 @@ class CalculateProfileAfrho(ProfileEpochProcessingStep):
         assert afrho_correction is not None
         df[self.profile_afrho_cm_zero_col] = df[
             self.profile_afrho_cm_col
-        ] * afrho_correction(df["phase_angle_deg"])
+        ] / afrho_correction(df["phase_angle_deg"])
 
         return df.to_pandas()
 
