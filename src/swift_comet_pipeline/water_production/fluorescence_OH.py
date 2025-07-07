@@ -16,6 +16,8 @@ def flux_OH_to_num_OH(
     delta_au: float,
     fluorescence_data: FluorescenceGFactor1AU | None = None,
 ) -> HydroxylMoleculeCount:
+    # flux_OH given in ergs/cm**2/second
+
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
     delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore
     luminescence = 4 * np.pi * flux_OH.value * delta**2

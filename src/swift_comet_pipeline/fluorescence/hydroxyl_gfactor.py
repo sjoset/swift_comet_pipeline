@@ -44,4 +44,6 @@ def hydroxyl_gfactor_1au(
         fluorescence_data.helio_vs, fluorescence_data.gfactors, kind="cubic"
     )
 
+    # units of ergs/s/molecule
+
     return g1au_interpolation(helio_v_kms)

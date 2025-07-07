@@ -15,10 +15,9 @@ def OH_flux_from_count_rate(
     uvv: CountRate,
     beta: DustReddeningPercent,
 ) -> OHFlux:
-    # TODO: document the units of alpha here
 
     # this comes from an OH spectral model in Bodewits et. al 2019 by convolving the OH spectrum through the uw1 filter
-    # to convert count rate to flux
+    # to convert count rate to flux, in ergs/(cm**2  second)
     alpha = 1.2750906353215913e-12
 
     oh_flux = alpha * (uw1.value - beta * uvv.value)
