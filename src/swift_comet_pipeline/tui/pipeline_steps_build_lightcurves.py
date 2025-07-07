@@ -288,7 +288,7 @@ def build_vectorial_lightcurves_step(
 
     # tag heliocentric distance with a negative sign before perihelion
     for fit_type in VectorialFitType.all_types():
-        fit_dfs[fit_type] = fit_dfs[fit_type].rh_au * np.sign(
+        fit_dfs[fit_type].rh_au = fit_dfs[fit_type].rh_au * np.sign(
             fit_dfs[fit_type].time_from_perihelion_days
         )
 

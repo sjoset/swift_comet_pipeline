@@ -46,10 +46,7 @@ from swift_comet_pipeline.water_production.flux_OH import OH_flux_from_count_rat
 from swift_comet_pipeline.water_production.num_OH_to_Q import (
     num_OH_to_Q_vectorial,
 )
-from swift_comet_pipeline.tui.tui_common import (
-    get_selection,
-    wait_for_key,
-)
+from swift_comet_pipeline.tui.tui_common import get_selection
 
 
 # TODO: move this somewhere else

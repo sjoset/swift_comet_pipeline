@@ -5,6 +5,10 @@ from rich.panel import Panel
 from swift_comet_pipeline.aperture.q_vs_aperture_radius import (
     q_vs_aperture_radius_at_epoch,
 )
+from swift_comet_pipeline.dust.dust_limits import (
+    get_dust_redness_lower_limit,
+    get_dust_redness_upper_limit,
+)
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
@@ -44,9 +48,16 @@ def aperture_analysis_step(swift_project_config: SwiftProjectConfig) -> None:
     stacking_method = stacking_methods[selection]
     print(f"Stacking method selected: {stacking_method}")
 
+    dust_redness_start = int(np.ceil(get_dust_redness_lower_limit()))
+    dust_redness_stop = int(np.floor(get_dust_redness_upper_limit()))
     dust_rednesses = [
         DustReddeningPercent(x)
-        for x in np.linspace(start=-100.0, stop=100.0, num=201, endpoint=True)
+        for x in np.linspace(
+            start=dust_redness_start,
+            stop=dust_redness_stop,
+            num=(dust_redness_stop - dust_redness_start) + 1,
+            endpoint=True,
+        )
     ]
 
     menu_selection = menu_analyze_all_or_selection()
