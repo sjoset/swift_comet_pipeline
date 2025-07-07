@@ -15,57 +15,17 @@ from swift_comet_pipeline.post_processing.column_density_above_background import
     column_density_above_background,
 )
 from swift_comet_pipeline.post_processing.post_processing_steps import (
+    AddDustRednessesStep,
+    AddStackingMethodStep,
+    CreateDataframeFromEpochSummary,
     EpochPostProcessingStep,
     apply_epoch_post_processing_pipeline,
 )
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
-from swift_comet_pipeline.types.epoch_summary import EpochSummary
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
 __all__ = ["do_vectorial_fitting_reliability_post_processing"]
-
-
-class CreateDataframeFromEpochSummary(EpochPostProcessingStep):
-    def __init__(self, epoch_summary: EpochSummary):
-        self.epoch_summary = epoch_summary
-
-    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
-        df = df_in.copy()
-
-        epoch_summary_dict = asdict(self.epoch_summary)
-        df = pd.concat([df, pd.DataFrame([epoch_summary_dict])], ignore_index=True)
-        return df
-
-
-# for a given: epoch_id, stacking_method, and dust_rednesses
-class AddStackingMethodStep(EpochPostProcessingStep):
-    def __init__(
-        self,
-        stacking_method: StackingMethod,
-    ):
-        self.stacking_method = stacking_method
-        self.stacking_method_column = "stacking_method"
-
-    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
-        df = df_in.copy()
-        df[self.stacking_method_column] = self.stacking_method
-        return df
-
-
-class AddDustRednessesStep(EpochPostProcessingStep):
-    def __init__(
-        self,
-        dust_rednesses: list[DustReddeningPercent],
-    ):
-        self.dust_rednesses = dust_rednesses
-        self.redness_column = "dust_redness"
-
-    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
-        df = df_in.copy()
-        df[self.redness_column] = [self.dust_rednesses]
-        df = df.explode(self.redness_column).reset_index(drop=True)
-        return df
 
 
 class ColumnDensityAboveBackgroundAnalysisStep(EpochPostProcessingStep):
@@ -93,13 +53,13 @@ class ColumnDensityAboveBackgroundAnalysisStep(EpochPostProcessingStep):
             axis=1,
         )
 
+        # extract only these variables from the stored dataclass into their own columns
         bg_cd_columns_to_keep = [
             "last_usable_r",
             "last_usable_cd",
             "background_oh_cd",
             "num_usable_pixels_in_profile",
         ]
-        # extract only these variables from the stored dataclass into their own columns
         df[
             [
                 "last_usable_r",
@@ -225,8 +185,8 @@ class CleanUpTemporaryColumns(EpochPostProcessingStep):
 
 def do_vectorial_fitting_reliability_post_processing(
     scp: SwiftCometPipeline,
-    stacking_method: StackingMethod,
     epoch_id: EpochID,
+    stacking_method: StackingMethod,
     dust_rednesses: list[DustReddeningPercent],
     vectorial_fitting_requires_km: float,
     num_psfs_required: float,
@@ -260,7 +220,7 @@ def do_vectorial_fitting_reliability_post_processing(
     df = apply_epoch_post_processing_pipeline(
         initial_dataframe=initial_dataframe,
         ep=vec_fit_test_pipeline_steps,
-        results_cache_path=results_cache_path,
+        # results_cache_path=results_cache_path,
     )
 
     return df

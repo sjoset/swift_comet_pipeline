@@ -6,10 +6,15 @@ from functools import reduce
 
 import pandas as pd
 
+from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.epoch_summary import EpochSummary
+from swift_comet_pipeline.types.stacking_method import StackingMethod
 
 
-# generic pipeline step
+# TODO: these probably belong somewhere else
+
+
+# base class for post-processing steps that operate epoch-by-epoch
 class EpochPostProcessingStep:
     def __init__(self):
         self.required_input_columns = None
@@ -33,6 +38,7 @@ class EpochPostProcessingStep:
 EpochPostProcessingPipeline: TypeAlias = list[EpochPostProcessingStep]
 
 
+# adds the entries of the EpochSummary data structure as columns to a dataframe
 class AddEpochSummary(EpochPostProcessingStep):
     def __init__(self, epoch_summary: EpochSummary):
         self.epoch_summary = epoch_summary
@@ -40,6 +46,50 @@ class AddEpochSummary(EpochPostProcessingStep):
     def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
         df = df_in.copy()
         df = df.assign(**asdict(self.epoch_summary))
+        return df
+
+
+# creates a dataframe from epoch summary instead of adding columns to existing dataframe
+class CreateDataframeFromEpochSummary(EpochPostProcessingStep):
+    def __init__(self, epoch_summary: EpochSummary):
+        self.epoch_summary = epoch_summary
+
+    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        df = df_in.copy()
+
+        epoch_summary_dict = asdict(self.epoch_summary)
+        df = pd.concat([df, pd.DataFrame([epoch_summary_dict])], ignore_index=True)
+        return df
+
+
+# adds column to identify the stacking method used for analysis
+class AddStackingMethodStep(EpochPostProcessingStep):
+    def __init__(
+        self,
+        stacking_method: StackingMethod,
+    ):
+        self.stacking_method = stacking_method
+        self.stacking_method_column = "stacking_method"
+
+    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        df = df_in.copy()
+        df[self.stacking_method_column] = self.stacking_method
+        return df
+
+
+# add each dust redness in the list as a column of its own
+class AddDustRednessesStep(EpochPostProcessingStep):
+    def __init__(
+        self,
+        dust_rednesses: list[DustReddeningPercent],
+    ):
+        self.dust_rednesses = dust_rednesses
+        self.redness_column = "dust_redness"
+
+    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        df = df_in.copy()
+        df[self.redness_column] = [self.dust_rednesses]
+        df = df.explode(self.redness_column).reset_index(drop=True)
         return df
 
 

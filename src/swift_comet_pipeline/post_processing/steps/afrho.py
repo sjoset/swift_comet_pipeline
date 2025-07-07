@@ -25,9 +25,6 @@ from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
-__all__ = ["do_aperture_post_processing_afrho", "do_profile_post_processing_afrho"]
-
-
 class ApertureEpochPostProcessingStep(EpochPostProcessingStep):
     pass
 
@@ -94,7 +91,7 @@ class CalculateApertureAfrho(ApertureEpochPostProcessingStep):
         return df_out
 
 
-def do_aperture_post_processing_afrho(
+def do_afrho_from_aperture_post_processing(
     scp: SwiftCometPipeline, stacking_method: StackingMethod, epoch_id: EpochID
 ) -> pd.DataFrame | None:
 
@@ -245,7 +242,7 @@ class CalculateProfileAfrho(ProfileEpochProcessingStep):
         return df.to_pandas()
 
 
-def do_profile_post_processing_afrho(
+def do_afrho_from_profile_post_processing(
     scp: SwiftCometPipeline, stacking_method: StackingMethod, epoch_id: EpochID
 ) -> pd.DataFrame | None:
 

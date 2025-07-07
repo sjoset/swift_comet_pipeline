@@ -6,17 +6,13 @@ import pandas as pd
 from scipy.stats import norm
 from tqdm import tqdm
 
-from swift_comet_pipeline.dust.dust_redness_prior import (
-    get_dust_redness_mean_prior,
-    get_dust_redness_sigma_prior,
-)
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.post_processing.bayesian_expectation import (
     bayesian_expectation_over_distribution,
 )
-from swift_comet_pipeline.post_processing.vectorial_fitting_reliability import (
+from swift_comet_pipeline.post_processing.steps.vectorial_fitting_reliability import (
     do_vectorial_fitting_reliability_post_processing,
 )
 from swift_comet_pipeline.types.bayesian_expectation import (
