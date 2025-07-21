@@ -115,21 +115,22 @@ class CalculateExcessOHColumnDensityStep(EpochPostProcessingStep):
 
 
 class CalculateTotalExcessOHStep(EpochPostProcessingStep):
-    def __init__(self, near_far_radius: u.Quantity):
-        self.near_far_radius_km = near_far_radius.to_value(u.km)
+    def __init__(self):
+        # self.near_far_radius_km = near_far_radius.to_value(u.km)
         self.excess_oh_column = "excess_oh"
         self.required_input_columns = ["column_density_from_profile", "excess_oh_cd"]
 
     def total_oh(self, row):
         rs_outer = row.column_density_from_profile.rs_km
         rs_inner = np.concatenate(([0.0], rs_outer[:-1]))
-        near_far_mask = rs_outer < self.near_far_radius_km
-        rs_outer = rs_outer[near_far_mask]
-        rs_inner = rs_inner[near_far_mask]
+        # near_far_mask = rs_outer < self.near_far_radius_km
+        # rs_outer = rs_outer[near_far_mask]
+        # rs_inner = rs_inner[near_far_mask]
 
         areas_km2 = np.pi * (rs_outer**2 - rs_inner**2)
         # return np.sum(row.excess_oh_cd[near_far_mask] * 1e10 * areas_km2)
-        return row.excess_oh_cd[near_far_mask] * 1e10 * areas_km2
+        # return row.excess_oh_cd[near_far_mask] * 1e10 * areas_km2
+        return row.excess_oh_cd * 1e10 * areas_km2
 
     def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
         if not self.check_required_columns(
@@ -139,6 +140,28 @@ class CalculateTotalExcessOHStep(EpochPostProcessingStep):
 
         df = df_in.copy()
         df[self.excess_oh_column] = df.apply(lambda row: self.total_oh(row), axis=1)
+
+        return df
+
+
+class CalculateCumulativeExcessOHStep(EpochPostProcessingStep):
+    def __init__(self):
+        self.cumulative_excess_oh_column = "cumulative_excess_oh"
+        self.required_input_columns = ["excess_oh"]
+
+    def cumulative_excess_oh(self, row):
+        return np.cumsum(row.excess_oh)
+
+    def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
+        if not self.check_required_columns(
+            df_in=df_in, step_name=self.__class__.__name__
+        ):
+            return df_in
+
+        df = df_in.copy()
+        df[self.cumulative_excess_oh_column] = df.apply(
+            lambda row: self.cumulative_excess_oh(row), axis=1
+        )
 
         return df
 
@@ -165,7 +188,8 @@ def do_blue_spot_detection_post_processing(
         CalculateColumnDensityStep(scp=scp),
         VectorialFitStep(model_Q=model_Q, vmr=vmr, near_far_radius=near_far_radius),
         CalculateExcessOHColumnDensityStep(),
-        CalculateTotalExcessOHStep(near_far_radius=near_far_radius),
+        CalculateTotalExcessOHStep(),
+        CalculateCumulativeExcessOHStep(),
     ]
 
     # TODO: enable post-process cache
@@ -175,6 +199,7 @@ def do_blue_spot_detection_post_processing(
         / f"blue_spot_detect_{epoch_id}_{stacking_method}_split_{near_far_radius.to_value(u.km)}.csv"
     )
 
+    # TODO: our simple csv cache means our dataframe needs to be serializable/unserializable: no dataclasses etc. as columns
     df = apply_epoch_post_processing_pipeline(
         initial_dataframe=initial_dataframe,
         ep=blue_spot_detect_pipeline_steps,
