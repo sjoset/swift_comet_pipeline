@@ -23,6 +23,7 @@ from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_project_config import SwiftProjectConfig
 
 
+# TODO: doesn't belong here
 def get_sto(scp: SwiftCometPipeline, epoch_id: EpochID) -> float:
     # Returns the sun-target-observer angle of the given epoch in degrees, or NaN on error
     es = get_unstacked_epoch_summary(scp=scp, epoch_id=epoch_id)

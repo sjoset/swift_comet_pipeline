@@ -6,6 +6,10 @@ import pandas as pd
 import astropy.units as u
 from tqdm import tqdm
 
+from swift_comet_pipeline.dust.dust_limits import (
+    get_dust_redness_lower_limit,
+    get_dust_redness_upper_limit,
+)
 from swift_comet_pipeline.dust.dust_redness_prior import (
     get_dust_redness_mean_prior,
     get_dust_redness_sigma_prior,
@@ -143,8 +147,15 @@ def build_aperture_lightcurves_bayesian_step(
     aperture_lc = dataframe_to_lightcurve(df=aperture_lc)
 
     # TODO: magic numbers
-    dust_mean_reddenings = np.linspace(0.0, 60.0, num=13, endpoint=True)
-    dust_sigma_reddenings = [1.0, 2.0, 3.0, 4.0, 5.0, 10.0]
+    dust_upper = get_dust_redness_upper_limit()
+    dust_lower = get_dust_redness_lower_limit()
+    dust_mean_reddenings = np.linspace(
+        dust_lower,
+        dust_upper,
+        num=int(np.round(dust_upper - dust_lower + 1)),
+        endpoint=True,
+    )
+    dust_sigma_reddenings = [1.0, 5.0, 10.0, 20.0]
 
     print("Calculating results for bayesian aperture lightcurve analysis...")
     bayes_lc_dfs = []
