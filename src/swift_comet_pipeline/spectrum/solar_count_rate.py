@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
     read_swift_pipeline_config,
 )
-from swift_comet_pipeline.spectrum.solar_spectrum import read_fixed_solar_spectrum
+from swift_comet_pipeline.spectrum.solar_spectrum import get_solar_spectrum
 from swift_comet_pipeline.swift.read_filter_effective_area import (
     read_filter_effective_area,
 )
@@ -25,7 +25,8 @@ def solar_count_rate_in_filter_1au(filter_type: SwiftFilter) -> CountRate:
     # large enough for beta to converge on its proper value - determined empirically
     num_interpolation_lambdas = 1000
 
-    solar_spectrum = read_fixed_solar_spectrum(spc.solar_spectrum_path)
+    # solar_spectrum = read_fixed_solar_spectrum(spc.solar_spectrum_path)
+    solar_spectrum = get_solar_spectrum()
     ea_data = read_filter_effective_area(filter_type=filter_type)
     if ea_data is None:
         return CountRate(value=np.nan, sigma=np.nan)

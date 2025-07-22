@@ -8,7 +8,7 @@ from dataclasses import dataclass
 @dataclass
 class SwiftPipelineConfig:
     # TODO: document these
-    solar_spectrum_path: pathlib.Path
+    # solar_spectrum_path: pathlib.Path
     effective_area_uw1_path: pathlib.Path
     effective_area_uvv_path: pathlib.Path
     oh_fluorescence_path: pathlib.Path
@@ -34,8 +34,8 @@ def read_swift_pipeline_config() -> SwiftPipelineConfig | None:
         return None
 
     pipeline_config = SwiftPipelineConfig(
-        solar_spectrum_path=script_path
-        / pathlib.Path(config_yaml["solar_spectrum_path"]),
+        # solar_spectrum_path=script_path
+        # / pathlib.Path(config_yaml["solar_spectrum_path"]),
         effective_area_uw1_path=script_path
         / pathlib.Path(config_yaml["effective_area_uw1_path"]),
         effective_area_uvv_path=script_path
