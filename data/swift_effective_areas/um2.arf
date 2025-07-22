@@ -1,92 +1,0 @@
-SIMPLE  =                    T / file does conform to FITS standard             BITPIX  =                    8 / number of bits per data pixel                  NAXIS   =                    0 / number of data axes                            EXTEND  =                    T / FITS dataset may contain extensions            COMMENT   FITS (Flexible Image Transport System) format is defined in 'AstronomyCOMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H TELESCOP= 'SWIFT   '           / Telescope (mission) name                       INSTRUME= 'UVOTA   '           / Instrument Name                                CHECKSUM= '9AOAH8OA9AOAE7OA'   / HDU checksum updated 2005-04-04T20:42:43       DATASUM = '         0'         / data unit checksum updated 2005-04-04T20:42:43 END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             XTENSION= 'BINTABLE'           / binary table extension                         BITPIX  =                    8 / 8-bit bytes                                    NAXIS   =                    2 / 2-dimensional binary table                     NAXIS1  =                   20 / width of table in bytes                        NAXIS2  =                  208 / number of rows in table                        PCOUNT  =                    0 / size of special data area                      GCOUNT  =                    1 / one data group (required keyword)              TFIELDS =                    5 / number of fields in each row                   TTYPE1  = 'ENERG_LO'           / [keV] Lower boundary of energy bin             TFORM1  = 'E       '           / data format of field: 4-byte REAL              TUNIT1  = 'keV     '           / physical unit of field                         TTYPE2  = 'ENERG_HI'           / [keV] Upper boundary of energy bin             TFORM2  = 'E       '           / data format of field: 4-byte REAL              TUNIT2  = 'keV     '           / physical unit of field                         TTYPE3  = 'WAVE_MIN'           / [angstrom] Wavelength corresponding to ENERG_LOTFORM3  = 'E       '           / data format of field: 4-byte REAL              TUNIT3  = 'angstrom'           / physical unit of field                         TTYPE4  = 'WAVE_MAX'           / [angstrom] Wavelength corresponding to ENERG_HITFORM4  = 'E       '           / data format of field: 4-byte REAL              TUNIT4  = 'angstrom'           / physical unit of field                         TTYPE5  = 'SPECRESP'           / [cm**2] Total effective area                   TFORM5  = 'E       '           / data format of field: 4-byte REAL              TUNIT5  = 'cm**2   '           / physical unit of field                         EXTNAME = 'SPECRESPUVM2'       / Name of the binary table extension             COMMENT                                                                         TELESCOP= 'SWIFT   '           / Telescope (mission) name                       INSTRUME= 'UVOTA   '           / Instrument Name                                FILTER  = 'UVM2    '           / Filter value                                   ORIGIN  = 'NASA/GSFC'          / Source of FITS file                            CREATOR = 'make_bintable.pl'   / Creator                                        VERSION =                   11 / Extension version number                       FILENAME= 'swum2_20010101v012.arf' / File name                                  CONTENT = 'SPECRESP'           / UVOTA ancillary response data                  COMMENT                                                                         HDUCLASS= 'OGIP    '           / Format conforms to OGIP standard               HDUCLAS1= 'RESPONSE'                                                            HDUCLAS2= 'SPECRESP'                                                            CCLS0001= 'CPF     '           / Dataset is a Calibration Product File          CCNM0001= 'SPECRESP'           / Type of calibration data                       CDES0001= 'UVM2 FILTER SPECTRAL RESPONSE' / Description                         CDTP0001= 'DATA    '           / Calibration file contains data                 CVSD0001= '2001-01-01'         / UTC date when calibration should first be used CVST0001= '00:00:00'           / UTC time when calibration should first be used CBD10001= 'FILTER(UVM2)'       / Parameter boundary                             CBD20001= 'ENERG(0.00178-0.00661)keV' / Parameter boundary                      CBD30001= 'RADIUS(0-10)pixel'  / Parameter boundary                             CBD40001= 'THETA(0-12)arcmin'  / Parameter boundary                             COMMENT                                                                         DATE    = '2004-11-10T13:40:19' / Creation Date                                 CHECKSUM= '99VPC6SP96SPC6SP'   / HDU checksum updated 2005-04-04T20:42:43       DATASUM = '1720886273'         / data unit checksum updated 2004-11-10T18:40:20 END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ;◊áR;ÿ≠ñDÎ† DÍ` @XQÏ;÷d(;◊áRDÏ‡ DÎ† @wÆ;’D;÷d(DÓ  DÏ‡ @íè\;‘&Ù;’DDÔ` DÓ  @®£◊;”“;‘&ÙD† DÔ` @»  ;—ıö;”“DÒ‡ D† @Í=q;–·A;—ıöDÛ  DÒ‡ A
-·H;œœº;–·ADÙ` DÛ  A$ÃÕ;Œ¿ˇ;œœºDı† DÙ` AAôö;Õµ ;Œ¿ˇDˆ‡ Dı† AcÖ;Ã´µ;Õµ D¯  Dˆ‡ AÑff;À•;Ã´µD˘` D¯  Aò(ˆ; °;À•D˙† D˘` AÆQÏ;…üü; °D˚‡ D˙† A≈¬è;»†ª;…üüD˝  D˚‡ A‹z·;«§X;»†ªD˛` D˝  AÚz·;∆™m;«§XDˇ† D˛` B=q;≈≤;∆™mE p Dˇ† BÖ;ƒΩŸ;≈≤E E p B(ˆ;√À;ƒΩŸE∞ E Bff;¬⁄π;√ÀEP E∞ BÃÕ;¡Ïü;¬⁄πE EP B"\);¡ «;¡ÏüEê E B$£◊;¿+;¡ «E0 Eê B&p§;ø/¡;¿+E– E0 B'·H;æJÇ;ø/¡Ep E– B({;Ωgg;æJÇE Ep B(ff;ºÜg;ΩggE∞ E B(p§;ªß{;ºÜgEP E∞ B(ff;∫ ú;ªß{E EP B'·H;πÔ√;∫ úEê E B'∏;πË;πÔ√E	0 Eê B'∏;∏@;πËE	– E	0 B&Ö;∑k;∏@E
-p E	– B%z·;∂ò	;∑kE E
-p B%
-=;µ∆‰;∂ò	E∞ E B$∏;¥˜õ;µ∆‰EP E∞ B"◊
-;¥**;¥˜õE EP B!p§;≥^à;¥**Eê E B 33;≤î±;≥^àE0 Eê B£◊;±Ãü;≤î±E– E0 BÖ;±J;±ÃüEp E– Bôö;∞AØ;±JE Ep B£◊;Ø~∆;∞AØE∞ E B\);ÆΩä;Ø~∆EP E∞ Bp§;≠˝ˆ;ÆΩäE EP B
-=;≠@;≠˝ˆEê E B\);¨ÉØ;≠@E0 Eê BGÆ;´»Ú;¨ÉØE– E0 Bff;´»;´»ÚEp E– Bff;™X+;´»E Ep B∏;©¢;™X+E∞ E A¸·H;®ÌÖ;©¢EP E∞ Aˆı√;®:s;®ÌÖE EP A{;ßà€;®:sEê E AÁÎÖ;¶ÿπ;ßà€E0 Eê A‡(ˆ;¶*;¶ÿπE– E0 AŸ
-=;•|¬;¶*Ep E– A–ÃÕ;§–‰;•|¬E Ep A«¬è;§&j;§–‰E∞ E Aø
-=;£}P;§&jEP E∞ A∂=q;¢’ê;£}PE EP A¨ı√;¢/';¢’êEê E A£◊
-;°ä;¢/'E0 Eê Aö£◊;†ÊJ;°äE– E0 Aêz·;†CÕ;†ÊJEp E– AÜè\;ü¢ò;†CÕE Ep AyÎÖ;ü•;ü¢òE∞ E Ag
-=;ûcÚ;ü•E P E∞ ATQÏ;ù∆z;ûcÚE  E P AB{;ù*:;ù∆zE!ê E  A1p§;úè/;ù*:E"0 E!ê A!GÆ;õıT;úè/E"– E"0 Aè\;õ\¶;õıTE#p E"– A£◊;ö≈";õ\¶E$ E#p @ÔÆ;ö.≈;ö≈"E$∞ E$ @◊Æ;ôôã;ö.≈E%P E$∞ @¡ÎÖ;ôp;ôôãE% E%P @Æff;òrr;ôpE&ê E% @ù∏;ó‡ç;òrrE'0 E&ê @ç∏;óOø;ó‡çE'– E'0 @\);ñ¿;óOøE(p E'– @fff;ñ1X;ñ¿E) E(p @O\);ï£∫;ñ1XE)∞ E) @9ôö;ï&;ï£∫E*P E)∞ @'
-=;îãô;ï&E* E*P @Æ;î;îãôE+ê E* @QÏ;ìwâ;îE,0 E+ê ?ı¬è;íÔ ;ìwâE,– E,0 ?ﬁ∏R;ígt;íÔ E-p E,– ?»ı√;ë‡‡;ígtE. E-p ?µ¬è;ë[C;ë‡‡E.∞ E. ?•∏;ê÷ö;ë[CE/P E.∞ ?ó
-=;êR‚;ê÷öE/ E/P ?àı√;è–;êR‚E0ê E/ ?z·H;èN<;è–E10 E0ê ?c◊
-;éÕI;èN<E1– E10 ?O\);éM=;éÕIE2p E1– ?=p§;çŒ;éM=E3 E2p ?.{;çO—;çŒE3∞ E3 ?!GÆ;å“m;çO—E4P E3∞ ?ÎÖ;åUÊ;å“mE4 E4P ?Æ;ã⁄;;åUÊE5ê E4 >˙·H;ã_i;ã⁄;E60 E5ê >Êff;äÂn;ã_iE6– E60 >—ÎÖ;älG;äÂnE7p E6– >¬è\;âÛÙ;älGE8 E7p >∏QÏ;â|p;âÛÙE8∞ E8 >®ı√;âº;â|pE9P E8∞ >ôôö;àè”;âºE9 E9P >è\);àµ;àè”E:ê E9 >ä=q;á¶_;àµE;0 E:ê >Ä  ;á2œ;á¶_E;– E;0 >aGÆ;Ü¿;á2œE<p E;– >W
-=;ÜM˙;Ü¿E= E<p >LÃÕ;Ö‹±;ÜM˙E=∞ E= >Bè\;Öl&;Ö‹±E>P E=∞ >8QÏ;Ñ¸Y;Öl&E> E>P >.{;ÑçF;Ñ¸YE?ê E> >#◊
-;ÑÎ;ÑçFE@0 E?ê >ôö;É±H;ÑÎE@– E@0 >∏;ÉD[;É±HEAp E@– =ı¬è;Çÿ!;ÉD[EB EAp =ı¬è;Çlô;Çÿ!EB∞ EB =·GÆ;Ç¡;ÇlôECP EB∞ =·GÆ;Åóó;Ç¡EC ECP =ÃÃÕ;Å.;ÅóóEDê EC =ÃÃÕ;Ä≈I;Å.EE0 EDê =∏QÏ;Ä]!;Ä≈IEE– EE0 =∏QÏ;ÎC;Ä]!EFp EE– =£◊
-;ê;ÎCEG EFp =£◊
-;~Q&;êEG∞ EG =è\);}Ü;êEHP EG =è\);ze˝;}ÜEJ– EHP =u¬è;u⁄C;y°ENê EKp =#◊
-;r0I;u⁄CEQ∞ ENê <ı¬è;n°€;r0IET– EQ∞ <ı¬è;k-«;n°€EW ET– <£◊
-;g“Ï;k-«E[ EW <£◊
-;dê9;g“ÏE^0 E[ <£◊
-;adÆ;dê9EaP E^0 <#◊
-;^OX;adÆEdp EaP <#◊
-;[OO;^OXEgê Edp <#◊
-;Xc∫;[OOEj∞ Egê <#◊
-;UãÀ;Xc∫Em– Ej∞ <#◊
-;R∆æ;UãÀEp Em– <#◊
-;P⁄;R∆æEt Ep <#◊
-;Mrm;P⁄Ew0 Et <#◊
-;J·—;MrmEzP Ew0 <#◊
-;Haf;J·—E}p EzP <#◊
-;Eï;HafEÄH E}p <#◊
-;CéŒ;EïEÅÿ EÄH <#◊
-;A;á;CéŒEÉh EÅÿ <#◊
-;>ˆ>;A;áEÑ¯ EÉh <#◊
-;<æu;>ˆ>EÜà EÑ¯ <#◊
-;:ì∂;<æuEà EÜà <#◊
-;8ué;:ì∂Eâ® Eà <#◊
-;6cì;8uéEã8 Eâ® <#◊
-;4]Z;6cìEå» Eã8 <#◊
-;2bÉ;4]ZEéX Eå» <#◊
-;0r≠;2bÉEèË EéX <#◊
-;.ç};0r≠Eëx EèË <#◊
-;,≤û;.ç}Eì Eëx <#◊
-;*·ª;,≤ûEîò Eì <#◊
-;)Ö;*·ªEñ( Eîò <#◊
-;'\∞;)ÖEó∏ Eñ( <#◊
-;%ßÒ;'\∞EôH Eó∏ <#◊
-;#¸;%ßÒEöÿ EôH <#◊
-;"X°;#¸Eúh Eöÿ <#◊
-; Ωå;"X°Eù¯ Eúh <#◊
-;*Ñ; ΩåEüà Eù¯ <#◊
-;üM;*ÑE° Eüà <#◊
-;Æ;üME¢® E° <#◊
-;üp;ÆE§8 E¢® <#◊
-;*\;üpE•» E§8 <#◊
-;º@;*\EßX E•» <#◊
-;TÍ;º@E®Ë EßX <#◊
-;Ù*;TÍE™x E®Ë <#◊
-;ô”;Ù*E¨ E™x <#◊
-;E∑;ô”E≠ò E¨ <#◊
-;˜Æ;E∑EØ( E≠ò <#◊
-;Øå;˜ÆE∞∏ EØ( <#◊
-;m+;ØåE≤H E∞∏ <#◊
-;0c;m+E≥ÿ E≤H <#◊
-;˘;0cEµh E≥ÿ <#◊
-;
-«;˘E∂¯ Eµh <#◊
-;	ö>;
-«E∏à E∂¯ <#◊
-;ry;	ö>E∫ E∏à <#◊
-;O†;ryEª® E∫ <#◊
-;1ñ;O†EΩ8 Eª® <#◊
-;:;1ñEæ» EΩ8 <#◊
-;r;:E¿X Eæ» <#◊
-;Û;rE¡Ë E¿X <#◊
-;Á&;ÛE√x E¡Ë <#◊
-; ﬂn;Á&E≈ E√x <#◊
-:ˇ∑∑; ﬂnE∆ò E≈ <#◊
-:˝∏Æ:ˇ∑∑E»( E∆ò <#◊
-:˚¡è:˝∏ÆE…∏ E»( <#◊
-:˘“-:˚¡èEÀH E…∏ <#◊
-:˜ÍY:˘“-EÃÿ EÀH <#◊
-:ˆ	Ë:˜ÍYEŒh EÃÿ <#◊
-:Ù0Ø:ˆ	ËEœ¯ EŒh <#◊
-:Ú^Ö:Ù0ØE—à Eœ¯ <#◊
-:ìA:Ú^ÖE” E—à <#◊
-:ÓŒæ:ìAE‘® E” <#◊
-:Ì‘:ÓŒæE÷8 E‘® <#◊
-:ÎY_:Ì‘E◊» E÷8 <#◊
-:È®<:ÎY_EŸX E◊» <#◊
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

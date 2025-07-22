@@ -1,8 +1,5 @@
 Swift filter effective area files found at:
-http://svo2.cab.inta-csic.es/svo/theory/fps3/index.php?mode=browse&gname=Swift&asttype=
+https://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/data/swift/uvota/index.html
 
-Solar spectra:
-https://lasp.colorado.edu/lisird/data/sorce_ssi_l3
-
-horizons orbital data:
-https://ssd.jpl.nasa.gov/horizons/
+Fluorescence:
+Schleicher, D G. "Fluorescence of cometary OH and CN." , Jan. 1983.

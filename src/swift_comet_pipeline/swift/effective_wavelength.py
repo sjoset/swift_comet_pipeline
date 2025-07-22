@@ -32,3 +32,21 @@ def effective_wavelength_of_filter(filter_type: SwiftFilter):
     # pivot_wavelength = np.sqrt(weighted_response/piv_denom) * u.nm
 
     return (weighted_response / total_response) * u.nm  # type: ignore
+
+
+# def effective_wavelength_of_filter_with_spectrum(
+#     lambdas: list[u.Quantity],
+#     responses: list[u.Quantity],
+#     solar_spectrum: SolarSpectrum
+# ):
+#     solar_irradiances_interpolation = interp1d(solar_spectrum.lambdas, solar_spectrum.irradiances)
+#     solar_irradiances_on_filter_lambdas = solar_irradiances_interpolation(lambdas)
+#
+#     dlambdas = set(np.diff(lambdas))
+#     if len(dlambdas) != 1:
+#         print(f"unequal dlambdas in filter!")
+#     dlambda = list(dlambdas)[0]
+#     total_response = np.sum(responses * solar_irradiances_on_filter_lambdas) * dlambda
+#     effective_wavelength = np.sum(lambdas * responses * solar_irradiances_on_filter_lambdas) * dlambda / total_response
+#
+#     return effective_wavelength.decompose().to(u.nm)
