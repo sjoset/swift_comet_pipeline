@@ -72,6 +72,7 @@ def determine_stacking_image_size(
     return (max_num_rows, max_num_cols)
 
 
+# TODO: make this take a filter_type, perhaps SwiftCometPipeline
 def stack_epoch_into_sum_and_median(
     swift_data: SwiftData,
     epoch: Epoch,
@@ -84,8 +85,6 @@ def stack_epoch_into_sum_and_median(
     If successful, returns a tuple of images: (sum, median, exposure_map)
     The exposure_map image has pixels with values in units of seconds - the total exposure time from the stack of images involved
     """
-    # TODO: if we never use the median stacking mode, we can instead recursively break the epoch in halves and stack what fits in memory at a single time
-    # is that functionality that we want to abandon?
 
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(

@@ -6,16 +6,16 @@ from tqdm import tqdm
 from rich import print as rprint
 import astropy.units as u
 
-from swift_comet_pipeline.aperture.aperture_count_rate import aperture_count_rate
+from swift_comet_pipeline.aperture.aperture_count_rate import aperture_total_count_rate
 from swift_comet_pipeline.aperture.plateau_detect import find_production_plateaus
 from swift_comet_pipeline.aperture.plateau_serialize import (
     dust_plateau_list_dict_serialize,
 )
 from swift_comet_pipeline.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
-from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.swift.magnitude_from_countrate import (
     magnitude_from_count_rate,
@@ -28,6 +28,7 @@ from swift_comet_pipeline.types.countrate_vs_aperture_radius import (
     CountrateVsApertureRadius,
 )
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
+from swift_comet_pipeline.types.epoch_summary import EpochSummary
 from swift_comet_pipeline.types.plateau import (
     ProductionPlateau,
     dict_to_production_plateau,
@@ -52,9 +53,10 @@ ReddeningToProductionPlateauListDict: TypeAlias = dict[
 ]
 
 
-def counts_vs_aperture_radius(
+def count_rate_vs_aperture_radius(
     img: SwiftUVOTImage,
     bg: BackgroundResult,
+    exposure_time_s: float,
     rs_pixels: list[float],
     use_tqdm: bool = False,
 ) -> CountrateVsApertureRadius:
@@ -72,11 +74,12 @@ def counts_vs_aperture_radius(
         r_pix_list = rs_pixels
 
     count_rates = [
-        aperture_count_rate(
+        aperture_total_count_rate(
             img=img,
             aperture_center=comet_center,
             aperture_radius=r,
-            bg=bg.count_rate_per_pixel,
+            background=bg,
+            exposure_time_s=exposure_time_s,
         )
         for r in r_pix_list
     ]
@@ -85,7 +88,7 @@ def counts_vs_aperture_radius(
 
 
 def q_vs_aperture_radius(
-    stacked_epoch: StackedEpoch,
+    epoch_summary: EpochSummary,
     uw1_img: SwiftUVOTImage,
     uvv_img: SwiftUVOTImage,
     dust_rednesses: list[DustReddeningPercent],
@@ -96,15 +99,9 @@ def q_vs_aperture_radius(
 ) -> list[QvsApertureRadiusEntry] | None:
 
     # TODO: document function
-    # TODO: rewrite for epoch summary
-
-    helio_r_au = np.mean(stacked_epoch.HELIO)
-    helio_v_kms = np.mean(stacked_epoch.HELIO_V)
-    delta_au = np.mean(stacked_epoch.OBS_DIS)
-    km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
 
     # we are given a maximum aperture radius in physical units - translate to pixels
-    r_pix_max = max_aperture_radius.to_value(u.km) / km_per_pix  # type: ignore
+    r_pix_max = float(max_aperture_radius.to_value(u.km)) / epoch_summary.km_per_pix  # type: ignore
     if r_pix_max < 1.0:
         print(
             "Physical maximum aperture size given results in aperture size less than a pixel!"
@@ -121,12 +118,20 @@ def q_vs_aperture_radius(
     beta_parameters = {x: beta_parameter(x) for x in dust_rednesses}
 
     print("Calculating uw1 counts ...")
-    uw1_count_rates_vs_r = counts_vs_aperture_radius(
-        img=uw1_img, bg=uw1_bg, rs_pixels=aperture_radii_pix, use_tqdm=True
+    uw1_count_rates_vs_r = count_rate_vs_aperture_radius(
+        img=uw1_img,
+        bg=uw1_bg,
+        exposure_time_s=epoch_summary.uw1_exposure_time_s,
+        rs_pixels=aperture_radii_pix,
+        use_tqdm=True,
     )
     print("Calculating uvv counts ...")
-    uvv_count_rates_vs_r = counts_vs_aperture_radius(
-        img=uvv_img, bg=uvv_bg, rs_pixels=aperture_radii_pix, use_tqdm=True
+    uvv_count_rates_vs_r = count_rate_vs_aperture_radius(
+        img=uvv_img,
+        bg=uvv_bg,
+        exposure_time_s=epoch_summary.uvv_exposure_time_s,
+        rs_pixels=aperture_radii_pix,
+        use_tqdm=True,
     )
 
     uw1_magnitudes = [
@@ -164,12 +169,12 @@ def q_vs_aperture_radius(
         )
         num_OH[r, dust_redness] = flux_OH_to_num_OH(
             flux_OH=flux_OH[r, dust_redness],
-            helio_r_au=helio_r_au,
-            helio_v_kms=helio_v_kms,
-            delta_au=delta_au,
+            helio_r_au=epoch_summary.rh_au,
+            helio_v_kms=epoch_summary.helio_v_kms,
+            delta_au=epoch_summary.delta_au,
         )
         q_H2O[r, dust_redness] = num_OH_to_Q_vectorial(
-            helio_r_au=helio_r_au, num_OH=num_OH[r, dust_redness]
+            helio_r_au=epoch_summary.rh_au, num_OH=num_OH[r, dust_redness]
         )
 
     radii_count_rates_mags_and_dust_color = product(
@@ -187,7 +192,7 @@ def q_vs_aperture_radius(
     q_vs_aperture_results_list = [
         QvsApertureRadiusEntry(
             aperture_r_pix=r,
-            aperture_r_km=r * km_per_pix,
+            aperture_r_km=r * epoch_summary.km_per_pix,
             dust_redness=float(dust_redness),
             counts_uw1=uw1_cr.value,
             counts_uw1_err=uw1_cr.sigma,
@@ -275,15 +280,17 @@ def q_vs_aperture_radius_at_epoch(
         # wait_for_key()
         return
 
-    stacked_epoch = scp.get_product_data(
-        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
-    )
-    assert stacked_epoch is not None
+    # stacked_epoch = scp.get_product_data(
+    #     pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id
+    # )
+    # assert stacked_epoch is not None
 
-    print(
-        f"Starting analysis of {epoch_id}: observation at {np.mean(stacked_epoch.HELIO)} AU"
-    )
+    epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
+    assert epoch_summary is not None
 
+    print(f"Starting analysis of {epoch_id}: observation at {epoch_summary.rh_au} AU")
+
+    # TODO: use pipeline utility functions
     uw1_img = scp.get_product_data(
         pf=PipelineFilesEnum.background_subtracted_image,
         epoch_id=epoch_id,
@@ -305,6 +312,7 @@ def q_vs_aperture_radius_at_epoch(
         print("Error loading background-subtracted images!")
         return
 
+    # TODO: use pipeline utility functions
     uw1_bg = scp.get_product_data(
         pf=PipelineFilesEnum.background_determination,
         epoch_id=epoch_id,
@@ -329,7 +337,8 @@ def q_vs_aperture_radius_at_epoch(
     # TODO: use the larger end of the plateau as the radius of an aperture on a completed vectorial model, and use *that* calculate total OH and match production
 
     q_vs_r = q_vs_aperture_radius(
-        stacked_epoch=stacked_epoch,
+        # stacked_epoch=stacked_epoch,
+        epoch_summary=epoch_summary,
         uw1_img=uw1_img,
         uvv_img=uvv_img,
         dust_rednesses=dust_rednesses,

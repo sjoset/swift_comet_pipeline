@@ -16,7 +16,10 @@ from tqdm import tqdm
 from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
 )
-from swift_comet_pipeline.types.background_result import BackgroundResult
+from swift_comet_pipeline.types.background_result import (
+    BackgroundResult,
+    BackgroundValueEstimator,
+)
 from swift_comet_pipeline.types.count_rate import CountRatePerPixel
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
@@ -55,8 +58,10 @@ def get_walking_aperture_ensemble_config() -> WalkingApertureEnsembleConfig:
 def make_failed_aperture_ensemble_result(err_msg: str) -> BackgroundResult:
     return BackgroundResult(
         count_rate_per_pixel=CountRatePerPixel(value=np.nan, sigma=np.nan),
-        params={"error": err_msg},
+        bg_estimator=BackgroundValueEstimator.median,
+        bg_aperture_area=0.0,
         method=BackgroundDeterminationMethod.walking_aperture_ensemble,
+        params={"error": err_msg},
     )
 
 
@@ -315,11 +320,14 @@ def bg_walking_aperture_ensemble(
     largest_ap_idx = np.argmax([x.r for x in walked_apertures])
     largest_ap_stats = walked_aperture_stats[largest_ap_idx]
 
+    # TODO: test this again
     if filter_type == SwiftFilter.uw1:
         return BackgroundResult(
             count_rate_per_pixel=CountRatePerPixel(
                 value=float(median_mu), sigma=float(median_mu_std)
             ),
+            bg_aperture_area=float(np.pi * np.mean(weights)),
+            bg_estimator=BackgroundValueEstimator.mean,
             method=BackgroundDeterminationMethod.walking_aperture_ensemble,
             params={},
         )
@@ -328,6 +336,8 @@ def bg_walking_aperture_ensemble(
             count_rate_per_pixel=CountRatePerPixel(
                 value=float(largest_ap_stats.median), sigma=float(largest_ap_stats.std)
             ),
+            bg_aperture_area=largest_ap_stats.sum_aper_area.value,
+            bg_estimator=BackgroundValueEstimator.median,
             method=BackgroundDeterminationMethod.walking_aperture_ensemble,
             params={},
         )

@@ -20,6 +20,8 @@ class EpochSummary:
     arcsecs_per_pix: float
     time_from_perihelion: TimeDelta
     pixel_resolution: SwiftPixelResolution
+    uw1_exposure_time_s: float
+    uvv_exposure_time_s: float
 
 
 def dataframe_to_epoch_summary_list(

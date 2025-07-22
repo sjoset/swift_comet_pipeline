@@ -37,6 +37,8 @@ def show_q_density_estimates_vs_redness(
 
     graph_q_min = np.min(df.log_q) - 0.2
     graph_q_max = np.max(df.log_q) + 0.1
+    # graph_q_min = 23
+    # graph_q_max = 27
 
     pal = sns.cubehelix_palette(
         num_dust_rednesses,
@@ -66,7 +68,8 @@ def show_q_density_estimates_vs_redness(
         bw_adjust=0.25,
         # TODO: this clips the histogram, but not the axes
         # clip_on=False,
-        clip=(26, 30),
+        # clip=(26, 30),
+        clip=(23, 27),
         fill=True,
         alpha=0.8,
         linewidth=0.5,

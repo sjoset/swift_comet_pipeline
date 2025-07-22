@@ -116,20 +116,14 @@ class CalculateExcessOHColumnDensityStep(EpochPostProcessingStep):
 
 class CalculateTotalExcessOHStep(EpochPostProcessingStep):
     def __init__(self):
-        # self.near_far_radius_km = near_far_radius.to_value(u.km)
         self.excess_oh_column = "excess_oh"
         self.required_input_columns = ["column_density_from_profile", "excess_oh_cd"]
 
     def total_oh(self, row):
         rs_outer = row.column_density_from_profile.rs_km
         rs_inner = np.concatenate(([0.0], rs_outer[:-1]))
-        # near_far_mask = rs_outer < self.near_far_radius_km
-        # rs_outer = rs_outer[near_far_mask]
-        # rs_inner = rs_inner[near_far_mask]
 
         areas_km2 = np.pi * (rs_outer**2 - rs_inner**2)
-        # return np.sum(row.excess_oh_cd[near_far_mask] * 1e10 * areas_km2)
-        # return row.excess_oh_cd[near_far_mask] * 1e10 * areas_km2
         return row.excess_oh_cd * 1e10 * areas_km2
 
     def __call__(self, df_in: pd.DataFrame) -> pd.DataFrame:
