@@ -26,22 +26,20 @@ def read_filter_effective_area(filter_type: SwiftFilter) -> FilterEffectiveArea 
     else:
         return None
 
-    # TODO: tag with astropy units, convert later? too slow?
-    # or rename to ea_lambdas_nm
     filter_fits_hdul = fits.open(effective_area_path)
     filter_ea_data = filter_fits_hdul[1].data  # type: ignore
-    ea_lambdas = (filter_ea_data["WAVE_MIN"] + filter_ea_data["WAVE_MAX"]) / 2
+    ea_lambdas_angstroms = (filter_ea_data["WAVE_MIN"] + filter_ea_data["WAVE_MAX"]) / 2
     # wavelengths are given in angstroms: convert to nm
-    ea_lambdas = ea_lambdas / 10
+    ea_lambdas_nm = ea_lambdas_angstroms / 10
     ea_responses = filter_ea_data["SPECRESP"]
 
     # handle some lambda values repeating (their corresponding responses are 0, which is wrong, so throw them out)
     # Construct new list of unique lambdas, and the responses are now a list because we see some twice.
     # The bad response values are 0.0, so we take the max between the 'good' value and this throwaway response value
-    # TODO: we con probably do this more efficiently
+    # TODO: we can do this more efficiently
     new_lambdas = []
     new_responses = []
-    for lmbda, r in zip(ea_lambdas, ea_responses):
+    for lmbda, r in zip(ea_lambdas_nm, ea_responses):
         if lmbda not in new_lambdas:
             new_lambdas.append(lmbda)
             new_responses.append([r])
