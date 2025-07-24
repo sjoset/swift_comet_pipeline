@@ -1,3 +1,4 @@
+from pprint import pprint
 import numpy as np
 import astropy.units as u
 
@@ -15,6 +16,9 @@ from swift_comet_pipeline.pipeline_utils.comet_column_density import (
     get_comet_column_density_from_extracted_profile,
 )
 from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
+from swift_comet_pipeline.pipeline_utils.get_uw1_and_uvv import (
+    get_uw1_and_uvv_background_results,
+)
 from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
 from swift_comet_pipeline.types.background_result import yaml_dict_to_background_result
 from swift_comet_pipeline.types.column_density_above_background_analysis import (
@@ -23,6 +27,7 @@ from swift_comet_pipeline.types.column_density_above_background_analysis import 
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 
 
 # TODO: this file probably belongs in background/
@@ -31,51 +36,36 @@ def background_oh_equivalent_column_density(
     epoch_id: EpochID,
     dust_redness: DustReddeningPercent,
     stacking_method: StackingMethod,
+    sigma_level: float = 3.0,
 ) -> u.Quantity | None:
+    """
+    Calculates the average background count rate of OH (which should be zero) along with its 1-sigma uncertainty.
+    The 1-sigma uncertainty is then extended upward to sigma_level, and that count rate is used to derive a corresponding OH column density.
+    Then any column density we measure above this level is outside of our background range.
+    """
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
     if epoch_summary is None:
         return None
 
     beta = beta_parameter(dust_redness=dust_redness)
 
-    bg_uw1 = scp.get_product_data(
-        pf=PipelineFilesEnum.background_determination,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uw1,
-        stacking_method=stacking_method,
+    bgs = get_uw1_and_uvv_background_results(
+        scp=scp, epoch_id=epoch_id, stacking_method=stacking_method
     )
-    if bg_uw1 is None:
-        return None
-    bg_uw1 = yaml_dict_to_background_result(raw_yaml=bg_uw1)
+    assert bgs is not None
+    bg_uw1, bg_uvv = uw1uvv_getter(bgs)
 
-    bg_uvv = scp.get_product_data(
-        pf=PipelineFilesEnum.background_determination,
-        epoch_id=epoch_id,
-        filter_type=SwiftFilter.uvv,
-        stacking_method=stacking_method,
-    )
-    if bg_uvv is None:
-        return None
-    bg_uvv = yaml_dict_to_background_result(raw_yaml=bg_uvv)
+    bg_oh_cr = bg_uw1.count_rate_per_pixel - beta * bg_uvv.count_rate_per_pixel
+    bg_oh_cr_err = bg_oh_cr.sigma * sigma_level
 
-    # image after bg subtraction has normal noise distribution with sigma - make new count rate with 1-sigma as signal level
-    bg_oh_cr = (
-        bg_uw1.count_rate_per_pixel.sigma - beta * bg_uvv.count_rate_per_pixel.sigma
-    )
-
-    countrate_profile = np.array([bg_oh_cr])
-
+    countrate_profile = np.array([bg_oh_cr_err])
     bg_oh_surf_brightness = countrate_profile_to_surface_brightness(
         countrate_profile=countrate_profile,
-        delta=epoch_summary.delta_au * u.AU,  # type: ignore
-        pixel_resolution=epoch_summary.pixel_resolution,
+        epoch_summary=epoch_summary,
     )
 
     bg_oh_cd = surface_brightness_profile_to_column_density(
-        surface_brightness_profile=bg_oh_surf_brightness,
-        delta=epoch_summary.delta_au * u.AU,  # type: ignore
-        helio_r=epoch_summary.rh_au * u.AU,  # type: ignore
-        helio_v=epoch_summary.helio_v_kms * (u.km / u.s),  # type: ignore
+        surface_brightness_profile=bg_oh_surf_brightness, epoch_summary=epoch_summary
     )
 
     return bg_oh_cd[0]

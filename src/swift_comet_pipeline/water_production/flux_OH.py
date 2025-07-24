@@ -1,13 +1,21 @@
 from typing import TypeAlias
 
 import numpy as np
+import astropy.units as u
 
 from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.error_propogation import ValueAndStandardDev
 
 
+# in erg/(s cm^2)
 OHFlux: TypeAlias = ValueAndStandardDev
+
+
+def OH_count_rates_to_flux_factor() -> u.Quantity:
+    # this comes from an OH spectral model in Bodewits et. al 2019, via convolving the OH spectrum through the uw1 filter
+    # to relate count rate to flux, in ergs/(cm**2  second)
+    return 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s)  # type: ignore
 
 
 def OH_flux_from_count_rate(
@@ -16,12 +24,7 @@ def OH_flux_from_count_rate(
     beta: DustReddeningPercent,
 ) -> OHFlux:
 
-    # this comes from an OH spectral model in Bodewits et. al 2019 by convolving the OH spectrum through the uw1 filter
-    # to convert count rate to flux, in ergs/(cm**2  second)
-    alpha = 1.2750906353215913e-12
+    alpha = OH_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
+    oh_flux = alpha * (uw1 - beta * uvv)
 
-    oh_flux = alpha * (uw1.value - beta * uvv.value)
-
-    oh_flux_err = alpha * np.sqrt(uw1.sigma**2 + (uvv.sigma * beta) ** 2)
-
-    return OHFlux(value=oh_flux, sigma=oh_flux_err)
+    return OHFlux(value=oh_flux.value, sigma=oh_flux.sigma)

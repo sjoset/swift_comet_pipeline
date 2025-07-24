@@ -16,28 +16,27 @@ from swift_comet_pipeline.types import (
     CometSurfaceBrightnessProfile,
 )
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
+from swift_comet_pipeline.types.epoch_summary import EpochSummary
+from swift_comet_pipeline.types.error_propogation import ValueAndStandardDev
+from swift_comet_pipeline.water_production.flux_OH import OH_count_rates_to_flux_factor
 
 
 # TODO: add decorators to enforce the arguments are the correct Quantity
+# TODO: return type is incorrect
 def surface_brightness_profile_to_column_density(
     surface_brightness_profile: CometSurfaceBrightnessProfile,
-    delta: u.Quantity,
-    helio_v: u.Quantity,
-    helio_r: u.Quantity,
+    epoch_summary: EpochSummary,
 ) -> np.ndarray:
-    # TODO: document
 
-    delta_cm = delta.to(u.cm).value  # type: ignore
-    helio_v_kms = helio_v.to(u.km / u.s).value  # type: ignore
-    rh_au = helio_r.to(u.AU).value  # type: ignore
-
-    # TODO: magic numbers: cite
-    # alpha is specific to OH - this should be from Bodewits 2019
-    alpha = 1.2750906353215913e-12
+    delta_cm = (epoch_summary.delta_au * u.AU).to_value(u.cm)  # type: ignore
+    alpha = OH_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
     flux = surface_brightness_profile * alpha
     lumi = flux * 4 * np.pi * delta_cm**2
 
-    gfactor_scaled = hydroxyl_gfactor_1au(helio_v_kms=helio_v_kms) / rh_au**2
+    gfactor_scaled = (
+        hydroxyl_gfactor_1au(helio_v_kms=epoch_summary.helio_v_kms)
+        / epoch_summary.rh_au**2
+    )
     column_density = lumi / gfactor_scaled
 
     return column_density / (u.cm**2)  # type: ignore
@@ -75,8 +74,9 @@ def calculate_comet_column_density(
 
     surface_brightness_profile = countrate_profile_to_surface_brightness(
         countrate_profile=countrate_profile,
-        pixel_resolution=epoch_summary.pixel_resolution,
-        delta=epoch_summary.delta_au * u.AU,  # type: ignore
+        epoch_summary=epoch_summary,
+        # pixel_resolution=epoch_summary.pixel_resolution,
+        # delta=epoch_summary.delta_au * u.AU,
     )
 
     comet_column_density_values = surface_brightness_profile_to_column_density(

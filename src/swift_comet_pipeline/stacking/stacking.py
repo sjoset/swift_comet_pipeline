@@ -18,6 +18,9 @@ from swift_comet_pipeline.observationlog.observation_log import (
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
+from swift_comet_pipeline.pipeline_utils.epoch_summary import (
+    get_unstacked_epoch_summary,
+)
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter_to_string import (
     filter_to_file_string,
@@ -306,10 +309,16 @@ def make_uw1_and_uvv_stacks(
     assert epoch_post_stack_prod is not None
     epoch_post_stack_prod.data = epoch_to_stack
 
+    epoch_summary = get_unstacked_epoch_summary(scp=scp, epoch_id=epoch_id)
+    assert epoch_summary is not None
     for filter_type, stacking_method in product(uw1_and_uvv, sum_and_median):
         hdu = epoch_stacked_image_to_fits(
-            epoch=epoch_to_stack, img=stacked_images[(filter_type, stacking_method)]
+            epoch_summary=epoch_summary,
+            img=stacked_images[(filter_type, stacking_method)],
         )
+        # hdu = epoch_stacked_image_to_fits(
+        #     epoch=epoch_to_stack, img=stacked_images[(filter_type, stacking_method)]
+        # )
         img_prod = scp.get_product(
             pf=PipelineFilesEnum.stacked_image,
             epoch_id=epoch_id,
@@ -326,8 +335,11 @@ def make_uw1_and_uvv_stacks(
     )
     assert uw1_exp_map_prod is not None
     uw1_exp_map_prod.data = epoch_stacked_image_to_fits(
-        epoch=epoch_to_stack, img=uw1_exp_map
+        epoch_summary=epoch_summary, img=uw1_exp_map
     )
+    # uw1_exp_map_prod.data = epoch_stacked_image_to_fits(
+    #     epoch=epoch_to_stack, img=uw1_exp_map
+    # )
     uvv_exp_map_prod = scp.get_product(
         pf=PipelineFilesEnum.exposure_map,
         epoch_id=epoch_id,
@@ -335,8 +347,11 @@ def make_uw1_and_uvv_stacks(
     )
     assert uvv_exp_map_prod is not None
     uvv_exp_map_prod.data = epoch_stacked_image_to_fits(
-        epoch=epoch_to_stack, img=uvv_exp_map
+        epoch_summary=epoch_summary, img=uvv_exp_map
     )
+    # uvv_exp_map_prod.data = epoch_stacked_image_to_fits(
+    #     epoch=epoch_to_stack, img=uvv_exp_map
+    # )
 
 
 def write_uw1_and_uvv_stacks(scp: SwiftCometPipeline, epoch_id: EpochID) -> None:

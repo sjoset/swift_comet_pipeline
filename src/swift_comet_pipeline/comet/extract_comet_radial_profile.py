@@ -4,6 +4,7 @@ from scipy.integrate import simpson
 
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.types import CometRadialProfile
+from swift_comet_pipeline.types.background_result import BackgroundResult
 from swift_comet_pipeline.types.count_rate import CountRate, CountRatePerPixel
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
@@ -84,7 +85,9 @@ def extract_comet_radial_median_profile_from_cone(
 
 def count_rate_from_comet_radial_profile(
     comet_profile: CometRadialProfile,
-    bg: CountRatePerPixel,
+    # bg: CountRatePerPixel,
+    bgr: BackgroundResult,
+    t_exp_s: float,
 ) -> CountRate:
     """
     Takes a radial profile and assumes azimuthal symmetry to produce a count rate that would result
@@ -103,15 +106,30 @@ def count_rate_from_comet_radial_profile(
         * np.pi
     )
 
-    # uncertainty of this integral
-    profile_sigma = np.std(comet_profile.pixel_values) * 2 * np.pi
+    # # variance = pixel value for Poisson stats, so (2 pi r) pixel_value for total error at radius r
+    # profile_sigma = np.sqrt(
+    #     np.sum(comet_profile.pixel_values * comet_profile.profile_axis_xs) * 2 * np.pi
+    # )
 
-    # quadrature for our error plus the error accumulated from the background over the area of the comet
-    propogated_sigma = np.sqrt(
-        profile_sigma**2 + (np.pi * comet_profile._radius**2 * bg.sigma**2)
+    comet_area = np.pi * comet_profile._radius**2
+    bg_area = bgr.bg_aperture_area
+
+    profile_variance = np.sum(
+        (comet_profile.pixel_values - bgr.count_rate_per_pixel) / t_exp_s
     )
 
-    return CountRate(value=float(count_rate), sigma=propogated_sigma)
+    profile_variance += (
+        comet_area
+        * bgr.count_rate_per_pixel.value**2
+        * (1 + (np.pi / 2) * (comet_area / bg_area))
+    )
+
+    # quadrature for our error plus the error accumulated from the background over the area of the comet
+    # propogated_sigma = np.sqrt(
+    #     profile_sigma**2 + (np.pi * comet_profile._radius**2 * bg.sigma**2)
+    # )
+
+    return CountRate(value=float(count_rate), sigma=np.sqrt(profile_variance))
 
 
 def calculate_distance_from_center_mesh(img: SwiftUVOTImage):

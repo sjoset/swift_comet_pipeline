@@ -8,6 +8,8 @@ from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 from rich import print as rprint
 
+from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
+from swift_comet_pipeline.types.epoch_summary import EpochSummary
 from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 from swift_comet_pipeline.comet.extract_comet_radial_profile import (
     calculate_distance_from_center_mesh,
@@ -54,23 +56,26 @@ from swift_comet_pipeline.tui.tui_common import get_selection
 class RadialProfileSelectionPlot(object):
     def __init__(
         self,
-        stacked_epoch: StackedEpoch,
+        # stacked_epoch: StackedEpoch,
+        epoch_summary: EpochSummary,
         uw1_img: SwiftUVOTImage,
         uw1_bg: BackgroundResult,
         uvv_img: SwiftUVOTImage,
         uvv_bg: BackgroundResult,
-        t_perihelion: Time,
+        # t_perihelion: Time,
     ):
-        self.stacked_epoch = stacked_epoch
-        self.helio_r_au = np.mean(stacked_epoch.HELIO)
-        self.helio_v_kms = np.mean(stacked_epoch.HELIO_V)
-        self.delta = np.mean(stacked_epoch.OBS_DIS)
-        self.km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
+        self.epoch_summary = epoch_summary
+        # self.stacked_epoch = stacked_epoch
+        # self.helio_r_au = np.mean(stacked_epoch.HELIO)
+        # self.helio_v_kms = np.mean(stacked_epoch.HELIO_V)
+        # self.delta = np.mean(stacked_epoch.OBS_DIS)
+        # self.km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
 
-        self.t_perihelion = t_perihelion
-        self.time_from_perihelion = (
-            Time(np.mean(stacked_epoch.MID_TIME)) - self.t_perihelion
-        )
+        # self.t_perihelion = t_perihelion
+        # self.time_from_perihelion = (
+        #     Time(np.mean(stacked_epoch.MID_TIME)) - self.t_perihelion
+        # )
+        self.time_from_perihelion = epoch_summary.time_from_perihelion
 
         self.uw1_img = uw1_img
         self.uw1_bg = uw1_bg
@@ -350,8 +355,12 @@ class RadialProfileSelectionPlot(object):
         if self.uvv_profile_plot is not None:
             self.uvv_profile_ax.clear()
 
-        uw1_pix_to_km = self.uw1_radial_profile.profile_axis_xs[1:] * self.km_per_pix
-        uvv_pix_to_km = self.uvv_radial_profile.profile_axis_xs[1:] * self.km_per_pix
+        uw1_pix_to_km = (
+            self.uw1_radial_profile.profile_axis_xs[1:] * self.epoch_summary.km_per_pix
+        )
+        uvv_pix_to_km = (
+            self.uvv_radial_profile.profile_axis_xs[1:] * self.epoch_summary.km_per_pix
+        )
         self.uw1_profile_plot = self.uw1_profile_ax.plot(
             uw1_pix_to_km,
             # np.log10(uw1_pix_to_km),
@@ -444,12 +453,23 @@ class RadialProfileSelectionPlot(object):
 
     def update_q_from_profiles(self):
         self.uw1_count_rate = count_rate_from_comet_radial_profile(
-            comet_profile=self.uw1_radial_profile, bg=self.uw1_bg.count_rate_per_pixel
+            comet_profile=self.uw1_radial_profile,
+            bgr=self.uw1_bg,
+            t_exp_s=self.epoch_summary.uw1_exposure_time_s,
         )
         self.uvv_count_rate = count_rate_from_comet_radial_profile(
-            comet_profile=self.uvv_radial_profile, bg=self.uvv_bg.count_rate_per_pixel
+            comet_profile=self.uvv_radial_profile,
+            bgr=self.uvv_bg,
+            t_exp_s=self.epoch_summary.uvv_exposure_time_s,
         )
 
+        # self.uw1_count_rate = count_rate_from_comet_radial_profile(
+        #     comet_profile=self.uw1_radial_profile, bg=self.uw1_bg.count_rate_per_pixel
+        # )
+        # self.uvv_count_rate = count_rate_from_comet_radial_profile(
+        #     comet_profile=self.uvv_radial_profile, bg=self.uvv_bg.count_rate_per_pixel
+        # )
+        #
         self.flux_OH = OH_flux_from_count_rate(
             uw1=self.uw1_count_rate,
             uvv=self.uvv_count_rate,
@@ -465,24 +485,24 @@ class RadialProfileSelectionPlot(object):
 
         self.num_OH = flux_OH_to_num_OH(
             flux_OH=self.flux_OH,
-            helio_r_au=self.helio_r_au,
-            helio_v_kms=self.helio_v_kms,
-            delta_au=self.delta,
+            helio_r_au=self.epoch_summary.rh_au,
+            helio_v_kms=self.epoch_summary.helio_v_kms,
+            delta_au=self.epoch_summary.delta_au,
         )
 
         self.abs_upper_limit_num_OH = flux_OH_to_num_OH(
             flux_OH=self.abs_upper_limit_flux_OH,
-            helio_r_au=self.helio_r_au,
-            helio_v_kms=self.helio_v_kms,
-            delta_au=self.delta,
+            helio_r_au=self.epoch_summary.rh_au,
+            helio_v_kms=self.epoch_summary.helio_v_kms,
+            delta_au=self.epoch_summary.delta_au,
         )
 
         self.q_h2o = num_OH_to_Q_vectorial(
-            helio_r_au=self.helio_r_au, num_OH=self.num_OH
+            helio_r_au=self.epoch_summary.rh_au, num_OH=self.num_OH
         )
 
         self.abs_upper_limit_q_h2o = num_OH_to_Q_vectorial(
-            helio_r_au=self.helio_r_au,
+            helio_r_au=self.epoch_summary.rh_au,
             num_OH=self.abs_upper_limit_num_OH,
         )
 
@@ -509,17 +529,8 @@ def profile_selection_plot(
     if selected_epoch_id is None:
         return None
 
-    stacked_epoch = scp.get_product_data(
-        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=selected_epoch_id
-    )
-    if stacked_epoch is None:
-        return None
-
-    t_perihelion_list = find_perihelion(scp=scp)
-    if t_perihelion_list is None:
-        print("Could not find time of perihelion!")
-        return None
-    t_perihelion = t_perihelion_list[0].t_perihelion
+    epoch_summary = get_epoch_summary(scp=scp, epoch_id=selected_epoch_id)
+    assert epoch_summary is not None
 
     bg_sub_imgs = get_uw1_and_uvv_background_subtracted_images(
         scp=scp, epoch_id=selected_epoch_id, stacking_method=stacking_method
@@ -534,12 +545,11 @@ def profile_selection_plot(
     uw1_bg, uvv_bg = uw1uvv_getter(bg_results)
 
     rpsp = RadialProfileSelectionPlot(
-        stacked_epoch=stacked_epoch,
+        epoch_summary=epoch_summary,
         uw1_img=uw1_img,
         uw1_bg=uw1_bg,
         uvv_img=uvv_img,
         uvv_bg=uvv_bg,
-        t_perihelion=t_perihelion,
     )
     rpsp.show()
 
@@ -553,7 +563,7 @@ def profile_selection_plot(
     )
     assert uw1_profile is not None
     uw1_profile.data = radial_profile_to_dataframe_product(
-        profile=rpsp.uw1_radial_profile, km_per_pix=rpsp.km_per_pix
+        profile=rpsp.uw1_radial_profile, km_per_pix=epoch_summary.km_per_pix
     )
     uw1_profile.write()
     uvv_profile = scp.get_product(
@@ -564,7 +574,7 @@ def profile_selection_plot(
     )
     assert uvv_profile is not None
     uvv_profile.data = radial_profile_to_dataframe_product(
-        profile=rpsp.uvv_radial_profile, km_per_pix=rpsp.km_per_pix
+        profile=rpsp.uvv_radial_profile, km_per_pix=epoch_summary.km_per_pix
     )
     uvv_profile.write()
 
@@ -576,7 +586,7 @@ def profile_selection_plot(
     )
     assert prof_img_uw1 is not None
     prof_img_uw1.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uw1_median_profile_img
+        epoch_summary=epoch_summary, img=rpsp.uw1_median_profile_img
     )
     prof_img_uw1.write()
     prof_img_uvv = scp.get_product(
@@ -587,7 +597,7 @@ def profile_selection_plot(
     )
     assert prof_img_uvv is not None
     prof_img_uvv.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uvv_median_profile_img
+        epoch_summary=epoch_summary, img=rpsp.uvv_median_profile_img
     )
     prof_img_uvv.write()
 
@@ -599,7 +609,7 @@ def profile_selection_plot(
     )
     assert med_sub_uw1 is not None
     med_sub_uw1.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uw1_subtracted_median_image
+        epoch_summary=epoch_summary, img=rpsp.uw1_subtracted_median_image
     )
     med_sub_uw1.write()
     med_sub_uvv = scp.get_product(
@@ -610,7 +620,7 @@ def profile_selection_plot(
     )
     assert med_sub_uvv is not None
     med_sub_uvv.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uvv_subtracted_median_image
+        epoch_summary=epoch_summary, img=rpsp.uvv_subtracted_median_image
     )
     med_sub_uvv.write()
 
@@ -622,7 +632,7 @@ def profile_selection_plot(
     )
     assert med_div_uw1 is not None
     med_div_uw1.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uw1_divided_median_image
+        epoch_summary=epoch_summary, img=rpsp.uw1_divided_median_image
     )
     med_div_uw1.write()
     med_div_uvv = scp.get_product(
@@ -633,7 +643,7 @@ def profile_selection_plot(
     )
     assert med_div_uvv is not None
     med_div_uvv.data = epoch_stacked_image_to_fits(
-        epoch=stacked_epoch, img=rpsp.uvv_divided_median_image
+        epoch_summary=epoch_summary, img=rpsp.uvv_divided_median_image
     )
     med_div_uvv.write()
 
