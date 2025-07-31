@@ -8,8 +8,8 @@ from .comet_surface_brightness_profile import *
 from .dust_reddening_percent import *
 from .error_propogation import *
 from .filter_effective_area import *
-from .fluorescence_g_factor import *
 from .halley_marcus_curve import *
+from .oh_fluorescence_g_factor import *
 from .pixel_coord import *
 from .plateau import *
 from .q_vs_aperture_radius_entry import *

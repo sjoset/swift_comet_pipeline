@@ -3,4 +3,4 @@ effective_area_uvv_path: "../../../../data/swift_effective_areas/swuvv_20041120v
 
 uvot_sensitivity_path: "../../../../data/sensitivity/swusenscorr20041120v007.fits"
 
-oh_fluorescence_path: "../../../../data/fluorescence/fluorescence_OH.csv"
+oh_fluorescence_path: "../../../../data/fluorescence/Schleicher_Ahearn_1988_Table5.csv"

@@ -1,7 +1,6 @@
 from functools import cache
 
 import astropy.units as u
-from photutils.aperture import CircularAperture
 
 from swift_comet_pipeline.modeling.vectorial_model import (
     num_OH_from_vectorial_model_result,

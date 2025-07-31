@@ -1,6 +1,5 @@
 from typing import TypeAlias
 
-import numpy as np
 import astropy.units as u
 
 from swift_comet_pipeline.types.count_rate import CountRate
