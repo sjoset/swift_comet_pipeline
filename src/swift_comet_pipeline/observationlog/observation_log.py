@@ -53,6 +53,13 @@ def observation_log_schema() -> pa.Schema:
             pa.field("RA_OBJ", pa.float64()),
             # Declination, degrees
             pa.field("DEC_OBJ", pa.float64()),
+            # Rate of change of RA in arcsec/min
+            pa.field("RA_RATE", pa.float64()),
+            # Rate of change of Dec in arcsec/min
+            pa.field("DEC_RATE", pa.float64()),
+            # Total rate of sky motion in arcsec/min
+            pa.field("SKY_MOTION", pa.float64()),
+            # pa.field("SKY_MOTION_PA", pa.float64()),
             # Total exposure time after all known corrections applied
             pa.field("EXPOSURE", pa.float64()),
             ### Added during observation log building

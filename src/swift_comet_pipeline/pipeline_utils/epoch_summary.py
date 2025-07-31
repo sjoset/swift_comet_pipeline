@@ -36,6 +36,7 @@ def make_epoch_summary(
     uvv_mask = epoch.FILTER == SwiftFilter.uvv
     uw1_exposure_time = epoch[uw1_mask].EXPOSURE.sum()
     uvv_exposure_time = epoch[uvv_mask].EXPOSURE.sum()
+    sky_motion = epoch.SKY_MOTION.mean()
 
     return EpochSummary(
         epoch_id=epoch_id,
@@ -51,6 +52,7 @@ def make_epoch_summary(
         pixel_resolution=pixel_resolution,
         uw1_exposure_time_s=uw1_exposure_time,
         uvv_exposure_time_s=uvv_exposure_time,
+        sky_motion_arcsec_min=sky_motion,
     )
 
 

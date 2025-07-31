@@ -22,6 +22,7 @@ class EpochSummary:
     pixel_resolution: SwiftPixelResolution
     uw1_exposure_time_s: float
     uvv_exposure_time_s: float
+    sky_motion_arcsec_min: float
 
 
 def dataframe_to_epoch_summary_list(

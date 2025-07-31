@@ -24,6 +24,7 @@ from swift_comet_pipeline.swift.swift_datamodes import (
     datamode_to_pixel_resolution,
 )
 from swift_comet_pipeline.swift.swift_filter_to_string import obs_string_to_filter
+from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
@@ -155,6 +156,8 @@ def build_observation_log(
         "RA": "RA",
         # Target declination, float, degrees
         "DEC": "DEC",
+        "RA_rate": "RA_RATE",
+        "DEC_rate": "DEC_RATE",
     }
     # make dataframe with columns of the ephemeris_info values
     horizon_dataframe = pd.DataFrame(columns=list(ephemeris_info.values()))  # type: ignore
@@ -175,7 +178,17 @@ def build_observation_log(
         horizon_dataframe.loc[len(horizon_dataframe.index)] = [
             eph[x][0] for x in ephemeris_info.keys()
         ]
+
         horizons_response._session.close()
+
+    # convert arcseconds per hour to arcseconds per minute
+    sky_motion_conversion_factor = 1.0 / 60.0
+    horizon_dataframe.RA_RATE *= sky_motion_conversion_factor
+    horizon_dataframe.DEC_RATE *= sky_motion_conversion_factor
+
+    horizon_dataframe["SKY_MOTION"] = np.hypot(
+        horizon_dataframe.RA_RATE, horizon_dataframe.DEC_RATE
+    )
 
     obs_log = pd.concat([obs_log, horizon_dataframe], axis=1)
 
