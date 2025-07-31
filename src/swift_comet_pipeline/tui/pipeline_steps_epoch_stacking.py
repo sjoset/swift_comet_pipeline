@@ -63,14 +63,12 @@ def menu_stack_all_or_selection() -> str:
 
 def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
-    # pipeline_files = PipelineFiles(project_path=swift_project_config.project_path)
     swift_data = SwiftData(data_path=swift_project_config.swift_data_path)
 
     print_stacked_images_summary(scp=scp)
 
     epoch_ids = scp.get_epoch_id_list()
     assert epoch_ids is not None
-    # epoch_has_been_stacked = {epoch_id: scp.has_epoch_been_stacked(epoch_id) for epoch_id in epoch_ids}
     epochs_stacked = [scp.has_epoch_been_stacked(epoch_id) for epoch_id in epoch_ids]
 
     if all(epochs_stacked):

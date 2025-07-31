@@ -24,7 +24,6 @@ from swift_comet_pipeline.swift.swift_datamodes import (
     datamode_to_pixel_resolution,
 )
 from swift_comet_pipeline.swift.swift_filter_to_string import obs_string_to_filter
-from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 
 
@@ -156,7 +155,9 @@ def build_observation_log(
         "RA": "RA",
         # Target declination, float, degrees
         "DEC": "DEC",
+        # Rate of change of RA in arcseconds per hour
         "RA_rate": "RA_RATE",
+        # Rate of change of Dec in arcseconds per hour
         "DEC_rate": "DEC_RATE",
     }
     # make dataframe with columns of the ephemeris_info values

@@ -30,6 +30,7 @@ from swift_comet_pipeline.observationlog.epoch import (
     is_epoch_stackable,
 )
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
+from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.stacked_uvot_image_set import StackedUVOTImageSet
 from swift_comet_pipeline.types.stacking_method import StackingMethod
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
@@ -39,8 +40,7 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 def determine_stacking_image_size(
-    swift_data: SwiftData,
-    epoch: Epoch,
+    img_list: list[SwiftUVOTImage], comet_center_coords: list[PixelCoord]
 ) -> Tuple[int, int] | None:
     """
     Opens every FITS file specified in the given epoch and finds the image size necessary to accommodate
@@ -50,13 +50,14 @@ def determine_stacking_image_size(
     # stores how big each image would need to be if recentered on the comet
     recentered_image_dimensions = []
 
-    for _, row in epoch.iterrows():
-        image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
+    for img, comet_center in zip(img_list, comet_center_coords):
+        # image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
 
-        comet_center_coords = get_comet_center_prefer_user_coords(row=row)
+        # comet_center_coords = get_comet_center_prefer_user_coords(row=row)
+
         # keep a list of the image sizes
         image_dimensions = get_image_dimensions_to_center_on_pixel(
-            source_image=image_data, coords_to_center=comet_center_coords
+            source_image=img, coords_to_center=comet_center
         )
         recentered_image_dimensions.append(image_dimensions)
 
@@ -75,12 +76,49 @@ def determine_stacking_image_size(
     return (max_num_rows, max_num_cols)
 
 
+# def determine_stacking_image_size(
+#     swift_data: SwiftData,
+#     epoch: Epoch,
+# ) -> Tuple[int, int] | None:
+#     """
+#     Opens every FITS file specified in the given epoch and finds the image size necessary to accommodate
+#     the largest image involved in the stack, so we can pad out the smaller images and stack them in one step
+#     """
+#
+#     # stores how big each image would need to be if recentered on the comet
+#     recentered_image_dimensions = []
+#
+#     for _, row in epoch.iterrows():
+#         image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
+#
+#         comet_center_coords = get_comet_center_prefer_user_coords(row=row)
+#         # keep a list of the image sizes
+#         image_dimensions = get_image_dimensions_to_center_on_pixel(
+#             source_image=image_data, coords_to_center=comet_center_coords
+#         )
+#         recentered_image_dimensions.append(image_dimensions)
+#
+#     if len(recentered_image_dimensions) == 0:
+#         print("No images found in epoch!")
+#         return None
+#
+#     # now take the largest size so that every image can be stacked without losing pixels
+#     max_num_rows = sorted(
+#         recentered_image_dimensions, key=lambda k: k[0], reverse=True
+#     )[0][0]
+#     max_num_cols = sorted(
+#         recentered_image_dimensions, key=lambda k: k[1], reverse=True
+#     )[0][1]
+#
+#     return (max_num_rows, max_num_cols)
+
+
 # TODO: make this take a filter_type, perhaps SwiftCometPipeline
 def stack_epoch_into_sum_and_median(
     swift_data: SwiftData,
     epoch: Epoch,
-    do_coincidence_correction: bool = True,
-    pixel_resolution: SwiftPixelResolution = SwiftPixelResolution.data_mode,
+    do_coincidence_correction: bool,
+    pixel_resolution: SwiftPixelResolution,
 ) -> Tuple[SwiftUVOTImage, SwiftUVOTImage, SwiftUVOTImage] | None:
     """
     Blindly takes every entry in the given Epoch and attempts to stack it - epoch should be pre-filtered because
@@ -88,6 +126,15 @@ def stack_epoch_into_sum_and_median(
     If successful, returns a tuple of images: (sum, median, exposure_map)
     The exposure_map image has pixels with values in units of seconds - the total exposure time from the stack of images involved
     """
+
+    obsids = epoch.OBS_ID
+    img_filenames = epoch.FITS_FILENAME
+
+    # getting the image directory is not valid for event mode! those live in uvot/event/
+    img_paths = [
+        swift_data.get_uvot_image_directory(obsid=x) / y
+        for x, y in zip(obsids, img_filenames)
+    ]
 
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(
@@ -216,14 +263,14 @@ def make_uw1_and_uvv_stacks(
     else:
         post_veto_epoch = pre_veto_epoch
 
-    # # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
-    # if not is_epoch_stackable(epoch=post_veto_epoch):
-    #     print("Images in the requested stack have mixed data modes! Skipping.")
-    #     return
-    # else:
-    #     print(
-    #         f"All images taken with FITS keyword DATAMODE={post_veto_epoch.DATAMODE.iloc[0].value}, stacking..."
-    #     )
+    # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
+    if not is_epoch_stackable(epoch=post_veto_epoch):
+        print("Images in the requested stack have mixed data modes! Skipping.")
+        return
+    else:
+        print(
+            f"All images taken with FITS keyword DATAMODE={post_veto_epoch.DATAMODE.iloc[0].value}, stacking..."
+        )
 
     # now get just the uw1 and uvv images
     stacked_epoch_mask = np.logical_or(
@@ -337,9 +384,6 @@ def make_uw1_and_uvv_stacks(
     uw1_exp_map_prod.data = epoch_stacked_image_to_fits(
         epoch_summary=epoch_summary, img=uw1_exp_map
     )
-    # uw1_exp_map_prod.data = epoch_stacked_image_to_fits(
-    #     epoch=epoch_to_stack, img=uw1_exp_map
-    # )
     uvv_exp_map_prod = scp.get_product(
         pf=PipelineFilesEnum.exposure_map,
         epoch_id=epoch_id,
@@ -349,15 +393,13 @@ def make_uw1_and_uvv_stacks(
     uvv_exp_map_prod.data = epoch_stacked_image_to_fits(
         epoch_summary=epoch_summary, img=uvv_exp_map
     )
-    # uvv_exp_map_prod.data = epoch_stacked_image_to_fits(
-    #     epoch=epoch_to_stack, img=uvv_exp_map
-    # )
 
 
 def write_uw1_and_uvv_stacks(scp: SwiftCometPipeline, epoch_id: EpochID) -> None:
     """
     Writes the stacked epoch dataframe, along with the four images created during stacking, and exposure map
     This is a separate step so that the stacking results can be viewed before deciding to save or not save the results
+    This assumes that the stacked images are stored in the SwiftCometPipeline object, ready for writing to file
     """
     uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
     sum_and_median = [StackingMethod.summation, StackingMethod.median]
