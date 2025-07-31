@@ -29,6 +29,7 @@ from .vectorial_model_grid_quality import *
 
 # compound
 from .background_result import *
+from .bayesian_lightcurve import *
 from .coincidence_correction import *
 from .column_density_above_background_analysis import *
 from .comet_profile import *
@@ -36,11 +37,11 @@ from .count_rate import *
 from .countrate_vs_aperture_radius import *
 from .epoch_summary import *
 from .hydroxyl_molecule_count import *
+from .lightcurve import *
 from .magnitude import *
+from .plateau_list import *
 from .stacked_uvot_image_set import *
 from .swift_project_config import *
+from .uw1_uvv_pair import *
 from .vectorial_model_fit import *
 from .water_molecule_count import *
-from .lightcurve import *
-from .bayesian_lightcurve import *
-from .uw1_uvv_pair import *

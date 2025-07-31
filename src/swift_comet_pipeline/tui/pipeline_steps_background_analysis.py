@@ -1,7 +1,6 @@
 from itertools import product
 
 import questionary
-import numpy as np
 from astropy.io import fits
 from rich import print as rprint
 

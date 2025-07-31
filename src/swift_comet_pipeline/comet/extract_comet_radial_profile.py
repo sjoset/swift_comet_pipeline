@@ -5,7 +5,7 @@ from scipy.integrate import simpson
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.types import CometRadialProfile
 from swift_comet_pipeline.types.background_result import BackgroundResult
-from swift_comet_pipeline.types.count_rate import CountRate, CountRatePerPixel
+from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
@@ -18,6 +18,7 @@ def extract_comet_radial_profile(
     Takes one pixel sample per unit distance: if r=100, we take 101 pixel samples (to include the center pixel)
     It is important to sample one pixel per r as the processing we do later relies on profile[x] being sampled at radius=x
     """
+    # TODO: we could use the exposure map to enforce only maximally-exposed pixels for our profiles
     # TODO: this should validate that we stay inside the image and truncate the xs and ys to stay inside
     # and return a profile with a smaller r than requested
     x0 = comet_center.x
@@ -83,20 +84,17 @@ def extract_comet_radial_median_profile_from_cone(
     return middle_radial_profile
 
 
-def count_rate_from_comet_radial_profile(
+def total_count_rate_from_comet_radial_profile(
     comet_profile: CometRadialProfile,
-    # bg: CountRatePerPixel,
     bgr: BackgroundResult,
     t_exp_s: float,
 ) -> CountRate:
     """
     Takes a radial profile and assumes azimuthal symmetry to produce a count rate that would result
     from a circular aperture centered on the comet profile
-    Reminder: we need the background count rate to propogate error
     """
 
     # our integral is (count rate at r) * (r dr dtheta) for the total count rate
-
     count_rate = (
         simpson(
             y=comet_profile.profile_axis_xs * comet_profile.pixel_values,
@@ -106,16 +104,11 @@ def count_rate_from_comet_radial_profile(
         * np.pi
     )
 
-    # # variance = pixel value for Poisson stats, so (2 pi r) pixel_value for total error at radius r
-    # profile_sigma = np.sqrt(
-    #     np.sum(comet_profile.pixel_values * comet_profile.profile_axis_xs) * 2 * np.pi
-    # )
-
     comet_area = np.pi * comet_profile._radius**2
     bg_area = bgr.bg_aperture_area
 
     profile_variance = np.sum(
-        (comet_profile.pixel_values - bgr.count_rate_per_pixel) / t_exp_s
+        (comet_profile.pixel_values - bgr.count_rate_per_pixel.value) / t_exp_s
     )
 
     profile_variance += (
@@ -123,11 +116,6 @@ def count_rate_from_comet_radial_profile(
         * bgr.count_rate_per_pixel.value**2
         * (1 + (np.pi / 2) * (comet_area / bg_area))
     )
-
-    # quadrature for our error plus the error accumulated from the background over the area of the comet
-    # propogated_sigma = np.sqrt(
-    #     profile_sigma**2 + (np.pi * comet_profile._radius**2 * bg.sigma**2)
-    # )
 
     return CountRate(value=float(count_rate), sigma=np.sqrt(profile_variance))
 

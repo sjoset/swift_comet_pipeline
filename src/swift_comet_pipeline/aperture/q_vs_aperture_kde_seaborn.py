@@ -12,6 +12,9 @@ from swift_comet_pipeline.types.q_vs_aperture_radius_entry import (
 )
 
 
+# TODO: move visuals
+
+
 def show_q_density_estimates_vs_redness(
     q_vs_aperture_radius_list: list[QvsApertureRadiusEntry],
     q_plateau_list_dict: ReddeningToProductionPlateauListDict,

@@ -1,15 +1,10 @@
 from functools import cache
 
-# import numpy as np
 import astropy.units as u
 
 from swift_comet_pipeline.swift.effective_wavelength import (
-    effective_wavelength_of_filter,
+    effective_wavelength_of_filter_observing_solar_flux,
 )
-
-# from swift_comet_pipeline.swift.read_filter_effective_area import (
-#     read_filter_effective_area,
-# )
 from swift_comet_pipeline.types import DustReddeningPercent, SwiftFilter
 
 
@@ -24,11 +19,11 @@ def reddening_correction(dust_redness: DustReddeningPercent) -> float:
 
     where beta is the factor in (uw1 - beta * uvv)
 
-    TODO: document derivation in thesis, including explanation of magic number 20000 % per nm
+    TODO: document derivation or cite US10 paper
     """
 
-    l_uvw1 = effective_wavelength_of_filter(SwiftFilter.uw1)
-    l_uvv = effective_wavelength_of_filter(SwiftFilter.uvv)
+    l_uvw1 = effective_wavelength_of_filter_observing_solar_flux(SwiftFilter.uw1)
+    l_uvv = effective_wavelength_of_filter_observing_solar_flux(SwiftFilter.uvv)
 
     dlambda_nm = (l_uvv - l_uvw1).to_value(u.nm)  # type: ignore
     t = dust_redness * dlambda_nm / 20000

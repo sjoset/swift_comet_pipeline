@@ -4,6 +4,9 @@ from swift_comet_pipeline.types.plateau import ProductionPlateau
 from swift_comet_pipeline.types.q_vs_aperture_radius_entry import QvsApertureRadiusEntry
 
 
+# TODO: move visuals
+
+
 def show_q_vs_aperture_with_plateaus(
     q_vs_aperture_radius_list: list[QvsApertureRadiusEntry],
     q_plateau_list: list[ProductionPlateau] | None,

@@ -108,8 +108,14 @@ def water_vectorial_model(
     return vmcalculation.vmr
 
 
-def num_OH_from_vectorial_model_result(vmr: VectorialModelResult) -> float:
-    # TODO: this should return HydroxylMoleculeCount - just set error to zero for now
+def num_OH_from_vectorial_model_result(
+    vmr: VectorialModelResult,
+) -> float:
+    """
+    Counts *all* of the OH molecules from a given vectorial model, out to the maximum r from the comet nucleus
+    that was modeled
+    """
+    # TODO: come up with a decent error range and change return value to HydroxylMoleculeCount
 
     # total fragments = 4 * pi * integral of volume density at r * r^2
     def integrand(r_m: float, volume_density_interpolation_function: Callable):
@@ -122,5 +128,34 @@ def num_OH_from_vectorial_model_result(vmr: VectorialModelResult) -> float:
     )
 
     num_oh = 4 * np.pi * num_oh_r
+
+    return num_oh
+
+
+@u.quantity_input
+def num_OH_from_vectorial_model_result_within_r(
+    vmr: VectorialModelResult, within_r: u.Quantity[u.m]  # type: ignore
+) -> float:
+    """
+    Counts OH molecules within 'within_r' distance of the nucleus by integrating the column density in a circle of radius 'within_r'
+    """
+    # TODO: come up with a decent error range and change return value to HydroxylMoleculeCount
+
+    # total fragments = circular area integral of theta [0, 2*pi], [0, r_end] of CD(r) r dr dtheta = 2 pi * int( CD(r) * r dr )
+    def integrand(r_m: float, column_density_interpolation_function: Callable):
+        return column_density_interpolation_function(r_m) * r_m
+
+    model_min_r_m = np.min(vmr.column_density_grid.to(u.m).value)  # type: ignore
+    model_max_r_m = np.max(vmr.column_density_grid.to(u.m).value)  # type: ignore
+    within_r_m = within_r.to(u.m).value  # type: ignore
+
+    r_begin = model_min_r_m
+    r_end = min(within_r_m, model_max_r_m)
+
+    num_oh_r, _ = quad(
+        integrand, a=r_begin, b=r_end, args=(vmr.column_density_interpolation,)
+    )
+
+    num_oh = 2 * np.pi * num_oh_r
 
     return num_oh

@@ -17,7 +17,6 @@ from swift_comet_pipeline.types import (
 )
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.epoch_summary import EpochSummary
-from swift_comet_pipeline.types.error_propogation import ValueAndStandardDev
 from swift_comet_pipeline.water_production.flux_OH import OH_count_rates_to_flux_factor
 
 
@@ -81,9 +80,10 @@ def calculate_comet_column_density(
 
     comet_column_density_values = surface_brightness_profile_to_column_density(
         surface_brightness_profile=surface_brightness_profile,
-        delta=epoch_summary.delta_au * u.AU,  # type: ignore
-        helio_v=epoch_summary.helio_v_kms * u.km / u.s,  # type: ignore
-        helio_r=epoch_summary.rh_au * u.AU,  # type: ignore
+        epoch_summary=epoch_summary,
+        # delta=epoch_summary.delta_au * u.AU,  # type: ignore
+        # helio_v=epoch_summary.helio_v_kms * u.km / u.s,  # type: ignore
+        # helio_r=epoch_summary.rh_au * u.AU,  # type: ignore
     )
 
     comet_column_density = ColumnDensity(

@@ -1,4 +1,3 @@
-from pprint import pprint
 import numpy as np
 import astropy.units as u
 
@@ -20,13 +19,11 @@ from swift_comet_pipeline.pipeline_utils.get_uw1_and_uvv import (
     get_uw1_and_uvv_background_results,
 )
 from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
-from swift_comet_pipeline.types.background_result import yaml_dict_to_background_result
 from swift_comet_pipeline.types.column_density_above_background_analysis import (
     ColumnDensityAboveBackgroundAnalysis,
 )
 from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
 from swift_comet_pipeline.types.stacking_method import StackingMethod
-from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 
 

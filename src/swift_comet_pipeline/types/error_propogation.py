@@ -12,10 +12,9 @@ class ValueAndStandardDev:
         if not isinstance(other, ValueAndStandardDev):
             return ValueAndStandardDev(value=self.value + other, sigma=self.sigma)
 
-        return ValueAndStandardDev(
-            value=self.value + other.value,
-            sigma=np.sqrt(self.sigma**2 + other.sigma**2),
-        )
+        value = self.value + other.value
+        sigma = np.sqrt(self.sigma**2 + other.sigma**2)
+        return ValueAndStandardDev(value=value, sigma=sigma)
 
     def __radd__(self, other):
         return self.__add__(other)

@@ -3,3 +3,6 @@ https://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/data/swift/uvota/index.html
 
 Fluorescence:
 Schleicher, D G. "Fluorescence of cometary OH and CN." , Jan. 1983.
+
+Swift sensitivity documentation:
+https://swift.gsfc.nasa.gov/caldb/docs/uvot/uvotcaldb_throughput_07.pdf

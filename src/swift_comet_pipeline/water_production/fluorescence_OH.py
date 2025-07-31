@@ -20,8 +20,9 @@ def flux_OH_to_num_OH(
 
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
     delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore
-    luminescence = 4 * np.pi * flux_OH.value * delta**2
-    luminescence_err = flux_OH.sigma * 4 * np.pi * delta**2
+    # luminescence = 4 * np.pi * flux_OH.value * delta**2
+    luminescence = 4 * np.pi * flux_OH * delta**2
+    # luminescence_err = flux_OH.sigma * 4 * np.pi * delta**2
 
     # g_factor = g1au_interpolation(helio_v_kms) / (helio_r_au**2)
     g_factor = hydroxyl_gfactor_1au(
@@ -29,6 +30,7 @@ def flux_OH_to_num_OH(
     ) / (helio_r_au**2)
 
     num_OH = luminescence / g_factor
-    num_err = luminescence_err / g_factor
+    # num_err = luminescence_err / g_factor
 
-    return HydroxylMoleculeCount(value=num_OH, sigma=num_err)
+    # return HydroxylMoleculeCount(value=num_OH, sigma=num_err)
+    return HydroxylMoleculeCount(value=num_OH.value, sigma=num_OH.sigma)

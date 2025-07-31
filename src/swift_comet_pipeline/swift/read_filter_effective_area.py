@@ -1,6 +1,7 @@
 from functools import cache
 
 import numpy as np
+from scipy.interpolate import interp1d
 from astropy.io import fits
 
 from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
@@ -52,4 +53,18 @@ def read_filter_effective_area(filter_type: SwiftFilter) -> FilterEffectiveArea 
 
     return FilterEffectiveArea(
         lambdas_nm=np.array(new_lambdas), responses_cm2=np.array(new_responses)
+    )
+
+
+def interpolate_filter_effective_area_onto(
+    effective_area: FilterEffectiveArea, lambdas_nm: np.ndarray
+) -> FilterEffectiveArea:
+
+    effective_areas_interpolation = interp1d(
+        effective_area.lambdas_nm, effective_area.responses_cm2
+    )
+    responses_on_lambdas = effective_areas_interpolation(lambdas_nm)
+
+    return FilterEffectiveArea(
+        lambdas_nm=lambdas_nm.copy(), responses_cm2=responses_on_lambdas
     )

@@ -4,7 +4,6 @@ from matplotlib.widgets import Slider
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-from astropy.time import Time
 from astropy.visualization import ZScaleInterval
 from rich import print as rprint
 
@@ -13,14 +12,12 @@ from swift_comet_pipeline.types.epoch_summary import EpochSummary
 from swift_comet_pipeline.types.uw1_uvv_pair import uw1uvv_getter
 from swift_comet_pipeline.comet.extract_comet_radial_profile import (
     calculate_distance_from_center_mesh,
-    count_rate_from_comet_radial_profile,
+    total_count_rate_from_comet_radial_profile,
     extract_comet_radial_median_profile_from_cone,
     radial_profile_to_dataframe_product,
     radial_profile_to_image,
 )
 from swift_comet_pipeline.dust.beta_parameter import beta_parameter
-from swift_comet_pipeline.observationlog.stacked_epoch import StackedEpoch
-from swift_comet_pipeline.orbits.perihelion import find_perihelion
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
@@ -46,7 +43,7 @@ from swift_comet_pipeline.water_production.fluorescence_OH import (
 )
 from swift_comet_pipeline.water_production.flux_OH import OH_flux_from_count_rate
 from swift_comet_pipeline.water_production.num_OH_to_Q import (
-    num_OH_to_Q_vectorial,
+    num_OH_within_r_to_Q_vectorial,
 )
 from swift_comet_pipeline.tui.tui_common import get_selection
 
@@ -56,25 +53,13 @@ from swift_comet_pipeline.tui.tui_common import get_selection
 class RadialProfileSelectionPlot(object):
     def __init__(
         self,
-        # stacked_epoch: StackedEpoch,
         epoch_summary: EpochSummary,
         uw1_img: SwiftUVOTImage,
         uw1_bg: BackgroundResult,
         uvv_img: SwiftUVOTImage,
         uvv_bg: BackgroundResult,
-        # t_perihelion: Time,
     ):
         self.epoch_summary = epoch_summary
-        # self.stacked_epoch = stacked_epoch
-        # self.helio_r_au = np.mean(stacked_epoch.HELIO)
-        # self.helio_v_kms = np.mean(stacked_epoch.HELIO_V)
-        # self.delta = np.mean(stacked_epoch.OBS_DIS)
-        # self.km_per_pix = np.mean(stacked_epoch.KM_PER_PIX)
-
-        # self.t_perihelion = t_perihelion
-        # self.time_from_perihelion = (
-        #     Time(np.mean(stacked_epoch.MID_TIME)) - self.t_perihelion
-        # )
         self.time_from_perihelion = epoch_summary.time_from_perihelion
 
         self.uw1_img = uw1_img
@@ -441,35 +426,21 @@ class RadialProfileSelectionPlot(object):
         self.uw1_divided_median_image = uw1_sub_img / uw1_div_img
         self.uvv_divided_median_image = uvv_sub_img / uvv_div_img
 
-        # self.uw1_division_plot.norm.vmin, self.uw1_division_plot.norm.vmax = (
-        #     self.zscale.get_limits(self.uw1_divided_median_image)
-        # )
-        # self.uvv_division_plot.norm.vmin, self.uvv_division_plot.norm.vmax = (
-        #     self.zscale.get_limits(self.uvv_divided_median_image)
-        # )
-
         self.uw1_division_plot.set_data(self.uw1_divided_median_image)
         self.uvv_division_plot.set_data(self.uvv_divided_median_image)
 
     def update_q_from_profiles(self):
-        self.uw1_count_rate = count_rate_from_comet_radial_profile(
+        self.uw1_count_rate = total_count_rate_from_comet_radial_profile(
             comet_profile=self.uw1_radial_profile,
             bgr=self.uw1_bg,
             t_exp_s=self.epoch_summary.uw1_exposure_time_s,
         )
-        self.uvv_count_rate = count_rate_from_comet_radial_profile(
+        self.uvv_count_rate = total_count_rate_from_comet_radial_profile(
             comet_profile=self.uvv_radial_profile,
             bgr=self.uvv_bg,
             t_exp_s=self.epoch_summary.uvv_exposure_time_s,
         )
 
-        # self.uw1_count_rate = count_rate_from_comet_radial_profile(
-        #     comet_profile=self.uw1_radial_profile, bg=self.uw1_bg.count_rate_per_pixel
-        # )
-        # self.uvv_count_rate = count_rate_from_comet_radial_profile(
-        #     comet_profile=self.uvv_radial_profile, bg=self.uvv_bg.count_rate_per_pixel
-        # )
-        #
         self.flux_OH = OH_flux_from_count_rate(
             uw1=self.uw1_count_rate,
             uvv=self.uvv_count_rate,
@@ -497,13 +468,20 @@ class RadialProfileSelectionPlot(object):
             delta_au=self.epoch_summary.delta_au,
         )
 
-        self.q_h2o = num_OH_to_Q_vectorial(
-            helio_r_au=self.epoch_summary.rh_au, num_OH=self.num_OH
+        self.q_h2o = num_OH_within_r_to_Q_vectorial(
+            helio_r_au=self.epoch_summary.rh_au,
+            num_OH=self.num_OH,
+            within_r=self.uw1_radial_profile._radius
+            * self.epoch_summary.km_per_pix
+            * u.km,  # type: ignore
         )
 
-        self.abs_upper_limit_q_h2o = num_OH_to_Q_vectorial(
+        self.abs_upper_limit_q_h2o = num_OH_within_r_to_Q_vectorial(
             helio_r_au=self.epoch_summary.rh_au,
             num_OH=self.abs_upper_limit_num_OH,
+            within_r=self.uw1_radial_profile._radius
+            * self.epoch_summary.km_per_pix
+            * u.km,  # type: ignore
         )
 
         detection_str = ""

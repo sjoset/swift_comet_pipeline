@@ -1,30 +1,11 @@
 from functools import cache
 
+import numpy as np
 import astropy.units as u
+from scipy.interpolate import interp1d
 from sbpy.calib import Sun
 
 from swift_comet_pipeline.types.solar_spectrum import SolarSpectrum
-
-
-# @cache
-# def read_fixed_solar_spectrum(solar_spectrum_path: pathlib.Path) -> SolarSpectrum:
-#     """
-#     Reads a modeled solar spectrum csv file of the form (lambda, irradiance) and returns a SolarSpectrum
-#     Colina et al 1996
-#     """
-#     # load the solar spectrum
-#     solar_spectrum_df = pd.read_csv(solar_spectrum_path)
-#
-#     # convert lambda from angstroms to nanometers
-#     solar_lambdas = (
-#         solar_spectrum_df["wavelength (angstroms)"].to_numpy(dtype=float) / 10
-#     )
-#     # factor of 100 to convert to correct units
-#     solar_irradiances = solar_spectrum_df["irradiance"].to_numpy(dtype=float) / 100
-#
-#     return SolarSpectrum(
-#         lambdas_nm=solar_lambdas, spectral_irradiances_Wm2_nm=solar_irradiances
-#     )
 
 
 @cache
@@ -37,4 +18,19 @@ def get_solar_spectrum() -> SolarSpectrum:
     return SolarSpectrum(
         lambdas_nm=solar_lambdas_nm,
         spectral_irradiances_Wm2_nm=spectral_irradiances_Wm2_nm,
+    )
+
+
+def interpolate_solar_spectrum_onto(
+    solar_spectrum: SolarSpectrum, lambdas_nm: np.ndarray
+) -> SolarSpectrum:
+
+    solar_irradiances_interpolation = interp1d(
+        solar_spectrum.lambdas_nm, solar_spectrum.spectral_irradiances_Wm2_nm
+    )
+    solar_irradiances_on_lambdas = solar_irradiances_interpolation(lambdas_nm)
+
+    return SolarSpectrum(
+        lambdas_nm=lambdas_nm.copy(),
+        spectral_irradiances_Wm2_nm=solar_irradiances_on_lambdas,
     )

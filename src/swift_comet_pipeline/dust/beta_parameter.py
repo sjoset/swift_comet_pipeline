@@ -1,3 +1,5 @@
+from functools import cache
+
 from swift_comet_pipeline.dust.reddening_correction import reddening_correction
 from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
     read_swift_pipeline_config,
@@ -5,10 +7,8 @@ from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
 from swift_comet_pipeline.types import DustReddeningPercent, SwiftFilter
 
 
-def beta_parameter(
-    dust_redness: DustReddeningPercent,
-    # solar_spectrum_time: Time | None = None
-) -> float:
+@cache
+def beta_parameter(dust_redness: DustReddeningPercent) -> float:
 
     from swift_comet_pipeline.spectrum.solar_count_rate import (
         solar_count_rate_in_filter_1au,
