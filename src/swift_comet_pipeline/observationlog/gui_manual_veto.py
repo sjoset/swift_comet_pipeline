@@ -175,10 +175,10 @@ class EpochImagePlot(object):
 
     def setup_horizons_marker(self):
         self.comet_x_marker = self.ax.axvline(  # type: ignore
-            self.horizon_comet_coords.x, color="b", alpha=0.2
+            self.horizon_comet_coords.x, color="b", alpha=0.1
         )
         self.comet_y_marker = self.ax.axhline(  # type: ignore
-            self.horizon_comet_coords.y, color="b", alpha=0.2
+            self.horizon_comet_coords.y, color="b", alpha=0.1
         )
 
     def setup_selected_comet_center_marker(self):
