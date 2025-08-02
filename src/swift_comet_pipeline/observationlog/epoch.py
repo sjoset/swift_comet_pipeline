@@ -1,9 +1,6 @@
 import pathlib
-import numpy as np
 
 from astropy.io import fits
-from astropy.time import Time
-import astropy.units as u
 
 from swift_comet_pipeline.observationlog.epoch_typing import Epoch
 from swift_comet_pipeline.observationlog.observation_log import (

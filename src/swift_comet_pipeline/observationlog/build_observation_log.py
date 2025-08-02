@@ -1,3 +1,4 @@
+from enum import StrEnum
 import itertools
 
 import logging as log
@@ -16,6 +17,7 @@ from swift_comet_pipeline.comet.comet_center import invalid_user_center_value
 from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
 from swift_comet_pipeline.swift.swift_data import (
     SwiftData,
+    SwiftLevel2FITSObservation,
     swift_observation_id_from_int,
     swift_orbit_id_from_obsid,
 )
@@ -25,6 +27,126 @@ from swift_comet_pipeline.swift.swift_datamodes import (
 )
 from swift_comet_pipeline.swift.swift_filter_to_string import obs_string_to_filter
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
+
+
+# TODO: don't need an enum for this probably
+class SwiftFITSHeaderKeywordExtract(StrEnum):
+    observation_id = "OBS_ID"
+    observation_start_date = "DATE-OBS"
+    observation_end_date = "DATE-END"
+    filter_type = "FILTER"
+    comet_ra_deg = "RA_OBJ"
+    comet_dec_deg = "DEC_OBJ"
+    exposure_time_s = "EXPOSURE"
+    image_mode = "DATAMODE"
+    creator = "CREATOR"
+
+    @classmethod
+    def all_header_keywords(cls):
+        return [x for x in cls]
+
+    @classmethod
+    def all_header_keyword_strings(cls):
+        return [x.value for x in cls]
+
+
+def is_fits_image_hdu(hdu) -> bool:
+    return isinstance(hdu, fits.ImageHDU)
+
+
+def is_event_mode_bintable(hdu) -> bool:
+    return isinstance(hdu, fits.BinTableHDU)
+
+
+def level_2_data_mode_observation_to_series(
+    obs: SwiftLevel2FITSObservation,
+) -> list[pd.Series] | None:
+    """
+    For the given observation, pull all SwiftFITSHeaderKeyword keys from the image header
+    and fill in columns of a Series with the same names as the keys
+    """
+
+    series_list = []
+    fits_header_entries_to_read = (
+        SwiftFITSHeaderKeywordExtract.all_header_keyword_strings()
+    )
+
+    with fits.open(obs.fits_path) as hdul:
+        # print(
+        #     f"Processing {obs.fits_path} taken in mode {obs.observation_mode.value}..."
+        # )
+        # skip the first extension, which should be informational
+        for extension_index, hdu in enumerate(hdul[1:]):
+            # check if this extension is an image
+            if not is_fits_image_hdu(hdu=hdu):
+                print(
+                    f"Skipping extension {extension_index} of {obs.fits_path}: not an image HDU"
+                )
+                continue
+
+            header_series = {
+                k: hdu.header.get(k, None) for k in fits_header_entries_to_read
+            }
+            header_series["WCS"] = WCS(hdu.header)
+            header_series["EXTENSION"] = extension_index
+            header_series["FITS_FILENAME"] = str(obs.fits_path.name)
+            series_list.append(pd.Series(header_series))
+
+    if len(series_list) == 0:
+        return None
+
+    return series_list
+
+
+def event_mode_header_to_WCS(hdr: fits.Header) -> WCS:
+    wcs_obj = WCS(naxis=2)
+    wcs_obj.wcs.crpix = [hdr["TCRPX6"], hdr["TCRPX7"]]
+    wcs_obj.wcs.cdelt = [hdr["TCDLT6"], hdr["TCDLT7"]]
+    wcs_obj.wcs.crval = [hdr["TCRVL6"], hdr["TCRVL7"]]
+    wcs_obj.wcs.ctype = [hdr["TCTYP6"], hdr["TCTYP7"]]
+    return wcs_obj
+
+
+# TODO: combine code from these two into a function to extract given a fits extension and HDU type
+def level_2_event_mode_observation_to_series(
+    obs: SwiftLevel2FITSObservation,
+) -> list[pd.Series] | None:
+    """
+    For the given event mode observation, pull all SwiftFITSHeaderKeyword keys from the correct header
+    and fill in columns of a Series with the same names as the keys
+    """
+
+    event_mode_bintable_extension_id = 1
+    fits_header_entries_to_read = (
+        SwiftFITSHeaderKeywordExtract.all_header_keyword_strings()
+    )
+
+    with fits.open(obs.fits_path) as hdul:
+        # only the first extension, which should be a BinTable for event mode images
+        hdu = hdul[event_mode_bintable_extension_id]
+
+        if not is_event_mode_bintable(hdu=hdu):
+            print(f"Skipping {obs.fits_path}: not a BinTableHDU at extension 1")
+            return None
+
+        hdr: fits.Header = hdu.header  # type: ignore
+        header_series = {k: hdr.get(k, None) for k in fits_header_entries_to_read}
+        header_series["WCS"] = event_mode_header_to_WCS(hdr)
+        header_series["EXTENSION"] = event_mode_bintable_extension_id
+        header_series["FITS_FILENAME"] = str(obs.fits_path.name)
+
+    return [pd.Series(header_series)]
+
+
+def level_2_observation_to_series(
+    obs: SwiftLevel2FITSObservation,
+) -> list[pd.Series] | None:
+
+    if obs.observation_mode == SwiftImageMode.data_mode:
+        return level_2_data_mode_observation_to_series(obs=obs)
+    elif obs.observation_mode == SwiftImageMode.event_mode:
+        return level_2_event_mode_observation_to_series(obs=obs)
 
 
 def build_observation_log(
@@ -32,89 +154,60 @@ def build_observation_log(
     horizons_id: str,
 ) -> SwiftObservationLog | None:
     """
-    Takes a swift data structure and looks through observation ids that have images that:
+    through observation ids that have images that:
         - are from uvot
-        - are sky_units (sk)
-        - are in any filter
+            - are data mode in sky_units (sk), any filter
+            OR
+            - are event mode, any filter
     and returns an observation log in the form of a pandas dataframe
     """
 
     all_filters = SwiftFilter.all_filters()
-    obsids = swift_data.get_all_observation_ids()
 
-    # TODO: the entry DATAMODE is 'IMAGE' - confirm this is data mode and not event mode
+    observation_entries_list = []
 
-    fits_header_entries_to_read = [
-        "OBS_ID",
-        "DATE-OBS",
-        "DATE-END",
-        "FILTER",
-        "PA_PNT",
-        "RA_OBJ",
-        "DEC_OBJ",
-        "EXPOSURE",
-        "DATAMODE",
-    ]
-    obs_log = pd.DataFrame(columns=fits_header_entries_to_read)  # type: ignore
+    observation_progress_bar = tqdm(swift_data.observation_ids, unit="observations")
+    for obsid in observation_progress_bar:
 
-    # list of every file we need to include in observation log?
-    image_path_list = []
-    # list of extensions that describe which sub-image inside a FITS file we are describing
-    extension_list = []
-    # list of world coordinate systems of each image
-    wcs_list = []
-    # keep a list of the filenames that the extensions come from
-    processed_filname_list = []
-    # swift pipeline versions that produced our downloaded data
-    creator_list = []
-    # image_shape_row_list = []
-    # image_shape_col_list = []
-
-    image_progress_bar = tqdm(obsids, unit="images")
-    for k, obsid in enumerate(image_progress_bar):
-        # get list of image file names from all filters that match the selected image type (sk, ex, ..)
-        image_path_list = [
-            swift_data.get_swift_uvot_image_paths(obsid=obsid, filter_type=filter_type)
-            for filter_type in all_filters
+        # For this observation ID, get images in every filter - we could limit it, but
+        # we can include all of the observations in the log and filter later if we want
+        # just certain filters
+        all_observations_for_this_obsid = [
+            swift_data.observations[obsid, ft] for ft in all_filters
         ]
-        # filter out the ones that were not found
-        image_path_list = list(filter(lambda x: x is not None, image_path_list))
+        # filter out the ones that were not found - there
+        all_observations_for_this_obsid = list(
+            filter(lambda x: x is not None, all_observations_for_this_obsid)
+        )
         # flatten this list into 1d
-        image_path_list = list(itertools.chain.from_iterable(image_path_list))  # type: ignore
+        all_observations_for_this_obsid = list(
+            itertools.chain.from_iterable(all_observations_for_this_obsid)  # type: ignore
+        )
 
-        # loop through every fits file found
-        for image_path in image_path_list:
-            # loop through every ImageHDU in the file
-            with fits.open(image_path) as hdul:
-                # skip the first extension, which should be informational
-                for ext_id in range(1, len(hdul)):
-                    # check if this extension is an image
-                    if not isinstance(hdul[ext_id], fits.ImageHDU):
-                        log.info(
-                            "Skipping extension %s of fits file %s: not an ImageHDU",
-                            ext_id,
-                            image_path,
-                        )
-                        continue
+        if len(all_observations_for_this_obsid) == 0:
+            print(
+                f"No valid observations found for observation ID {obsid}, skipping..."
+            )
+            continue
 
-                    header = hdul[ext_id].header  # type: ignore
+        observations_this_obsid = [
+            level_2_observation_to_series(obs=x)
+            for x in all_observations_for_this_obsid
+            if x is not None
+        ]
 
-                    # # pull the numpy shape out of the pixel array
-                    # img_shape = hdul[ext_id].data.shape  # type: ignore
-                    # image_shape_row_list.append(img_shape[0])
-                    # image_shape_col_list.append(img_shape[1])
+        valid_observations_this_obsid = list(
+            itertools.chain.from_iterable(observations_this_obsid)  # type: ignore
+        )
+        observation_entries_list.append(valid_observations_this_obsid)
 
-                    # add a row to the dataframe from the header info
-                    obs_log.loc[len(obs_log.index)] = [
-                        header[i] for i in fits_header_entries_to_read
-                    ]
+        observation_progress_bar.set_description(f"Observation ID: {obsid}")
 
-                    wcs_list.append(WCS(header))
-                    extension_list.append(ext_id)
-                    processed_filname_list.append(image_path.name)  # type: ignore
-
-                    image_progress_bar.set_description(f"Image: {image_path.name}")  # type: ignore
-                    creator_list.append(hdul[0].header["CREATOR"])  # type: ignore
+    # return observation_entries_list
+    flattened_observation_series_list = list(
+        itertools.chain.from_iterable(observation_entries_list)
+    )
+    obs_log = pd.DataFrame(flattened_observation_series_list)
 
     # Adjust some columns of the dataframe we just constructed
     obs_log = obs_log.rename(columns={"DATE-END": "DATE_END", "DATE-OBS": "DATE_OBS"})
@@ -126,18 +219,6 @@ def build_observation_log(
     # add middle of observation time
     dts = (obs_log["DATE_END"] - obs_log["DATE_OBS"]) / 2
     obs_log["MID_TIME"] = obs_log["DATE_OBS"] + dts
-
-    # track which extension in the fits files the images are
-    obs_log["EXTENSION"] = extension_list
-
-    # the filename the extension was pulled from
-    obs_log["FITS_FILENAME"] = processed_filname_list
-
-    # version of UVOT2FITS
-    obs_log["CREATOR"] = creator_list
-
-    # obs_log["IMAGE_SHAPE_ROWS"] = image_shape_row_list
-    # obs_log["IMAGE_SHAPE_COLS"] = image_shape_col_list
 
     # translates horizons results (left) to observation log column names (right)
     # documentation of values returned by Horizons available at
@@ -193,16 +274,25 @@ def build_observation_log(
 
     obs_log = pd.concat([obs_log, horizon_dataframe], axis=1)
 
-    x_list = []
-    y_list = []
-    # use the positions found from Horizons to find the pixel center of the comet based on its image WCS
-    for i, (ra, dec) in enumerate(zip(obs_log["RA"], obs_log["DEC"])):
-        x, y = wcs_list[i].wcs_world2pix(ra, dec, 1)
-        x_list.append(float(x))
-        y_list.append(float(y))
+    # # TODO: remove x_list, y_list
+    # x_list = []
+    # y_list = []
+    # # use the positions found from Horizons to find the pixel center of the comet based on its image WCS
+    # for ra, dec, wcs_cur in zip(obs_log["RA"], obs_log["DEC"], obs_log["WCS"]):
+    #     x, y = wcs_cur.wcs_world2pix(ra, dec, 1)
+    #     x_list.append(float(x))
+    #     y_list.append(float(y))
+    # print(f"Old comet x list: {x_list}")
 
-    obs_log["PX"] = x_list
-    obs_log["PY"] = y_list
+    comet_centers = [
+        img_wcs.wcs_world2pix(r, d, 0)
+        for img_wcs, r, d in zip(obs_log.WCS, obs_log.RA, obs_log.DEC)
+    ]
+    comet_center_xs = [float(x[0]) for x in comet_centers]
+    comet_center_ys = [float(x[1]) for x in comet_centers]
+
+    obs_log["PX"] = comet_center_xs
+    obs_log["PY"] = comet_center_ys
 
     # convert columns to their respective types
     obs_log["FILTER"] = obs_log["FILTER"].astype(str).map(obs_string_to_filter)
@@ -233,5 +323,8 @@ def build_observation_log(
     # initialize user-specified comet centers as invalid
     obs_log["USER_CENTER_X"] = [invalid_user_center_value()] * len(obs_log.index)
     obs_log["USER_CENTER_Y"] = [invalid_user_center_value()] * len(obs_log.index)
+
+    # drop this column now that we are done with it
+    obs_log = obs_log.drop("WCS", axis=1)
 
     return obs_log

@@ -1,3 +1,4 @@
+from functools import cache
 from itertools import product
 import pathlib
 import numpy as np
@@ -6,7 +7,6 @@ import glob
 from dataclasses import dataclass
 
 from astropy.io import fits
-from astropy.wcs import WCS
 
 from typing import List
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
@@ -38,11 +38,16 @@ def swift_orbit_id_from_int(number: int) -> SwiftOrbitID | None:
 
 
 @dataclass
-class SwiftFITSObservation:
+class SwiftLevel2FITSObservation:
+    """
+    This could represent multiple images through multiple image extensions in the FITS file
+    """
+
     orbit_id: SwiftOrbitID
     observation_id: SwiftObservationID
-    path: pathlib.Path
+    fits_path: pathlib.Path
     observation_mode: SwiftImageMode
+    filter_type: SwiftFilter
 
 
 class SwiftData:
@@ -56,7 +61,7 @@ class SwiftData:
                     event/
                         sw[observation id][filter]*.evt.gz
 
-    Then given an observation id, filter, and image type, we can construct the path to this file
+    Gathers all available observations into self.observations
     """
 
     def __init__(self, data_path: pathlib.Path):
@@ -64,13 +69,16 @@ class SwiftData:
 
         self.observation_ids = self._get_all_observation_ids()
         self.orbit_ids = self._get_all_orbit_ids()
+        self.observations: dict[
+            tuple[SwiftObservationID, SwiftFilter],
+            list[SwiftLevel2FITSObservation] | None,
+        ] = {}
 
         if self.observation_ids is None:
             return
 
-        self.observations = {}
         for obsid, ft in product(self.observation_ids, SwiftFilter.all_filters()):
-            self.observations = self._get_swift_uvot_observations(
+            self.observations[obsid, ft] = self._get_swift_uvot_observations(
                 obsid=obsid, filter_type=ft
             )
 
@@ -80,6 +88,7 @@ class SwiftData:
         that don't match the naming structure of 11 numerical digits, and returns a list of every observation id found
         """
         if not self.base_path.exists():
+            print(f"Base path {self.base_path} doesnt exist!")
             return None
 
         # get a list of everything in the top-level data directory
@@ -119,15 +128,14 @@ class SwiftData:
         self,
         obsid: SwiftObservationID,
         filter_type: SwiftFilter,
-    ) -> List[SwiftFITSObservation] | None:
+    ) -> List[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID, filter type, and image type, returns a list of event-mode FITS files that match.
         """
         filter_string = filter_to_file_string(filter_type)
 
-        # TODO: find a directory where there are multiple _sk.img.gz files so we can make sure this is the proper way to handle this
-        image_path = self.get_uvot_image_directory(
-            obsid, data_mode=SwiftImageMode.event_mode
+        image_path = self._get_observation_image_directory(
+            obsid, image_mode=SwiftImageMode.event_mode
         )
 
         image_name_base = "sw" + obsid + filter_string
@@ -138,14 +146,14 @@ class SwiftData:
         if len(matching_files) == 0:
             return None
 
-        # return list(map(pathlib.Path, matching_files))
         img_paths = list(map(pathlib.Path, matching_files))
         return [
-            SwiftFITSObservation(
+            SwiftLevel2FITSObservation(
                 orbit_id=swift_orbit_id_from_obsid(obsid),
                 observation_id=obsid,
-                path=x,
+                fits_path=x,
                 observation_mode=SwiftImageMode.event_mode,
+                filter_type=filter_type,
             )
             for x in img_paths
         ]
@@ -155,16 +163,18 @@ class SwiftData:
         obsid: SwiftObservationID,
         filter_type: SwiftFilter,
         image_type: SwiftUVOTImageType = SwiftUVOTImageType.sky_units,
-    ) -> List[SwiftFITSObservation] | None:
+    ) -> List[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID, filter type, and image type, returns a list of FITS files that match.
-        Some observations have multiple files using the same filter, so we have to do it this way
+        Defaults to sky images ('_sk.img.gz') only.
+        Some observations have multiple FITS files using the same filter in the same folder,
+        so we have to do it this way
         """
         filter_string = filter_to_file_string(filter_type)
 
         # TODO: find a directory where there are multiple _sk.img.gz files so we can make sure this is the proper way to handle this
-        image_path = self.get_uvot_image_directory(
-            obsid, data_mode=SwiftImageMode.data_mode
+        image_path = self._get_observation_image_directory(
+            obsid, image_mode=SwiftImageMode.data_mode
         )
         image_name_base = "sw" + obsid + filter_string + "_" + image_type
         image_name = image_path / image_name_base
@@ -176,23 +186,25 @@ class SwiftData:
 
         img_paths = list(map(pathlib.Path, matching_files))
         return [
-            SwiftFITSObservation(
+            SwiftLevel2FITSObservation(
                 orbit_id=swift_orbit_id_from_obsid(obsid),
                 observation_id=obsid,
-                path=x,
+                fits_path=x,
                 observation_mode=SwiftImageMode.data_mode,
+                filter_type=filter_type,
             )
             for x in img_paths
         ]
 
     def _get_swift_uvot_observations(
         self, obsid: SwiftObservationID, filter_type: SwiftFilter
-    ) -> List[SwiftFITSObservation] | None:
+    ) -> List[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID and filter type, returns a list of FITS files that match.
         Some observations have multiple files using the same filter, so we have to do it this way
 
         For observations that have a valid event mode file, skip the data mode image that Swift provides
+        and only include the event mode image
         TODO: check if there are ever event mode and data mode exposures under the same obsid
         """
 
@@ -212,43 +224,78 @@ class SwiftData:
 
         return data_mode_path_list
 
-    def get_uvot_image_directory(
-        self, obsid: SwiftObservationID, data_mode: SwiftImageMode
+    def _get_observation_image_directory(
+        self, obsid: SwiftObservationID, image_mode: SwiftImageMode
     ) -> pathlib.Path:
         """Returns a path to the directory containing the uvot images of the given observation id"""
-        if data_mode == SwiftImageMode.data_mode:
+        if image_mode == SwiftImageMode.data_mode:
             image_path = self.base_path / obsid / "uvot" / "image"
-        elif data_mode == SwiftImageMode.event_mode:
+        elif image_mode == SwiftImageMode.event_mode:
             image_path = self.base_path / obsid / "uvot" / "event"
 
         return image_path
 
-    def get_uvot_image(
+    @cache
+    def _get_observation_image(
         self,
         obsid: SwiftObservationID,
+        image_mode: SwiftImageMode,
         fits_filename: str,
-        fits_extension: int,
-        data_mode: SwiftImageMode,
-    ) -> SwiftUVOTImage:
-        image_path = self.get_uvot_image_directory(
-            obsid=obsid, data_mode=data_mode
-        ) / pathlib.Path(fits_filename)
-        image_data: SwiftUVOTImage = fits.getdata(image_path, ext=fits_extension)  # type: ignore
-        return image_data
-
-    def get_uvot_image_wcs(
-        self,
-        obsid: SwiftObservationID,
-        fits_filename: str,
-        fits_extension: int,
-        data_mode: SwiftImageMode,
-    ) -> WCS:
-        image_path = self.get_uvot_image_directory(
-            obsid=obsid, data_mode=data_mode
+        extension_id: int,
+    ) -> SwiftUVOTImage | None:
+        fits_path = self._get_observation_image_directory(
+            obsid=obsid, image_mode=image_mode
         ) / pathlib.Path(fits_filename)
 
-        with fits.open(image_path) as hdul:
-            header = hdul[fits_extension].header  # type: ignore
-            wcs = WCS(header)
+        if image_mode == SwiftImageMode.data_mode:
+            return fits.getdata(fits_path, extension_id)  # type: ignore
+        elif image_mode == SwiftImageMode.event_mode:
+            return event_mode_fits_to_image_simple(
+                fits_path=fits_path, extension_id=extension_id
+            )
 
-        return wcs
+
+def event_mode_fits_to_image_simple(
+    fits_path: pathlib.Path, extension_id: int
+) -> SwiftUVOTImage:
+    ev_hdr = fits.getheader(fits_path, extension_id)
+    x_min, x_max = ev_hdr["TLMIN6"], ev_hdr["TLMAX6"]
+    y_min, y_max = ev_hdr["TLMIN7"], ev_hdr["TLMAX7"]
+    x_size = x_max - x_min
+    y_size = y_max - y_min
+    ev_table = fits.getdata(fits_path, extension_id)
+    assert ev_table is not None
+    img, _, _ = np.histogram2d(ev_table["X"], ev_table["Y"], bins=(x_size, y_size))  # type: ignore
+    return img.T
+
+
+# def get_uvot_data_mode_image(
+#     self,
+#     obsid: SwiftObservationID,
+#     fits_filename: str,
+#     fits_extension: int,
+#     # data_mode: SwiftImageMode,
+# ) -> SwiftUVOTImage:
+#     image_path = self.get_uvot_image_directory(
+#         obsid=obsid, data_mode=data_mode
+#     ) / pathlib.Path(fits_filename)
+#     image_data: SwiftUVOTImage = fits.getdata(image_path, ext=fits_extension)  # type: ignore
+#     return image_data
+
+
+# def get_uvot_image_wcs(
+#     self,
+#     obsid: SwiftObservationID,
+#     fits_filename: str,
+#     fits_extension: int,
+#     data_mode: SwiftImageMode,
+# ) -> WCS:
+#     image_path = self._get_observation_image_directory(
+#         obsid=obsid, image_mode=data_mode
+#     ) / pathlib.Path(fits_filename)
+#
+#     with fits.open(image_path) as hdul:
+#         header = hdul[fits_extension].header  # type: ignore
+#         wcs = WCS(header)
+#
+#     return wcs

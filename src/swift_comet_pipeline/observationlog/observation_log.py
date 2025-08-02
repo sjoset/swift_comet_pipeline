@@ -46,9 +46,6 @@ def observation_log_schema() -> pa.Schema:
             pa.field("MID_TIME", pa.string()),
             # Which SwiftFilter was used for this observation
             pa.field("FILTER", pa.string()),
-            # TODO: we probably don't need PA_PNT
-            # Position angle, degrees of roll
-            pa.field("PA_PNT", pa.float64()),
             # Right ascension, degrees
             pa.field("RA_OBJ", pa.float64()),
             # Declination, degrees
@@ -181,7 +178,9 @@ def includes_uvv_and_uw1_filters(
 
 def get_image_path_from_obs_log_row(swift_data: SwiftData, obs_log_row) -> pathlib.Path:
     image_path = (
-        swift_data.get_uvot_image_directory(obsid=obs_log_row.OBS_ID)
+        swift_data._get_observation_image_directory(
+            obsid=obs_log_row.OBS_ID, image_mode=obs_log_row.DATAMODE
+        )
         / obs_log_row.FITS_FILENAME
     )
 
@@ -199,7 +198,9 @@ def get_image_from_obs_log_row(swift_data: SwiftData, obs_log_row) -> SwiftUVOTI
 
 def get_header_from_obs_log_row(swift_data: SwiftData, obs_log_row):
     image_path = (
-        swift_data.get_uvot_image_directory(obsid=obs_log_row.OBS_ID)
+        swift_data._get_observation_image_directory(
+            obsid=obs_log_row.OBS_ID, image_mode=obs_log_row.DATAMODE
+        )
         / obs_log_row.FITS_FILENAME
     )
     header = fits.getheader(image_path)
