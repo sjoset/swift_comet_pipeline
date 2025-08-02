@@ -2,8 +2,9 @@ from astropy.io import fits
 from astropy.time import Time
 
 
-def uvot_time_to_astropy_time(uvot_t: float, event_mode_hdu: fits.BinTableHDU) -> Time:
-    hdr: fits.header.Header = event_mode_hdu.header
+def uvot_time_to_astropy_time(uvot_t: float, event_mode_hdr: fits.Header) -> Time:
+    # hdr: fits.header.Header = event_mode_hdr.header
+    hdr = event_mode_hdr
 
     # required FITS timing keywords (OGIP/FITS convention)
     mjdref: float = float(hdr.get("MJDREFI", 0.0)) + float(hdr.get("MJDREFF", 0.0))  # type: ignore

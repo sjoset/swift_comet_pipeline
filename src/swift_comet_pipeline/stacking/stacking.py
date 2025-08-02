@@ -1,25 +1,36 @@
+import pathlib
 from typing import Tuple, List
 from itertools import product
 
+from astroquery.jplhorizons import Horizons
 import numpy as np
 from astropy.io import fits
+from astropy.time import Time
+from photutils.aperture import CircularAperture
 from tqdm import tqdm
 from icecream import ic
 
+from swift_comet_pipeline.types.comet_center_finding_method import (
+    CometCenterFindingMethod,
+)
 from swift_comet_pipeline.comet.comet_center import get_comet_center_prefer_user_coords
+from swift_comet_pipeline.comet.comet_center_finding import find_comet_center
 from swift_comet_pipeline.image_manipulation.image_pad import pad_to_match_sizes
 from swift_comet_pipeline.image_manipulation.image_recenter import (
     center_image_on_coords,
     get_image_dimensions_to_center_on_pixel,
 )
-from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
-from swift_comet_pipeline.observationlog.observation_log import (
-    get_image_from_obs_log_row,
+from swift_comet_pipeline.observationlog.build_observation_log import (
+    event_mode_header_to_WCS,
 )
+from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
 from swift_comet_pipeline.pipeline_utils.epoch_summary import (
     get_unstacked_epoch_summary,
+)
+from swift_comet_pipeline.pipeline_utils.time_conversion import (
+    uvot_time_to_astropy_time,
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter_to_string import (
@@ -39,41 +50,199 @@ from swift_comet_pipeline.types.swift_pixel_resolution import SwiftPixelResoluti
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
+def trim_image_and_relocate_pixel_coords(
+    img: SwiftUVOTImage, x_min: int, x_max: int, y_min: int, y_max: int, pc: PixelCoord
+) -> tuple[SwiftUVOTImage, PixelCoord]:
+    """
+    Trim down the given image, and move the coordinate pc based on the trim to point to the same pixel
+    """
+
+    new_img = img[y_min:y_max, x_min:x_max].copy()
+    new_pixel_coord = PixelCoord(x=pc.x - x_min, y=pc.y - y_min)
+
+    return new_img, new_pixel_coord
+
+
+def get_comet_position_at_time(h_id: str, mt: Time):
+    horizons_response = Horizons(
+        id=h_id, location="@swift", epochs=mt.jd, id_type="designation"
+    )
+    eph = horizons_response.ephemerides(closest_apparition=True)  # type: ignore
+
+    return eph["RA"][0], eph["DEC"][0]
+
+
+def slice_event_mode_image_data(event_mode_bintable, x_size, y_size, num_slices):
+    ts, xs, ys = (
+        event_mode_bintable["TIME"],
+        event_mode_bintable["X"] - 1,
+        event_mode_bintable["Y"] - 1,
+    )
+
+    t_exp_start = np.min(ts)
+    t_exp_stop = np.max(ts)
+
+    slice_ts = np.linspace(t_exp_start, t_exp_stop, num=num_slices + 1, endpoint=True)
+    slice_starting_ts = slice_ts[:-1]
+    slice_ending_ts = slice_ts[1:]
+    mid_time_list = (slice_ending_ts + slice_starting_ts) / 2
+
+    # bump up the ending time by 1 second to catch every photon
+    slice_ending_ts[-1] += 1
+
+    image_list = []
+    for t_st, t_e in zip(slice_starting_ts, slice_ending_ts):
+        t_mask = np.logical_and(ts >= t_st, ts < t_e)
+
+        img = np.zeros((y_size, x_size))
+        for x, y in zip(xs[t_mask], ys[t_mask]):
+            img[y, x] += 1
+        image_list.append(img)
+
+    return image_list, mid_time_list
+
+
+def event_mode_fits_to_time_binned_image(
+    horizons_id: str, fits_path: pathlib.Path, extension_id: int, num_time_slices: int
+) -> tuple[SwiftUVOTImage, SwiftUVOTImage, SwiftUVOTImage]:
+    """
+    Header entry TLMAX6 = maximum extent of 'X' values, but not necessarily the largest X that was observed (np.min(['X']) is lower than this value)
+    Similar for TLMAX7 for the y value
+    """
+    ev_hdr = fits.getheader(fits_path, extension_id)
+    img_wcs = event_mode_header_to_WCS(hdr=ev_hdr)
+    ev_table = fits.getdata(fits_path, extension_id)
+    exposure_time = float(ev_hdr["EXPOSURE"])
+    exposure_time_per_slice = exposure_time / num_time_slices
+
+    print(f"Slicing event mode table into {num_time_slices} slices ...  ", end="")
+    x_min, y_min = np.min(ev_table["X"]), np.min(ev_table["Y"])
+    x_max, y_max = np.max(ev_table["X"]), np.max(ev_table["Y"])
+
+    img_slices_list, mid_time_list = slice_event_mode_image_data(
+        event_mode_bintable=ev_table,
+        x_size=ev_hdr["TLMAX6"],
+        y_size=ev_hdr["TLMAX7"],
+        num_slices=num_time_slices,
+    )
+    print("Done.")
+
+    # convert times to astropy times
+    astropy_mid_times = [
+        uvot_time_to_astropy_time(uvot_t=t, event_mode_hdr=ev_hdr)
+        for t in mid_time_list
+    ]
+
+    print("Performing Horizons lookups ...  ", end="")
+    comet_ras_decs = [
+        get_comet_position_at_time(h_id=horizons_id, mt=t) for t in astropy_mid_times
+    ]
+    slice_comet_centers = [
+        img_wcs.wcs_world2pix(ra, dec, 1) for ra, dec in comet_ras_decs
+    ]
+    slice_comet_centers_pix = [
+        PixelCoord(x=int(np.round(x)), y=int(np.round(y)))
+        for x, y in slice_comet_centers
+    ]
+    print("Done. Comet centers during slice:")
+    print(slice_comet_centers_pix)
+
+    # trim the images down: the Xs and Ys that are measured by event mode fall within [[x_min, x_max], [y_min, y_max]]
+    new_imgs_and_centers = [
+        trim_image_and_relocate_pixel_coords(
+            img=i, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, pc=pc
+        )
+        for i, pc in zip(img_slices_list, slice_comet_centers_pix)
+    ]
+
+    trimmed_imgs = [x[0] for x in new_imgs_and_centers]
+    trimmed_comet_centers = [x[1] for x in new_imgs_and_centers]
+    print("Comet centers after trim:")
+    print(trimmed_comet_centers)
+
+    # search_aps = [CircularAperture((pc.x, pc.y), r=10) for pc in trimmed_comet_centers]
+    # peak_finding_comet_centers = [
+    #     find_comet_center(
+    #         img=i, method=CometCenterFindingMethod.aperture_peak, search_aperture=sa
+    #     )
+    #     for i, sa in zip(trimmed_imgs, search_aps)
+    # ]
+
+    # don't bother with peak finding
+    peak_finding_comet_centers = trimmed_comet_centers
+
+    # see how big our final product needs to be
+    event_stack_size = determine_stacking_image_size(
+        img_list=trimmed_imgs, comet_center_coords=peak_finding_comet_centers
+    )
+    assert event_stack_size is not None
+    print(f"Event mode stack size: {event_stack_size}")
+
+    event_mode_images_to_stack = []
+    for i, (trimmed_img, peak_finding_comet_center) in enumerate(
+        zip(trimmed_imgs, peak_finding_comet_centers)
+    ):
+        print(
+            f"Processing image {i+1}/{len(trimmed_imgs)}: centering on {peak_finding_comet_center} ...  ",
+            end="",
+        )
+        image_data = center_image_on_coords(
+            source_image=trimmed_img,
+            source_coords_to_center=peak_finding_comet_center,
+            stacking_image_size=event_stack_size,
+        )
+        print("coincidence correcting ...  ", end="")
+        coi_map = coincidence_correction(
+            img=image_data / (exposure_time_per_slice),
+            scale=SwiftPixelResolution.event_mode,
+        )
+        image_data = image_data * coi_map
+        event_mode_images_to_stack.append(image_data)
+        print("Done.")
+
+    # just, whatever idc at this point
+    exposure_map = np.ones(event_stack_size)
+
+    # divide by total exposure time so that pixels are count rates
+    event_sum = np.sum(event_mode_images_to_stack, axis=0) / exposure_time
+
+    # divide each image by its exposure time for each image to be in count rate, then take median
+    event_median = np.median(
+        [i / exposure_time_per_slice for i in event_mode_images_to_stack], axis=0
+    )
+
+    return event_sum, event_median, exposure_map
+
+
 def determine_stacking_image_size(
     img_list: list[SwiftUVOTImage], comet_center_coords: list[PixelCoord]
 ) -> Tuple[int, int] | None:
     """
-    Opens every FITS file specified in the given epoch and finds the image size necessary to accommodate
+    Examines every image and finds the image size necessary to accommodate
     the largest image involved in the stack, so we can pad out the smaller images and stack them in one step
     """
 
     # stores how big each image would need to be if recentered on the comet
-    recentered_image_dimensions = []
+    recentered_image_dimensions_rows_cols = []
 
-    for img, comet_center in zip(img_list, comet_center_coords):
-        # image_data = get_image_from_obs_log_row(swift_data=swift_data, obs_log_row=row)
+    recentered_image_dimensions_rows_cols = [
+        get_image_dimensions_to_center_on_pixel(source_image=i, coords_to_center=pc)
+        for i, pc in zip(img_list, comet_center_coords)
+    ]
 
-        # comet_center_coords = get_comet_center_prefer_user_coords(row=row)
-
-        # keep a list of the image sizes
-        image_dimensions = get_image_dimensions_to_center_on_pixel(
-            source_image=img, coords_to_center=comet_center
-        )
-        recentered_image_dimensions.append(image_dimensions)
-
-    if len(recentered_image_dimensions) == 0:
+    if len(recentered_image_dimensions_rows_cols) == 0:
         print("No images found in epoch!")
         return None
 
     # now take the largest size so that every image can be stacked without losing pixels
     max_num_rows = sorted(
-        recentered_image_dimensions, key=lambda k: k[0], reverse=True
+        recentered_image_dimensions_rows_cols, key=lambda k: k[0], reverse=True
     )[0][0]
     max_num_cols = sorted(
-        recentered_image_dimensions, key=lambda k: k[1], reverse=True
+        recentered_image_dimensions_rows_cols, key=lambda k: k[1], reverse=True
     )[0][1]
 
-    return (max_num_rows, max_num_cols)
+    return (int(max_num_rows), int(max_num_cols))
 
 
 # def determine_stacking_image_size(
@@ -130,16 +299,17 @@ def stack_epoch_into_sum_and_median(
     obsids = epoch.OBS_ID
     img_filenames = epoch.FITS_FILENAME
 
-    # getting the image directory is not valid for event mode! those live in uvot/event/
-    img_paths = [
-        swift_data.get_uvot_image_directory(obsid=x) / y
-        for x, y in zip(obsids, img_filenames)
-    ]
+    # # getting the image directory is not valid for event mode! those live in uvot/event/
+    # img_paths = [
+    #     swift_data.get_uvot_image_directory(obsid=x) / y
+    #     for x, y in zip(obsids, img_filenames)
+    # ]
+
+    # build list of images
 
     # determine how big our stacked image needs to be
     stacking_image_size = determine_stacking_image_size(
-        swift_data=swift_data,
-        epoch=epoch,
+        img_list=img_list, comet_center_coords=comet_center_coords
     )
 
     if stacking_image_size is None:
