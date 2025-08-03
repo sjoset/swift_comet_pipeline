@@ -21,6 +21,7 @@ from swift_comet_pipeline.stacking.determine_stack_size import (
 )
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
+from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.stacking import (
     EventModeTimeBinImageResult,
@@ -84,10 +85,14 @@ def event_mode_fits_to_time_binned_image(
     ev_hdr: fits.Header = precursor_img.img_hdr
     img_wcs = event_mode_header_to_WCS(hdr=ev_hdr)
 
-    if not isinstance(precursor_img.img, fits.BinTableHDU):
+    if not isinstance(precursor_img.img, fits.FITS_rec):
+        print("Precursor image passed into event mode but the data is not a FITS_rec!")
         print(
-            "Precursor image passed into event mode but the data is not a BinTableHDU!"
+            f"{precursor_img.data_mode=} {precursor_img.horizons_id=} {precursor_img.exposure_time_s=} {precursor_img.comet_center=}"
         )
+        print(f"{type(precursor_img.img)=}")
+        print("Press any key to continue")
+        wait_for_key()
 
     # the data stored in the FITS is read into '.img' - in event mode case, this is a BinTableHDU and not a numpy image array
     ev_table: fits.BinTableHDU = precursor_img.img  # type: ignore

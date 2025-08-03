@@ -27,7 +27,6 @@ from swift_comet_pipeline.stacking.event_mode import (
     event_mode_fits_to_time_binned_image,
 )
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
-from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.swift.swift_filter_to_string import (
     filter_to_file_string,
 )
@@ -186,10 +185,10 @@ def stack_images(
     final_exposure_map = np.sum(exposure_map_list, axis=0)
     total_exposure_time_s = np.sum(exposure_times)
 
-    print("Calculating sum stacks ...")
+    print("Calculating sum stacks ...  ", end="")
     stack_sum = np.sum(resized_images_to_stack, axis=0) / total_exposure_time_s
 
-    print("Calculating median stacks ...")
+    print("Calculating median stacks ...  ", end="")
     stack_median = np.median(
         [
             img / exp_time_s
@@ -198,7 +197,7 @@ def stack_images(
         axis=0,
     )
 
-    print("Done stacking.")
+    print("Complete!")
 
     return stack_sum, stack_median, final_exposure_map
 
@@ -225,7 +224,7 @@ def stack_epoch_into_sum_and_median(
     print("Creating precursors ...  ", end="")
     stacking_precursors = [
         epoch_row_to_stacking_precursor(row=row, horizons_id=horizons_id)
-        for _, row in tqdm(epoch.iterrows())
+        for _, row in tqdm(epoch.iterrows(), total=len(epoch), unit="images")
     ]
 
     print("Processing precursors ...  ", end="")

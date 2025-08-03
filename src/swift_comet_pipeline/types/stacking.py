@@ -15,7 +15,7 @@ class StackableUVOTImagePrecursor:
 
     horizons_id: str
     img_hdr: fits.Header
-    img: SwiftUVOTImage | fits.BinTableHDU
+    img: SwiftUVOTImage | fits.FITS_rec
     comet_center: PixelCoord
     exposure_time_s: float
     data_mode: SwiftImageMode
