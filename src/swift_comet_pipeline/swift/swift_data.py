@@ -7,6 +7,7 @@ import glob
 from dataclasses import dataclass
 
 from astropy.io import fits
+from astropy.nddata import block_reduce
 
 from typing import List
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
@@ -40,6 +41,8 @@ def swift_orbit_id_from_int(number: int) -> SwiftOrbitID | None:
 @dataclass
 class SwiftLevel2FITSObservation:
     """
+    Describes a FITS file in the data set: its observation & orbit ids, path, filter, and imaging mode
+
     This could represent multiple images through multiple image extensions in the FITS file
     """
 
@@ -229,9 +232,9 @@ class SwiftData:
     ) -> pathlib.Path:
         """Returns a path to the directory containing the uvot images of the given observation id"""
         if image_mode == SwiftImageMode.data_mode:
-            image_path = self.base_path / obsid / "uvot" / "image"
+            image_path = self.base_path / pathlib.Path(obsid) / "uvot" / "image"
         elif image_mode == SwiftImageMode.event_mode:
-            image_path = self.base_path / obsid / "uvot" / "event"
+            image_path = self.base_path / pathlib.Path(obsid) / "uvot" / "event"
 
         return image_path
 
@@ -255,6 +258,7 @@ class SwiftData:
             )
 
 
+@cache
 def event_mode_fits_to_image_simple(
     fits_path: pathlib.Path, extension_id: int
 ) -> SwiftUVOTImage:
@@ -266,7 +270,10 @@ def event_mode_fits_to_image_simple(
     ev_table = fits.getdata(fits_path, extension_id)
     assert ev_table is not None
     img, _, _ = np.histogram2d(ev_table["X"], ev_table["Y"], bins=(x_size, y_size))  # type: ignore
-    return img.T
+    img = img.T
+    # binned_img = block_reduce(data=img, block_size=2)
+    # return img.T
+    return img
 
 
 # def get_uvot_data_mode_image(

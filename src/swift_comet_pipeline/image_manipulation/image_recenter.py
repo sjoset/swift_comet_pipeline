@@ -45,6 +45,8 @@ def center_image_on_coords(
 ) -> SwiftUVOTImage:
     """
     Takes a source_image and pads with zeros so that the new image has source_coords_to_center
+
+    stacking_image_size is given as a tuple of (num_rows, num_columns)
     """
 
     center_x, center_y = np.round(source_coords_to_center.x), np.round(

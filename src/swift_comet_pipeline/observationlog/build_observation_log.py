@@ -1,7 +1,6 @@
 from enum import StrEnum
 import itertools
 
-import logging as log
 import numpy as np
 import pandas as pd
 import astropy.units as u
@@ -73,11 +72,11 @@ def level_2_data_mode_observation_to_series(
     )
 
     with fits.open(obs.fits_path) as hdul:
-        # print(
-        #     f"Processing {obs.fits_path} taken in mode {obs.observation_mode.value}..."
-        # )
-        # skip the first extension, which should be informational
-        for extension_index, hdu in enumerate(hdul[1:]):
+        for extension_index, hdu in enumerate(hdul):
+            # skip the first extension, which should be informational
+            if extension_index == 0:
+                continue
+
             # check if this extension is an image
             if not is_fits_image_hdu(hdu=hdu):
                 print(
@@ -91,6 +90,7 @@ def level_2_data_mode_observation_to_series(
             header_series["WCS"] = WCS(hdu.header)
             header_series["EXTENSION"] = extension_index
             header_series["FITS_FILENAME"] = str(obs.fits_path.name)
+            header_series["FULL_FITS_PATH"] = obs.fits_path
             series_list.append(pd.Series(header_series))
 
     if len(series_list) == 0:
@@ -135,6 +135,7 @@ def level_2_event_mode_observation_to_series(
         header_series["WCS"] = event_mode_header_to_WCS(hdr)
         header_series["EXTENSION"] = event_mode_bintable_extension_id
         header_series["FITS_FILENAME"] = str(obs.fits_path.name)
+        header_series["FULL_FITS_PATH"] = obs.fits_path
 
     return [pd.Series(header_series)]
 
@@ -300,7 +301,17 @@ def build_observation_log(
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
-    obs_log["DATAMODE"] = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
+    # obs_log["DATAMODE"] = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
+    # print(f"Full paths:")
+    # for i, row in obs_log.iterrows():
+    #     print(f"{i}: {row.FULL_FITS_PATH}, {row.OBS_ID}, {row.FITS_FILENAME}")
+
+    obs_log["DATAMODE"] = obs_log.apply(
+        lambda row: datamode_from_fits_keyword_string(
+            datamode=row.DATAMODE, fits_file_path=row.FULL_FITS_PATH
+        ),
+        axis=1,
+    )
     obs_log["ARCSECS_PER_PIXEL"] = obs_log.DATAMODE.apply(datamode_to_pixel_resolution)
 
     # Conversion rate of 1 pixel to km: DATAMODE now holds image resolution in arcseconds/pixel

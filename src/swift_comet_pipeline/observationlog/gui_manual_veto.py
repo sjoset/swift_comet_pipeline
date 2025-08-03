@@ -234,7 +234,7 @@ class EpochImagePlot(object):
         return aperture_physical_size_km / self.current_epoch_row.KM_PER_PIX
 
     def comet_radius_inner_edge_pix(self):
-        aperture_physical_size_km = 10000
+        aperture_physical_size_km = 50000
         return aperture_physical_size_km / self.current_epoch_row.KM_PER_PIX
 
     def set_image_index(self, image_index):
@@ -259,7 +259,7 @@ class EpochImagePlot(object):
 
         # adjust scale for event mode images
         if self.current_epoch_row.DATAMODE == SwiftImageMode.event_mode:
-            self.current_image = np.log(self.current_image)
+            self.current_image = np.log(self.current_image + 1)
 
         self.vmin, self.vmax = self.zscale.get_limits(self.current_image)
         self.read_horizons_comet_coords()
@@ -268,6 +268,11 @@ class EpochImagePlot(object):
     def read_horizons_comet_coords(self):
         """sets horizon_comet_coords to coordinates of the comet center given by horizons for the current image"""
         epoch_row = self.epoch.iloc[self.current_image_index]
+        # # this assumes that the event mode images are downsampled
+        # if epoch_row.DATAMODE == SwiftImageMode.data_mode:
+        #     scale_factor = 1
+        # else:
+        #     scale_factor = 2
         self.horizon_comet_coords = PixelCoord(x=epoch_row.PX, y=epoch_row.PY)
 
     def read_user_selected_comet_coords(self):
@@ -275,7 +280,11 @@ class EpochImagePlot(object):
         comet_coords = get_user_specified_comet_center(row=self.current_epoch_row)
         if comet_coords is None:
             comet_coords = get_horizons_comet_center(row=self.current_epoch_row)
-        self.selected_comet_coords = comet_coords
+        # if self.current_epoch_row.DATAMODE == SwiftImageMode.data_mode:
+        #     scale_factor = 1
+        # else:
+        #     scale_factor = 2
+        self.selected_comet_coords = PixelCoord(x=comet_coords.x, y=comet_coords.y)
 
     def update_image_plot(self):
         self.img_plot.set_data(self.current_image)

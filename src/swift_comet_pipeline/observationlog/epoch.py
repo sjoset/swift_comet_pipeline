@@ -33,11 +33,11 @@ def write_epoch(epoch: Epoch, epoch_path: pathlib.Path) -> None:
     write_observation_log(epoch, epoch_path)
 
 
-def is_epoch_stackable(epoch: Epoch) -> bool:
-    """
-    Checks that all uw1 and uvv images in this epoch are taken with the same DATAMODE keyword
-    """
-    return epoch.DATAMODE.nunique() == 1
+# def is_epoch_stackable(epoch: Epoch) -> bool:
+#     """
+#     Checks that all uw1 and uvv images in this epoch are taken with the same DATAMODE keyword
+#     """
+#     return epoch.DATAMODE.nunique() == 1
 
 
 def epoch_stacked_image_to_fits(

@@ -15,7 +15,6 @@ from swift_comet_pipeline.stacking.stacking import (
     make_uw1_and_uvv_stacks,
     write_uw1_and_uvv_stacks,
 )
-from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.tui.tui_common import (
     bool_to_x_or_check,
     get_yes_no,
@@ -63,7 +62,7 @@ def menu_stack_all_or_selection() -> str:
 
 def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
     scp = SwiftCometPipeline(swift_project_config=swift_project_config)
-    swift_data = SwiftData(data_path=swift_project_config.swift_data_path)
+    # swift_data = SwiftData(data_path=swift_project_config.swift_data_path)
 
     print_stacked_images_summary(scp=scp)
 
@@ -123,7 +122,10 @@ def epoch_stacking_step(swift_project_config: SwiftProjectConfig) -> None:
 
         rprint(Panel(f"Epoch {epoch_id_to_stack}:", expand=False))
         make_uw1_and_uvv_stacks(
-            swift_data=swift_data, scp=scp, epoch_id=epoch_id_to_stack
+            # swift_data=swift_data,
+            scp=scp,
+            epoch_id=epoch_id_to_stack,
+            horizons_id=swift_project_config.jpl_horizons_id,
         )
 
         if show_stacked_images:

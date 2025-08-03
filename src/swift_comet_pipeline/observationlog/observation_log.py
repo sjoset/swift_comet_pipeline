@@ -59,11 +59,12 @@ def observation_log_schema() -> pa.Schema:
             # pa.field("SKY_MOTION_PA", pa.float64()),
             # Total exposure time after all known corrections applied
             pa.field("EXPOSURE", pa.float64()),
-            ### Added during observation log building
             # Each image extension gets its own header and entry in the observation log: keep track of it here
             pa.field("EXTENSION", pa.int16()),
             # The filename (not path) of the FITS file this observation came from: together with the extension, we can find an observation's image to read and process later
             pa.field("FITS_FILENAME", pa.string()),
+            # Full path to file
+            pa.field("FULL_FITS_PATH", pa.string()),
             # heliocentric distance at time of observation, in AU
             pa.field("HELIO", pa.float64()),
             # heliocentric velocity at time of observation, in km/s
@@ -122,12 +123,21 @@ def read_observation_log(
     obs_log.OBS_ID = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
 
-    # DATAMODE is stored as a string: convert to valid SwiftImageDataMode
-    obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
-
     # ARCSECS_PER_PIXEL is stored as a float: convert to valid SwiftPixelResolution
     obs_log.ARCSECS_PER_PIXEL = obs_log.ARCSECS_PER_PIXEL.apply(
         float_to_pixel_resolution
+    )
+
+    # full paths as pathlib objects
+    obs_log.FULL_FITS_PATH = obs_log.FULL_FITS_PATH.apply(pathlib.Path)
+
+    # DATAMODE is stored as a string: convert to valid SwiftImageDataMode
+    # obs_log.DATAMODE = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
+    obs_log["DATAMODE"] = obs_log.apply(
+        lambda row: datamode_from_fits_keyword_string(
+            datamode=row.DATAMODE, fits_file_path=row.FULL_FITS_PATH
+        ),
+        axis=1,
     )
 
     return obs_log
@@ -152,6 +162,8 @@ def write_observation_log(
 
     oc.DATAMODE = oc.DATAMODE.astype(str)
     oc.ARCSECS_PER_PIXEL = oc.ARCSECS_PER_PIXEL.astype(float)
+
+    oc.FULL_FITS_PATH = oc.FULL_FITS_PATH.astype(str)
 
     # the rest of the column conversions should be taken care of automatically through type hints from the schema
 

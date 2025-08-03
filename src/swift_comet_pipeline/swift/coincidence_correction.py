@@ -11,6 +11,10 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 def coincidence_correction(
     img: SwiftUVOTImage, scale: SwiftPixelResolution
 ) -> np.ndarray:
+    """
+    Returns an array the same size as img, intended to be multiplied by the image's pixels
+    to perform coincidence correction
+    """
 
     # make a copy so we can apply coincidence correction without altering original
     img_data = copy.deepcopy(img)

@@ -41,6 +41,7 @@ from .lightcurve import *
 from .magnitude import *
 from .plateau_list import *
 from .stacked_uvot_image_set import *
+from .stacking import *
 from .swift_project_config import *
 from .uw1_uvv_pair import *
 from .vectorial_model_fit import *
