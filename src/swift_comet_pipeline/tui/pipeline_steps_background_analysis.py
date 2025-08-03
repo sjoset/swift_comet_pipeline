@@ -11,7 +11,7 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
-from swift_comet_pipeline.stacking.stacking import get_stacked_image_set
+from swift_comet_pipeline.stacking.stacked_image_set import get_stacked_image_set
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu

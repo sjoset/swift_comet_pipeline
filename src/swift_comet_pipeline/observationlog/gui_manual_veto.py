@@ -118,6 +118,7 @@ class EpochImageSlider(Slider):
         self._colorize(image_index)
 
 
+# TODO: move some of these magic numbers to the internal pipeline config
 class EpochImagePlot(object):
     def __init__(self, swift_data: SwiftData, epoch: Epoch, epoch_title: str):
         self.swift_data = swift_data
@@ -193,7 +194,7 @@ class EpochImagePlot(object):
             (self.selected_comet_coords.x, self.selected_comet_coords.y),
             edgecolor="white",
             fill=False,
-            alpha=1.0,
+            alpha=0.4,
         )
         self.ax.add_patch(self.comet_inner_patch)  # type: ignore
         self.comet_radius_inner_pix = self.comet_radius_inner_edge_pix()

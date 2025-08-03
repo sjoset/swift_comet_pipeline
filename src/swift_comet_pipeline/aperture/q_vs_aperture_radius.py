@@ -144,6 +144,7 @@ def q_vs_aperture_radius(
     ]
     drs = np.array([uw1_apertures[0].r]) + np.diff(aperture_radii)  # type: ignore
 
+    print("Starting UVW1 counts ...")
     uw1_annular_median_count_rates = [
         median_aperture_count_rate(
             img=uw1_img,
@@ -151,8 +152,9 @@ def q_vs_aperture_radius(
             background=uw1_bg,
             exposure_time_s=epoch_summary.uw1_exposure_time_s,
         )
-        for ap in uw1_apertures
+        for ap in tqdm(uw1_apertures)
     ]
+    print("Starting UVV counts ...")
     uvv_annular_median_count_rates = [
         median_aperture_count_rate(
             img=uvv_img,
@@ -160,7 +162,7 @@ def q_vs_aperture_radius(
             background=uvv_bg,
             exposure_time_s=epoch_summary.uvv_exposure_time_s,
         )
-        for ap in uvv_apertures
+        for ap in tqdm(uvv_apertures)
     ]
 
     # calculate the total count rates in the aperture, pretending all pixels were instead the median pixel value
@@ -186,6 +188,7 @@ def q_vs_aperture_radius(
 
     num_data_points = len(dust_rednesses) * (len(aperture_radii) - 1)
 
+    print("Starting Q(H2O) calculations ...")
     ap_analysis_list = [
         aperture_count_rate_analysis(
             epoch_summary=epoch_summary,
@@ -265,7 +268,9 @@ def q_vs_aperture_radius_at_epoch(
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
     assert epoch_summary is not None
 
-    print(f"Starting analysis of {epoch_id}: observation at {epoch_summary.rh_au} AU")
+    print(
+        f"Starting analysis of {epoch_id}: observation at {epoch_summary.rh_au} AU ... "
+    )
 
     img_pair = get_uw1_and_uvv_background_subtracted_images(
         scp=scp, epoch_id=epoch_id, stacking_method=stacking_method
@@ -279,7 +284,10 @@ def q_vs_aperture_radius_at_epoch(
     assert bg_pair is not None
     uw1_bg, uvv_bg = uw1uvv_getter(bg_pair)
 
+    print("Images loaded ... ")
+
     # TODO: these magic numbers belong in a config: user or internal?
+    # TODO: the upper limit should depend on the pixel scale: close comets only have ~20,000 km worth of data in image
     q_vs_r = q_vs_aperture_radius(
         epoch_summary=epoch_summary,
         uw1_img=uw1_img,
@@ -287,8 +295,8 @@ def q_vs_aperture_radius_at_epoch(
         dust_rednesses=dust_rednesses,
         uw1_bg=uw1_bg,
         uvv_bg=uvv_bg,
-        # max_aperture_radius=200000 * u.km,  # type: ignore
-        max_aperture_radius=1000000 * u.km,  # type: ignore
+        max_aperture_radius=200000 * u.km,  # type: ignore
+        # max_aperture_radius=1000000 * u.km,  # type: ignore
         num_apertures=200,
     )
 

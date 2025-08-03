@@ -14,6 +14,9 @@ from swift_comet_pipeline.image_manipulation.image_pad import pad_to_match_sizes
 from swift_comet_pipeline.image_manipulation.image_recenter import (
     center_image_on_coords,
 )
+from swift_comet_pipeline.image_manipulation.utility.plot_image_multi import (
+    plot_images_multi,
+)
 from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -91,8 +94,9 @@ def process_stackable_precursor(
             exposure_time_s=precursor.exposure_time_s,
             data_mode=SwiftImageMode.data_mode,
         )
-        # TODO: we throw away the exposure mask from the event mode stack - probably fine as the offsets between sub-slices are small
     else:
+        # TODO: make num_time_slices an option in the user config
+        # TODO: we throw away the exposure mask from the event mode stack - probably fine as the offsets between sub-slices are small
         binning_result = event_mode_fits_to_time_binned_image(
             precursor_img=precursor,
             num_time_slices=3,
@@ -227,13 +231,29 @@ def stack_epoch_into_sum_and_median(
         for _, row in tqdm(epoch.iterrows(), total=len(epoch), unit="images")
     ]
 
-    print("Processing precursors ...  ", end="")
-    stackable_images = [
-        process_stackable_precursor(
-            p, do_coincidence_correction=do_coincidence_correction
+    print("Processing precursors ...")
+    # this can take a while
+    stackable_images: list[StackableUVOTImage] = []
+    for sp in tqdm(stacking_precursors, total=len(stacking_precursors), unit="images"):
+        stackable_images.append(
+            process_stackable_precursor(
+                sp, do_coincidence_correction=do_coincidence_correction
+            )
         )
-        for p in stacking_precursors
-    ]
+
+    # TODO: debug code removal
+    # print("Processed:")
+    # plot_images_multi(
+    #     [x.img for x in stackable_images],
+    #     [x.comet_center for x in stackable_images],
+    # )
+
+    # stackable_images = [
+    #     process_stackable_precursor(
+    #         p, do_coincidence_correction=do_coincidence_correction
+    #     )
+    #     for p in stacking_precursors
+    # ]
 
     print("Applying uniform resolution sampling ...  ", end="")
     stackable_images = uniform_pixel_resolution(stackable_images)
@@ -445,28 +465,3 @@ def write_uw1_and_uvv_stacks(scp: SwiftCometPipeline, epoch_id: EpochID) -> None
         )
         assert em_prod is not None
         em_prod.write()
-
-
-def get_stacked_image_set(
-    scp: SwiftCometPipeline, epoch_id: EpochID
-) -> StackedUVOTImageSet | None:
-    stacked_image_set = {}
-
-    uw1_and_uvv = [SwiftFilter.uvv, SwiftFilter.uw1]
-    sum_and_median = [StackingMethod.summation, StackingMethod.median]
-
-    for f, s in product(uw1_and_uvv, sum_and_median):
-        img_data = scp.get_product_data(
-            pf=PipelineFilesEnum.stacked_image,
-            epoch_id=epoch_id,
-            filter_type=f,
-            stacking_method=s,
-        )
-        if img_data is None:
-            return None
-        # img_data includes img_data.header for the FITS header, and img_data.data for the numpy image array
-        if img_data.data is None:
-            return None
-        stacked_image_set[f, s] = img_data.data
-
-    return stacked_image_set

@@ -10,8 +10,8 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.stacking.show_stacked_image_set import show_stacked_image_set
+from swift_comet_pipeline.stacking.stacked_image_set import get_stacked_image_set
 from swift_comet_pipeline.stacking.stacking import (
-    get_stacked_image_set,
     make_uw1_and_uvv_stacks,
     write_uw1_and_uvv_stacks,
 )

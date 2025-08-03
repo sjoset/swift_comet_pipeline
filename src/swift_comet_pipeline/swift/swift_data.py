@@ -276,6 +276,9 @@ def event_mode_fits_to_image_simple(
     return img
 
 
+# TODO: function to go from fits_path of event mode bintable image to its sky image
+# so we have the option to use those instead during the stacking phase
+
 # def get_uvot_data_mode_image(
 #     self,
 #     obsid: SwiftObservationID,
