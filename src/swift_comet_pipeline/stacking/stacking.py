@@ -1,5 +1,6 @@
 from itertools import product
 
+from astropy.time import Time
 import numpy as np
 import pandas as pd
 from astropy.io import fits
@@ -35,6 +36,9 @@ from swift_comet_pipeline.swift.swift_filter_to_string import (
 )
 from swift_comet_pipeline.observationlog.epoch import epoch_stacked_image_to_fits
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
+from swift_comet_pipeline.swift.uvot_sensitivity import (
+    uvot_sensitivity_correction_factor,
+)
 from swift_comet_pipeline.types.stacked_uvot_image_set import StackedUVOTImageSet
 from swift_comet_pipeline.types.stacking import (
     StackableUVOTImage,
@@ -95,11 +99,15 @@ def process_stackable_precursor(
             data_mode=SwiftImageMode.data_mode,
         )
     else:
-        # TODO: make num_time_slices an option in the user config
+        # TODO: make num_time_slices an option in the user config, or some way to control the maximum time slice length
         # TODO: we throw away the exposure mask from the event mode stack - probably fine as the offsets between sub-slices are small
+        num_time_slices = int(np.ceil(precursor.exposure_time_s / 30.0))
+        # print(
+        #     f"Selecting {num_time_slices} time slices for exposure time of {precursor.exposure_time_s}"
+        # )
         binning_result = event_mode_fits_to_time_binned_image(
             precursor_img=precursor,
-            num_time_slices=3,
+            num_time_slices=num_time_slices,
             do_coincidence_correction=do_coincidence_correction,
         )
         stackable = binning_result.sum
@@ -201,14 +209,13 @@ def stack_images(
         axis=0,
     )
 
-    print("Complete!")
-
     return stack_sum, stack_median, final_exposure_map
 
 
 def stack_epoch_into_sum_and_median(
     epoch: Epoch,
     horizons_id: str,
+    filter_type: SwiftFilter,
     do_coincidence_correction: bool,
 ) -> tuple[SwiftUVOTImage, SwiftUVOTImage, SwiftUVOTImage] | None:
     """
@@ -276,7 +283,24 @@ def stack_epoch_into_sum_and_median(
         print("Could not finalize stack! Not stacking.")
         return None
 
-    return stack_results
+    observation_mid_time = np.mean(epoch.MID_TIME)
+    uvot_correction_factor = uvot_sensitivity_correction_factor(
+        filter_type=filter_type, t_obs=Time(observation_mid_time)
+    )
+    print(
+        f"Applying UVOT sensitivity corrections for {observation_mid_time} with factor {uvot_correction_factor} ...  ",
+        end="",
+    )
+    # Adjust the sum and median, leave the exposure map alone
+    sensitivity_corrected = (
+        stack_results[0] * uvot_correction_factor,
+        stack_results[1] * uvot_correction_factor,
+        stack_results[2],
+    )
+
+    print("Complete!")
+
+    return sensitivity_corrected
 
 
 # TODO: Priority 1: rewrite this
@@ -364,6 +388,7 @@ def make_uw1_and_uvv_stacks(
         stack_result = stack_epoch_into_sum_and_median(
             epoch=epoch_only_this_filter,
             horizons_id=horizons_id,
+            filter_type=filter_type,
             do_coincidence_correction=do_coincidence_correction,
         )
         if stack_result is None:
