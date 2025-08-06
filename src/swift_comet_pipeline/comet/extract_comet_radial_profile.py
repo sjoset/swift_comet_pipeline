@@ -126,6 +126,10 @@ def calculate_distance_from_center_mesh(img: SwiftUVOTImage):
     rounded to the nearest integer.  This allows addressing a radial profile array with the mesh as the index: radial_profile[distance_from_center_mesh]
 
     This works if we sample the radial profile at r = 0, r = 1, r = 2, ... but will break if we choose to sample differently
+
+    TODO: can we replace this with
+    Y, X = np.ogrid
+    dist = np.hypot((X - center_x), (Y - center_y))?
     """
 
     img_height, img_width = img.shape

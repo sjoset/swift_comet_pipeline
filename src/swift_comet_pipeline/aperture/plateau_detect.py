@@ -1,6 +1,4 @@
 from itertools import groupby
-from typing import List
-
 import numpy as np
 from scipy.ndimage import uniform_filter1d
 
@@ -14,7 +12,7 @@ __all__ = ["find_production_plateaus"]
 # TODO: can we use this for a CometRadialProfile as well?
 def find_plateaus(
     ys: np.ndarray, xstep: float, smoothing: int, threshold: float, min_length: int
-) -> List[Plateau]:
+) -> list[Plateau]:
     """
     In this version, ys must be an array sampled at equal distances of xstep between points
     """

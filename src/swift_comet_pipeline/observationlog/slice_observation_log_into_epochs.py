@@ -1,6 +1,4 @@
 import itertools
-from typing import List
-
 import astropy.units as u
 from astropy.time import Time
 
@@ -11,7 +9,7 @@ from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
 
 def epochs_from_time_delta(
     obs_log: SwiftObservationLog, max_time_between_obs: u.Quantity
-) -> List[Epoch]:
+) -> list[Epoch]:
     # sort observations by time, oldest first
     obs_log = obs_log.sort_values(by="MID_TIME", ascending=True).reset_index(drop=True)
 

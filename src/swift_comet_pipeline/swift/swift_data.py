@@ -1,15 +1,13 @@
-from functools import cache
-from itertools import product
 import pathlib
 import numpy as np
 import os
 import glob
 from dataclasses import dataclass
+from functools import cache
+from itertools import product
 
 from astropy.io import fits
-from astropy.nddata import block_reduce
 
-from typing import List
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_ids import SwiftObservationID, SwiftOrbitID
@@ -85,7 +83,7 @@ class SwiftData:
                 obsid=obsid, filter_type=ft
             )
 
-    def _get_all_observation_ids(self) -> List[SwiftObservationID] | None:
+    def _get_all_observation_ids(self) -> list[SwiftObservationID] | None:
         """
         build a list of folders in the swift data directory, filtering any directories
         that don't match the naming structure of 11 numerical digits, and returns a list of every observation id found
@@ -116,7 +114,7 @@ class SwiftData:
 
         return list(map(lambda x: SwiftObservationID(x.name), numeric_names))
 
-    def _get_all_orbit_ids(self) -> List[SwiftOrbitID] | None:
+    def _get_all_orbit_ids(self) -> list[SwiftOrbitID] | None:
         """
         build a list of orbit ids based on the folder names in the swift data directory
         """
@@ -131,7 +129,7 @@ class SwiftData:
         self,
         obsid: SwiftObservationID,
         filter_type: SwiftFilter,
-    ) -> List[SwiftLevel2FITSObservation] | None:
+    ) -> list[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID, filter type, and image type, returns a list of event-mode FITS files that match.
         """
@@ -166,7 +164,7 @@ class SwiftData:
         obsid: SwiftObservationID,
         filter_type: SwiftFilter,
         image_type: SwiftUVOTImageType = SwiftUVOTImageType.sky_units,
-    ) -> List[SwiftLevel2FITSObservation] | None:
+    ) -> list[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID, filter type, and image type, returns a list of FITS files that match.
         Defaults to sky images ('_sk.img.gz') only.
@@ -201,7 +199,7 @@ class SwiftData:
 
     def _get_swift_uvot_observations(
         self, obsid: SwiftObservationID, filter_type: SwiftFilter
-    ) -> List[SwiftLevel2FITSObservation] | None:
+    ) -> list[SwiftLevel2FITSObservation] | None:
         """
         Given an observation ID and filter type, returns a list of FITS files that match.
         Some observations have multiple files using the same filter, so we have to do it this way

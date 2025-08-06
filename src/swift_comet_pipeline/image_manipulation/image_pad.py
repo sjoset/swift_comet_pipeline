@@ -1,6 +1,4 @@
 import copy
-from typing import Tuple
-
 import numpy as np
 
 from swift_comet_pipeline.swift.get_uvot_image_center import (
@@ -12,7 +10,7 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 # TODO: this could be simplified
 def pad_to_match_sizes(
     img_one: SwiftUVOTImage, img_two: SwiftUVOTImage
-) -> Tuple[SwiftUVOTImage, SwiftUVOTImage]:
+) -> tuple[SwiftUVOTImage, SwiftUVOTImage]:
     """
     Given two images, zero-pad the edges of the smaller image so that both images end up the same width and
     have an odd number of columns.
