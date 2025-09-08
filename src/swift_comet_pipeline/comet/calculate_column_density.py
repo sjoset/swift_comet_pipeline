@@ -74,16 +74,11 @@ def calculate_comet_column_density(
     surface_brightness_profile = countrate_profile_to_surface_brightness(
         countrate_profile=countrate_profile,
         epoch_summary=epoch_summary,
-        # pixel_resolution=epoch_summary.pixel_resolution,
-        # delta=epoch_summary.delta_au * u.AU,
     )
 
     comet_column_density_values = surface_brightness_profile_to_column_density(
         surface_brightness_profile=surface_brightness_profile,
         epoch_summary=epoch_summary,
-        # delta=epoch_summary.delta_au * u.AU,  # type: ignore
-        # helio_v=epoch_summary.helio_v_kms * u.km / u.s,  # type: ignore
-        # helio_r=epoch_summary.rh_au * u.AU,  # type: ignore
     )
 
     comet_column_density = ColumnDensity(

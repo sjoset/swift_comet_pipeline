@@ -29,6 +29,8 @@ def extract_comet_radial_profile(
     # we have the pixel in the center, plus r pixels in the direction away from the center
     num_samples = r + 1
 
+    # TODO: if round(x0) == round(x1) this fails to produce a linspace!
+
     xs = np.linspace(np.round(x0), np.round(x1), num=num_samples, endpoint=True)
     ys = np.linspace(np.round(y0), np.round(y1), num=num_samples, endpoint=True)
 
