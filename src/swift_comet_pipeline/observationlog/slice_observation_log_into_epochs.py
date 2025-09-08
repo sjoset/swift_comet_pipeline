@@ -67,21 +67,22 @@ def epochs_from_time_delta(
     return epoch_list
 
 
-def split_epoch_list_into_data_and_event_epochs(epoch_list: list[Epoch]) -> list[Epoch]:
-    """
-    Takes a list of epochs, and for each epoch, replaces it with a pair of epochs that include only
-    data mode or event mode images.
-    If the epoch does not contain either mode of data, it will disappear from the list.
-
-    """
-
-    # TODO: If the entire dataset has no data mode or event mode images, we should check for this and return None
-
-    split_epoch_list = []
-    for epoch in epoch_list:
-        split_epoch_list.append(split_epoch_into_data_and_event_epochs(epoch=epoch))
-
-    return list(itertools.chain.from_iterable(split_epoch_list))
+# TODO: deprecate this as we shouldn't need this in the future now that event mode images are re-scaled and handled properly
+# def split_epoch_list_into_data_and_event_epochs(epoch_list: list[Epoch]) -> list[Epoch]:
+#     """
+#     Takes a list of epochs, and for each epoch, replaces it with a pair of epochs that include only
+#     data mode or event mode images.
+#     If the epoch does not contain either mode of data, it will disappear from the list.
+#
+#     """
+#
+#     # TODO: If the entire dataset has no data mode or event mode images, we should check for this and return None
+#
+#     split_epoch_list = []
+#     for epoch in epoch_list:
+#         split_epoch_list.append(split_epoch_into_data_and_event_epochs(epoch=epoch))
+#
+#     return list(itertools.chain.from_iterable(split_epoch_list))
 
 
 def split_epoch_into_data_and_event_epochs(epoch: Epoch) -> list[Epoch]:

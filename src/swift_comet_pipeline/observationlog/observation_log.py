@@ -56,7 +56,8 @@ def observation_log_schema() -> pa.Schema:
             pa.field("DEC_RATE", pa.float64()),
             # Total rate of sky motion in arcsec/min
             pa.field("SKY_MOTION", pa.float64()),
-            # pa.field("SKY_MOTION_PA", pa.float64()),
+            # Direction of sky motion, position angle, degrees
+            pa.field("SKY_MOTION_PA", pa.float64()),
             # Total exposure time after all known corrections applied
             pa.field("EXPOSURE", pa.float64()),
             # Each image extension gets its own header and entry in the observation log: keep track of it here

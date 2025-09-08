@@ -1,6 +1,8 @@
 import pathlib
 
 from astropy.io import fits
+from astropy.time import Time
+import astropy.units as u
 
 from swift_comet_pipeline.observationlog.epoch_typing import Epoch
 from swift_comet_pipeline.observationlog.observation_log import (
@@ -8,7 +10,9 @@ from swift_comet_pipeline.observationlog.observation_log import (
     write_observation_log,
 )
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
+from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.types.epoch_summary import EpochSummary
+from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
@@ -33,17 +37,14 @@ def write_epoch(epoch: Epoch, epoch_path: pathlib.Path) -> None:
     write_observation_log(epoch, epoch_path)
 
 
-# def is_epoch_stackable(epoch: Epoch) -> bool:
-#     """
-#     Checks that all uw1 and uvv images in this epoch are taken with the same DATAMODE keyword
-#     """
-#     return epoch.DATAMODE.nunique() == 1
-
-
 def epoch_stacked_image_to_fits(
-    epoch_summary: EpochSummary, img: SwiftUVOTImage
+    epoch_summary: EpochSummary, img: SwiftUVOTImage, filter_type: SwiftFilter
 ) -> fits.ImageHDU:
-    # TODO: relocate this function and rewrite for EpochSummary
+    # TODO: relocate this function
+    """
+    Takes the image and fills out a FITS header
+    Assumes the image is centered on the comet
+    """
 
     hdu = fits.ImageHDU(data=img)
 
@@ -54,10 +55,27 @@ def epoch_stacked_image_to_fits(
     hdr["v_unit"] = "km/s"
     hdr["delta"] = epoch_summary.delta_au
     hdr["rh"] = epoch_summary.rh_au
+    if filter_type == SwiftFilter.uw1:
+        exp_time = epoch_summary.uw1_exposure_time_s
+    elif filter_type == SwiftFilter.uvv:
+        exp_time = epoch_summary.uvv_exposure_time_s
+    else:
+        exp_time = 0.0
+    hdr["exposure_time_s"] = exp_time
+    hdr["filter"] = filter_to_file_string(filter_type=filter_type)
+    hdr["epoch_id"] = epoch_summary.epoch_id
+    hdr["sky_motion_arcsec_min"] = epoch_summary.sky_motion_arcsec_min
+    hdr["time_from_perihelion_days"] = epoch_summary.time_from_perihelion.to_value(
+        u.day  # type: ignore
+    )
+    # hdr["pixel_resolution_arcsec"] = epoch_summary.pixel_resolution.value
+    hdr["observation_time"] = str(Time(epoch_summary.observation_time))
+    hdr["epoch_length_seconds"] = epoch_summary.epoch_length.total_seconds()
+    hdr["helio_v_kms"] = epoch_summary.helio_v_kms
+    hdr["phase"] = epoch_summary.phase_angle_deg
 
     pix_center = get_uvot_image_center(img=img)
     hdr["pos_x"], hdr["pos_y"] = pix_center.x, pix_center.y
-    hdr["phase"] = epoch_summary.phase_angle_deg
 
     return hdu
 

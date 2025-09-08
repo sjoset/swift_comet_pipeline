@@ -187,8 +187,9 @@ def build_observation_log(
 
         if len(all_observations_for_this_obsid) == 0:
             print(
-                f"No valid observations found for observation ID {obsid}, skipping..."
+                f"No valid UVOT observations found for observation ID {obsid}, skipping..."
             )
+
             continue
 
         observations_this_obsid = [
@@ -241,6 +242,8 @@ def build_observation_log(
         "RA_rate": "RA_RATE",
         # Rate of change of Dec in arcseconds per hour
         "DEC_rate": "DEC_RATE",
+        # direction of sky motion, position angle
+        "velocityPA": "SKY_MOTION_PA",
     }
     # make dataframe with columns of the ephemeris_info values
     horizon_dataframe = pd.DataFrame(columns=list(ephemeris_info.values()))  # type: ignore
