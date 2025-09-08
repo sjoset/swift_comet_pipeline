@@ -23,6 +23,7 @@ from swift_comet_pipeline.observationlog.epoch import Epoch
 from swift_comet_pipeline.swift.swift_data import SwiftData
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
 
 
 class EpochImageSlider(Slider):
@@ -117,6 +118,7 @@ class EpochImageSlider(Slider):
         self._colorize(image_index)
 
 
+# TODO: move some of these magic numbers to the internal pipeline config
 class EpochImagePlot(object):
     def __init__(self, swift_data: SwiftData, epoch: Epoch, epoch_title: str):
         self.swift_data = swift_data
@@ -127,12 +129,8 @@ class EpochImagePlot(object):
         self.zscale = ZScaleInterval()
 
         # TODO: add buttons to select which method and have these as defaults
-        self.comet_center_finding_method_uw1 = (
-            CometCenterFindingMethod.aperture_centroid
-        )
-        self.comet_center_finding_method_uvv = (
-            CometCenterFindingMethod.aperture_centroid
-        )
+        self.comet_center_finding_method_uw1 = CometCenterFindingMethod.aperture_peak
+        self.comet_center_finding_method_uvv = CometCenterFindingMethod.aperture_peak
 
         self.setup_plot_elements()
 
@@ -182,15 +180,25 @@ class EpochImagePlot(object):
         )
 
     def setup_selected_comet_center_marker(self):
-        self.selected_comet_patch = plt.Circle(  # type: ignore
+        self.comet_outer_patch = plt.Circle(  # type: ignore
             (self.selected_comet_coords.x, self.selected_comet_coords.y),
             edgecolor="white",
             fill=False,
             alpha=1.0,
         )
-        self.ax.add_patch(self.selected_comet_patch)  # type: ignore
-        self.estimated_comet_radius_pix = self.estimate_comet_radius_pix()
-        self.selected_comet_patch.set_radius(self.estimated_comet_radius_pix)
+        self.ax.add_patch(self.comet_outer_patch)  # type: ignore
+        self.comet_radius_outer_pix = self.comet_radius_outer_edge_pix()
+        self.comet_outer_patch.set_radius(self.comet_radius_outer_pix)
+
+        self.comet_inner_patch = plt.Circle(  # type: ignore
+            (self.selected_comet_coords.x, self.selected_comet_coords.y),
+            edgecolor="white",
+            fill=False,
+            alpha=0.4,
+        )
+        self.ax.add_patch(self.comet_inner_patch)  # type: ignore
+        self.comet_radius_inner_pix = self.comet_radius_inner_edge_pix()
+        self.comet_inner_patch.set_radius(self.comet_radius_inner_pix)
 
     def set_current_comet_center(self, x, y):
         self.selected_comet_coords = self.search_for_comet_centroid(
@@ -206,7 +214,7 @@ class EpochImagePlot(object):
     def search_for_comet_centroid(self, centered_on: PixelCoord):
         comet_aperture = CircularAperture(
             positions=[centered_on.x, centered_on.y],
-            r=self.estimated_comet_radius_pix,
+            r=self.comet_radius_inner_pix,
         )
 
         if self.current_epoch_row.FILTER == SwiftFilter.uw1:
@@ -222,8 +230,12 @@ class EpochImagePlot(object):
             search_aperture=comet_aperture,
         )
 
-    def estimate_comet_radius_pix(self):
+    def comet_radius_outer_edge_pix(self):
         aperture_physical_size_km = 100000
+        return aperture_physical_size_km / self.current_epoch_row.KM_PER_PIX
+
+    def comet_radius_inner_edge_pix(self):
+        aperture_physical_size_km = 50000
         return aperture_physical_size_km / self.current_epoch_row.KM_PER_PIX
 
     def set_image_index(self, image_index):
@@ -232,12 +244,24 @@ class EpochImagePlot(object):
         self.current_epoch_row = self.epoch.iloc[self.current_image_index]
 
         self.current_image_path = (
-            self.swift_data.get_uvot_image_directory(
-                obsid=self.current_epoch_row.OBS_ID
+            self.swift_data._get_observation_image_directory(
+                obsid=self.current_epoch_row.OBS_ID,
+                image_mode=self.current_epoch_row.DATAMODE,
             )
             / self.current_epoch_row.FITS_FILENAME
         )
-        self.current_image = fits.getdata(self.current_image_path, ext=self.current_epoch_row.EXTENSION)  # type: ignore
+        # self.current_image = fits.getdata(self.current_image_path, ext=self.current_epoch_row.EXTENSION)  # type: ignore
+        self.current_image = self.swift_data._get_observation_image(
+            obsid=self.current_epoch_row.OBS_ID,
+            image_mode=self.current_epoch_row.DATAMODE,
+            fits_filename=self.current_epoch_row.FITS_FILENAME,
+            extension_id=self.current_epoch_row.EXTENSION,
+        )
+
+        # adjust scale for event mode images
+        if self.current_epoch_row.DATAMODE == SwiftImageMode.event_mode:
+            self.current_image = np.log(self.current_image + 1)
+
         self.vmin, self.vmax = self.zscale.get_limits(self.current_image)
         self.read_horizons_comet_coords()
         self.read_user_selected_comet_coords()
@@ -245,6 +269,11 @@ class EpochImagePlot(object):
     def read_horizons_comet_coords(self):
         """sets horizon_comet_coords to coordinates of the comet center given by horizons for the current image"""
         epoch_row = self.epoch.iloc[self.current_image_index]
+        # # this assumes that the event mode images are downsampled
+        # if epoch_row.DATAMODE == SwiftImageMode.data_mode:
+        #     scale_factor = 1
+        # else:
+        #     scale_factor = 2
         self.horizon_comet_coords = PixelCoord(x=epoch_row.PX, y=epoch_row.PY)
 
     def read_user_selected_comet_coords(self):
@@ -252,7 +281,11 @@ class EpochImagePlot(object):
         comet_coords = get_user_specified_comet_center(row=self.current_epoch_row)
         if comet_coords is None:
             comet_coords = get_horizons_comet_center(row=self.current_epoch_row)
-        self.selected_comet_coords = comet_coords
+        # if self.current_epoch_row.DATAMODE == SwiftImageMode.data_mode:
+        #     scale_factor = 1
+        # else:
+        #     scale_factor = 2
+        self.selected_comet_coords = PixelCoord(x=comet_coords.x, y=comet_coords.y)
 
     def update_image_plot(self):
         self.img_plot.set_data(self.current_image)
@@ -267,7 +300,11 @@ class EpochImagePlot(object):
         self.comet_y_marker.set_ydata([self.horizon_comet_coords.y])
 
     def update_user_comet_marker(self):
-        self.selected_comet_patch.center = (
+        self.comet_outer_patch.center = (
+            self.selected_comet_coords.x,
+            self.selected_comet_coords.y,
+        )
+        self.comet_inner_patch.center = (
             self.selected_comet_coords.x,
             self.selected_comet_coords.y,
         )

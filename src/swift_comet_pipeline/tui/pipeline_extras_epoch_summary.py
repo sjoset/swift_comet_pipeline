@@ -87,13 +87,10 @@ def pipeline_extra_epoch_summary(
     stacked_epoch = scp.get_product_data(
         pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
     )
-    # assert stacked_epoch is not None
 
     if stacked_epoch is not None:
         print("-----Stacked epoch-----")
         print(stacked_epoch)
-
-    print(get_epoch_summary(scp=scp, epoch_id=epoch_id_selected))
     wait_for_key()
 
 

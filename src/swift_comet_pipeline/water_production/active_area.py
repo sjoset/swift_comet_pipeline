@@ -14,9 +14,11 @@ def make_sublimation_model_input(
     return SublimationModelInput(
         species=MolecularSpecies.h2o,
         # TODO: cite sources for value
-        visual_albedo=0.04,
+        # visual_albedo=0.04,
+        visual_albedo=0.05,
         # TODO: cite sources for value
-        infrared_albedo=0.05,
+        # infrared_albedo=0.05,
+        infrared_albedo=0.0,
         rh_au=abs(rh_au),
         sub_solar_latitude=sub_solar_latitude,
         num_latitude_gridpoints=1001,

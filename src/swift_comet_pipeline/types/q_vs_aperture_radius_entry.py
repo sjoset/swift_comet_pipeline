@@ -10,10 +10,8 @@ class QvsApertureRadiusEntry:
     dust_redness: float
     counts_uw1: float
     counts_uw1_err: float
-    snr_uw1: float
     counts_uvv: float
     counts_uvv_err: float
-    snr_uvv: float
     magnitude_uw1: float
     magnitude_uw1_err: float
     magnitude_uvv: float

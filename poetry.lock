@@ -3348,6 +3348,37 @@ rpds-py = ">=0.7.0"
 typing-extensions = {version = ">=4.4.0", markers = "python_version < \"3.13\""}
 
 [[package]]
+name = "regions"
+version = "0.10"
+description = "An Astropy coordinated package for region handling"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "regions-0.10-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f29875f04c85daf64ab2321cac97459e338760b145fbdfb09f60c28f164b5554"},
+    {file = "regions-0.10-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8d7844fe33206c9180bf21a7982b2eed816fff50eb91f8f73adbe9ac2763019e"},
+    {file = "regions-0.10-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5852f7e84ebf6d74ca62b2dd6c724b325aa088c8ce478ee2a79e88a168843aec"},
+    {file = "regions-0.10-cp310-cp310-win_amd64.whl", hash = "sha256:b307169a7d5e15a8e94895c2d03b8154725958439d993a191e50da20277fb4e1"},
+    {file = "regions-0.10-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:ff9ae69b7629d55a8257129771d900b1d75e1bce24cdb69f954aa60f4ef62929"},
+    {file = "regions-0.10-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1aed9a15dd76ad80464a11f45be718b4553bb469c9fe38dbbbf21731f174e064"},
+    {file = "regions-0.10-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:744f1b8a50309660ac716fe545d297e4dc734d8c6b877a4cbf4b83337c26d725"},
+    {file = "regions-0.10-cp311-cp311-win_amd64.whl", hash = "sha256:502a131a4c4feb3cfef3f0e7ce2ebd9a1033b1f1b0537e0b736f0337bb46e55b"},
+    {file = "regions-0.10-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:d79dd921c311b1084be79942b4ab2a07df055952c24770b9c4be12a6f71b7b82"},
+    {file = "regions-0.10-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:dde792254f1dfed111e0bcea904d0004daa6511e8040c53bcb2f0bd25b518021"},
+    {file = "regions-0.10-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9f04830e9c6950da0bf185409409a4dac7e9b951739b92d0d8116b8868097d34"},
+    {file = "regions-0.10-cp312-cp312-win_amd64.whl", hash = "sha256:e1f5c5b924afd5285b42cdf0ab9cfeb72739765b80eb3db80c7bea42fc030970"},
+    {file = "regions-0.10.tar.gz", hash = "sha256:961c518ea044268de0003a17953de3d4984623e9d47ad5424c100f6967e69a81"},
+]
+
+[package.dependencies]
+astropy = ">=5.1"
+numpy = ">=1.23"
+
+[package.extras]
+all = ["matplotlib (>=3.5)", "shapely"]
+docs = ["regions[all]", "sphinx-astropy (>=1.9)", "tomli"]
+test = ["pytest-arraydiff", "pytest-astropy (>=0.11)"]
+
+[[package]]
 name = "requests"
 version = "2.32.4"
 description = "Python HTTP for Humans."
@@ -4326,4 +4357,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "58c06dea632a4314a1fdb4e082f8f8cd6f73afd3938e1c703ce3c4be2af724bf"
+content-hash = "5d22abdb9098c8245b7385e4935d5d8f272eb9a5dde7b35276e4df79fa1cee46"

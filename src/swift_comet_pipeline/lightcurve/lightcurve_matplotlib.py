@@ -19,7 +19,8 @@ def show_lightcurve_mpl(lc: LightCurve, best_lc: LightCurve | None = None) -> No
     lc_cleaned: LightCurve = [x for x in lc if x is not None]
     df_raw = lightcurve_to_dataframe(lc=lc_cleaned)
 
-    df_raw["rh"] = df_raw.rh_au * np.sign(df_raw.time_from_perihelion_days)
+    # df_raw["rh"] = df_raw.rh_au * np.sign(df_raw.time_from_perihelion_days)
+    df_raw["rh"] = df_raw.rh_au
     df_raw["q_upper_bound"] = df_raw.q + df_raw.q_err / 2
     df_raw["q_lower_bound"] = df_raw.q - df_raw.q_err / 2
 
@@ -68,7 +69,7 @@ def show_lightcurve_mpl(lc: LightCurve, best_lc: LightCurve | None = None) -> No
             s=4,
         )
 
-    plt.suptitle("C/2012 K1")
+    # plt.suptitle("C/2012 K1")
     plt.xlabel(xlabel=f"{x_column} AU")
     plt.ylabel(ylabel="log Q(H2O)")
     plt.yscale("log")

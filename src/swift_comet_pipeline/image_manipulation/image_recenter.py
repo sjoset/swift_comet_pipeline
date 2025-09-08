@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 from astropy.visualization import ZScaleInterval
 import matplotlib.pyplot as plt
@@ -10,7 +8,7 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 def get_image_dimensions_to_center_on_pixel(
     source_image: SwiftUVOTImage, coords_to_center: PixelCoord
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     If we want to re-center the source_image on coords_to_center, we need to figure out the dimensions the new image
     needs to be to fit the old picture after we shift it over to its new position
@@ -40,11 +38,13 @@ def get_image_dimensions_to_center_on_pixel(
 def center_image_on_coords(
     source_image: SwiftUVOTImage,
     source_coords_to_center: PixelCoord,
-    stacking_image_size: Tuple[int, int],
+    stacking_image_size: tuple[int, int],
     show_resulting_image: bool = False,
 ) -> SwiftUVOTImage:
     """
     Takes a source_image and pads with zeros so that the new image has source_coords_to_center
+
+    stacking_image_size is given as a tuple of (num_rows, num_columns)
     """
 
     center_x, center_y = np.round(source_coords_to_center.x), np.round(

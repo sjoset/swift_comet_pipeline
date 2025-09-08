@@ -25,6 +25,7 @@ _swift_filter_to_caldb_dict = {
 
 
 # All times in the CALDB file are measured in seconds from this date
+# TODO: rename this to MET, Mission Elapsed Time
 def _get_uvot_sensitivity_start_date() -> Time:
     return Time("2005-01-01T00:00")
 

@@ -5,7 +5,6 @@ from swift_comet_pipeline.observationlog.gui_observation_log_slicing import (
 )
 from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
     epochs_from_time_delta,
-    split_epoch_list_into_data_and_event_epochs,
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
@@ -39,7 +38,7 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
 
     if not includes_uvv_and_uw1_filters(obs_log=obs_log):
         rprint(
-            "[red]The selection does not have data in both [blue]uw1[/blue] and [purple]uvv[/purple] filters![/red]"
+            "[red]The observation log does not have data in both [blue]uw1[/blue] and [purple]uvv[/purple] filters![/red]"
         )
 
     # only show uw1 and uvv filters on timeline, which means our epochs only include these two filters as well
@@ -52,8 +51,9 @@ def identify_epochs_step(swift_project_config: SwiftProjectConfig) -> None:
     epoch_list = epochs_from_time_delta(
         obs_log=filtered_obs_log, max_time_between_obs=dt
     )
+
     # print(f"Pre-split epochs: {len(epoch_list)}")
-    epoch_list = split_epoch_list_into_data_and_event_epochs(epoch_list=epoch_list)
+    # epoch_list = split_epoch_list_into_data_and_event_epochs(epoch_list=epoch_list)
     # print(f"Post-split epochs: {len(epoch_list)}")
 
     print("Save epochs?")

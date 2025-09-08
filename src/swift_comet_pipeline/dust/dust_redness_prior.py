@@ -16,4 +16,4 @@ def get_dust_redness_mean_prior() -> DustReddeningPercent:
 
 
 def get_dust_redness_sigma_prior() -> DustReddeningPercent:
-    return DustReddeningPercent(5.0)
+    return DustReddeningPercent(10.0)

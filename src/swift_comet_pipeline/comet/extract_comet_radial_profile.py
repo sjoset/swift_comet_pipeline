@@ -29,6 +29,8 @@ def extract_comet_radial_profile(
     # we have the pixel in the center, plus r pixels in the direction away from the center
     num_samples = r + 1
 
+    # TODO: if round(x0) == round(x1) this fails to produce a linspace!
+
     xs = np.linspace(np.round(x0), np.round(x1), num=num_samples, endpoint=True)
     ys = np.linspace(np.round(y0), np.round(y1), num=num_samples, endpoint=True)
 
@@ -126,6 +128,10 @@ def calculate_distance_from_center_mesh(img: SwiftUVOTImage):
     rounded to the nearest integer.  This allows addressing a radial profile array with the mesh as the index: radial_profile[distance_from_center_mesh]
 
     This works if we sample the radial profile at r = 0, r = 1, r = 2, ... but will break if we choose to sample differently
+
+    TODO: can we replace this with
+    Y, X = np.ogrid
+    dist = np.hypot((X - center_x), (Y - center_y))?
     """
 
     img_height, img_width = img.shape

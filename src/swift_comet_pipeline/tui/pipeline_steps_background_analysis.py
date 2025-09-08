@@ -11,7 +11,7 @@ from swift_comet_pipeline.pipeline.steps.pipeline_steps_enum import (
     SwiftCometPipelineStepEnum,
 )
 from swift_comet_pipeline.pipeline_utils.epoch_summary import get_epoch_summary
-from swift_comet_pipeline.stacking.stacking import get_stacked_image_set
+from swift_comet_pipeline.stacking.stacked_image_set import get_stacked_image_set
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.tui.tui_menus import subpipeline_selection_menu
@@ -96,7 +96,7 @@ def determine_background_step(swift_project_config: SwiftProjectConfig) -> None:
         rprint(
             f"[blue]{selected_epoch_id}[/blue]\t[green]{filter_to_file_string(filter_type=filter_type)}[/green]\t[orange]{stacking_method}[/orange]"
         )
-        print(f"Background count rate: {bg_result.count_rate_per_pixel}")
+        print(f"Background count rate: {bg_result.b_hat}")
 
         rprint(
             f"[green]Writing background analysis for filter {filter_to_file_string(filter_type)}, stacking method {stacking_method}...[/green]"
@@ -192,7 +192,7 @@ def background_subtract_step(swift_project_config: SwiftProjectConfig) -> None:
             )
             # print(f"Background count rate: {bg_result.count_rate_per_pixel}")
 
-            bg_corrected_img = img_data - bg_result.count_rate_per_pixel.value
+            bg_corrected_img = img_data - bg_result.b_hat
 
             # make a new fits with the background-corrected image, and copy the header information over from the original stacked image
             rprint(

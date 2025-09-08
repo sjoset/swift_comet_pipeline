@@ -26,6 +26,8 @@ from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
+# TODO: deprecate this for now until we update to the new BackgroundResult data structure
+
 __all__ = ["bg_walking_aperture_ensemble"]
 
 ApertureWalk: TypeAlias = list[PixelCoord]

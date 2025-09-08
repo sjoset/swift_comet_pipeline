@@ -48,7 +48,7 @@ from swift_comet_pipeline.water_production.num_OH_to_Q import (
 from swift_comet_pipeline.tui.tui_common import get_selection
 
 
-# TODO: move this somewhere else
+# TODO: move this somewhere else?
 # TODO: add pixel selection and cone angle to initialization so we can save/restore state
 class RadialProfileSelectionPlot(object):
     def __init__(
@@ -355,8 +355,8 @@ class RadialProfileSelectionPlot(object):
         # draw horizontal shaded bars for 1, 2, and 3 sigma background levels: overlaying with alpha values will make lower sigmas darker
         for i in range(1, 4):
             self.uw1_profile_ax.axhspan(
-                -i * self.uw1_bg.count_rate_per_pixel.sigma,
-                i * self.uw1_bg.count_rate_per_pixel.sigma,
+                -i * self.uw1_bg.bg_shot_noise_variance,
+                i * self.uw1_bg.bg_shot_noise_variance,
                 color="blue",
                 alpha=0.05,
             )
@@ -368,8 +368,8 @@ class RadialProfileSelectionPlot(object):
         )
         for i in range(1, 4):
             self.uvv_profile_ax.axhspan(
-                -i * self.uvv_bg.count_rate_per_pixel.sigma,
-                i * self.uvv_bg.count_rate_per_pixel.sigma,
+                -i * self.uvv_bg.bg_shot_noise_variance,
+                i * self.uvv_bg.bg_shot_noise_variance,
                 color="blue",
                 alpha=0.05,
             )
@@ -447,10 +447,10 @@ class RadialProfileSelectionPlot(object):
             beta=self.beta_parameter,
         )
 
-        # if we subtract nothing from the uvv filter, this is an absolute upper limit on the OH present
+        # if we subtract nothing from the uw1 filter, this is an absolute upper limit on the OH present
         self.abs_upper_limit_flux_OH = OH_flux_from_count_rate(
             uw1=self.uw1_count_rate,
-            uvv=CountRate(value=0.0, sigma=self.uvv_bg.count_rate_per_pixel.sigma),
+            uvv=CountRate(value=0.0, sigma=self.uvv_bg.bg_shot_noise_variance),
             beta=self.beta_parameter,
         )
 
@@ -564,7 +564,9 @@ def profile_selection_plot(
     )
     assert prof_img_uw1 is not None
     prof_img_uw1.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uw1_median_profile_img
+        epoch_summary=epoch_summary,
+        img=rpsp.uw1_median_profile_img,
+        filter_type=SwiftFilter.uw1,
     )
     prof_img_uw1.write()
     prof_img_uvv = scp.get_product(
@@ -575,7 +577,9 @@ def profile_selection_plot(
     )
     assert prof_img_uvv is not None
     prof_img_uvv.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uvv_median_profile_img
+        epoch_summary=epoch_summary,
+        img=rpsp.uvv_median_profile_img,
+        filter_type=SwiftFilter.uvv,
     )
     prof_img_uvv.write()
 
@@ -587,7 +591,9 @@ def profile_selection_plot(
     )
     assert med_sub_uw1 is not None
     med_sub_uw1.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uw1_subtracted_median_image
+        epoch_summary=epoch_summary,
+        img=rpsp.uw1_subtracted_median_image,
+        filter_type=SwiftFilter.uw1,
     )
     med_sub_uw1.write()
     med_sub_uvv = scp.get_product(
@@ -598,7 +604,9 @@ def profile_selection_plot(
     )
     assert med_sub_uvv is not None
     med_sub_uvv.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uvv_subtracted_median_image
+        epoch_summary=epoch_summary,
+        img=rpsp.uvv_subtracted_median_image,
+        filter_type=SwiftFilter.uvv,
     )
     med_sub_uvv.write()
 
@@ -610,7 +618,9 @@ def profile_selection_plot(
     )
     assert med_div_uw1 is not None
     med_div_uw1.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uw1_divided_median_image
+        epoch_summary=epoch_summary,
+        img=rpsp.uw1_divided_median_image,
+        filter_type=SwiftFilter.uw1,
     )
     med_div_uw1.write()
     med_div_uvv = scp.get_product(
@@ -621,7 +631,9 @@ def profile_selection_plot(
     )
     assert med_div_uvv is not None
     med_div_uvv.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=rpsp.uvv_divided_median_image
+        epoch_summary=epoch_summary,
+        img=rpsp.uvv_divided_median_image,
+        filter_type=SwiftFilter.uvv,
     )
     med_div_uvv.write()
 

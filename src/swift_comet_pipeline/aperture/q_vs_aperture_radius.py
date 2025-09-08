@@ -5,7 +5,7 @@ from tqdm import tqdm
 from rich import print as rprint
 import astropy.units as u
 
-from swift_comet_pipeline.aperture.aperture_count_rate import median_aperture_count_rate
+from swift_comet_pipeline.aperture.aperture_count_rate import aperture_analysis
 from swift_comet_pipeline.aperture.concentric_annuli import (
     make_concentric_annular_apertures,
 )
@@ -88,10 +88,8 @@ def aperture_count_rate_analysis(
         dust_redness=float(dust_redness),
         counts_uw1=uw1_count_rate.value,
         counts_uw1_err=uw1_count_rate.sigma,
-        snr_uw1=uw1_count_rate.value / uw1_count_rate.sigma,
         counts_uvv=uvv_count_rate.value,
         counts_uvv_err=uvv_count_rate.sigma,
-        snr_uvv=uvv_count_rate.value / uvv_count_rate.sigma,
         magnitude_uw1=uw1_magnitude.value,
         magnitude_uw1_err=uw1_magnitude.sigma,
         magnitude_uvv=uvv_magnitude.value,
@@ -144,35 +142,38 @@ def q_vs_aperture_radius(
     ]
     drs = np.array([uw1_apertures[0].r]) + np.diff(aperture_radii)  # type: ignore
 
-    uw1_annular_median_count_rates = [
-        median_aperture_count_rate(
+    print("Starting UVW1 counts ...")
+    uw1_annular_analyses = [
+        aperture_analysis(
             img=uw1_img,
             ap=ap,
             background=uw1_bg,
             exposure_time_s=epoch_summary.uw1_exposure_time_s,
         )
-        for ap in uw1_apertures
+        for ap in tqdm(uw1_apertures)
     ]
+    print("Starting UVV counts ...")
     uvv_annular_median_count_rates = [
-        median_aperture_count_rate(
+        aperture_analysis(
             img=uvv_img,
             ap=ap,
             background=uvv_bg,
             exposure_time_s=epoch_summary.uvv_exposure_time_s,
         )
-        for ap in uvv_apertures
+        for ap in tqdm(uvv_apertures)
     ]
 
     # calculate the total count rates in the aperture, pretending all pixels were instead the median pixel value
     # innermost aperture is actually a circle
-    uw1_annular_count_rates = [uw1_annular_median_count_rates[0] * np.pi * drs[0] ** 2]
-    uvv_annular_count_rates = [uvv_annular_median_count_rates[0] * np.pi * drs[0] ** 2]
+    uw1_annular_count_rates = [
+        uw1_annular_analyses[0].median_count_rate * np.pi * drs[0] ** 2
+    ]
+    uvv_annular_count_rates = [
+        uvv_annular_median_count_rates[0].median_count_rate * np.pi * drs[0] ** 2
+    ]
     # and the rest are annuli
     uw1_annular_count_rates.extend(
-        [
-            2 * np.pi * x * dr
-            for x, dr in zip(uw1_annular_median_count_rates[1:], drs[1:])
-        ]
+        [2 * np.pi * x * dr for x, dr in zip(uw1_annular_analyses[1:], drs[1:])]
     )
     uvv_annular_count_rates.extend(
         [
@@ -186,6 +187,7 @@ def q_vs_aperture_radius(
 
     num_data_points = len(dust_rednesses) * (len(aperture_radii) - 1)
 
+    print("Starting Q(H2O) calculations ...")
     ap_analysis_list = [
         aperture_count_rate_analysis(
             epoch_summary=epoch_summary,
@@ -265,7 +267,9 @@ def q_vs_aperture_radius_at_epoch(
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=epoch_id)
     assert epoch_summary is not None
 
-    print(f"Starting analysis of {epoch_id}: observation at {epoch_summary.rh_au} AU")
+    print(
+        f"Starting analysis of {epoch_id}: observation at {epoch_summary.rh_au} AU ... "
+    )
 
     img_pair = get_uw1_and_uvv_background_subtracted_images(
         scp=scp, epoch_id=epoch_id, stacking_method=stacking_method
@@ -279,7 +283,10 @@ def q_vs_aperture_radius_at_epoch(
     assert bg_pair is not None
     uw1_bg, uvv_bg = uw1uvv_getter(bg_pair)
 
+    print("Images loaded ... ")
+
     # TODO: these magic numbers belong in a config: user or internal?
+    # TODO: the upper limit should depend on the pixel scale: close comets only have ~20,000 km worth of data in image
     q_vs_r = q_vs_aperture_radius(
         epoch_summary=epoch_summary,
         uw1_img=uw1_img,
@@ -287,9 +294,9 @@ def q_vs_aperture_radius_at_epoch(
         dust_rednesses=dust_rednesses,
         uw1_bg=uw1_bg,
         uvv_bg=uvv_bg,
-        # max_aperture_radius=200000 * u.km,  # type: ignore
-        max_aperture_radius=1000000 * u.km,  # type: ignore
-        num_apertures=200,
+        max_aperture_radius=200000 * u.km,  # type: ignore
+        # max_aperture_radius=1000000 * u.km,  # type: ignore
+        num_apertures=100,
     )
 
     by_dust_redness = lambda x: x.dust_redness

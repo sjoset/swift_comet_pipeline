@@ -4,7 +4,6 @@ from astropy.time import TimeDelta
 import pandas as pd
 
 from swift_comet_pipeline.observationlog.epoch_typing import EpochID
-from swift_comet_pipeline.types.swift_pixel_resolution import SwiftPixelResolution
 
 
 @dataclass
@@ -19,9 +18,10 @@ class EpochSummary:
     km_per_pix: float
     arcsecs_per_pix: float
     time_from_perihelion: TimeDelta
-    pixel_resolution: SwiftPixelResolution
     uw1_exposure_time_s: float
     uvv_exposure_time_s: float
+    sky_motion_arcsec_min: float
+    sky_motion_pa: float
 
 
 def dataframe_to_epoch_summary_list(

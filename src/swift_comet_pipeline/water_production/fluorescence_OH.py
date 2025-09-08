@@ -24,5 +24,4 @@ def flux_OH_to_num_OH(
 
     num_OH = luminescence / g_factor
 
-    # return HydroxylMoleculeCount(value=num_OH, sigma=num_err)
     return HydroxylMoleculeCount(value=num_OH.value, sigma=num_OH.sigma)

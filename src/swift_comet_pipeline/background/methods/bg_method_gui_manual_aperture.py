@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 from matplotlib.widgets import Slider
 
-from swift_comet_pipeline.background.methods.bg_method_aperture import bg_in_aperture
+from swift_comet_pipeline.background.methods.bg_method_aperture import (
+    background_results_from_aperture,
+)
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
 from swift_comet_pipeline.types.background_determination_method import (
     BackgroundDeterminationMethod,
@@ -19,9 +21,13 @@ from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
+# TODO: this shouldn't depend on exposure time anymore, right?
 def bg_gui_manual_aperture(
     img: SwiftUVOTImage, filter_type: SwiftFilter, exposure_time_s: float
 ):
+    """
+    Calls the GUI matplotlib interface and returns the result
+    """
     bg = BackgroundAperturePlacementPlot(
         img=img, filter_type=filter_type, exposure_time_s=exposure_time_s
     )
@@ -30,7 +36,7 @@ def bg_gui_manual_aperture(
     ap_x = float(bg.aperture.get_center()[0])  # type: ignore
     ap_y = float(bg.aperture.get_center()[1])  # type: ignore
     ap_radius = float(bg.aperture.radius)
-    ap_area = int(np.round(np.pi * ap_radius**2))
+    # ap_area = int(np.round(np.pi * ap_radius**2))
 
     params = {
         "aperture_x": ap_x,
@@ -38,19 +44,22 @@ def bg_gui_manual_aperture(
         "aperture_radius": ap_radius,
     }
 
-    return BackgroundResult(
-        count_rate_per_pixel=bg_in_aperture(
-            img=img,
-            aperture_center=PixelCoord(x=ap_x, y=ap_y),
-            aperture_radius=ap_radius,
-            bg_estimator=BackgroundValueEstimator.median,
-            exposure_time_s=exposure_time_s,
-        ),
-        bg_estimator=BackgroundValueEstimator.median,
-        bg_aperture_area=ap_area,
-        params=params,
-        method=BackgroundDeterminationMethod.gui_manual_aperture,
-    )
+    bg_result = bg.background_result
+    bg_result.params = params
+    return bg_result
+    # return BackgroundResult(
+    #     count_rate_per_pixel=bg_in_aperture(
+    #         img=img,
+    #         aperture_center=PixelCoord(x=ap_x, y=ap_y),
+    #         aperture_radius=ap_radius,
+    #         bg_estimator=BackgroundValueEstimator.median,
+    #         exposure_time_s=exposure_time_s,
+    #     ),
+    #     bg_estimator=BackgroundValueEstimator.median,
+    #     bg_aperture_area=ap_area,
+    #     params=params,
+    #     method=BackgroundDeterminationMethod.gui_manual_aperture,
+    # )
 
 
 class BackgroundAperturePlacementPlot:
@@ -59,6 +68,7 @@ class BackgroundAperturePlacementPlot:
     ):
         self.original_img = copy.deepcopy(img)
         self.bg_count_rate = 0
+        self.bg_variance = 0
 
         self.img = img
         self.filter_type = filter_type
@@ -120,20 +130,20 @@ class BackgroundAperturePlacementPlot:
         self.fig.canvas.draw_idle()  # type: ignore
 
     def count_rate_string(self):
-        return f"Background: {self.bg_count_rate:07.6f} counts per second per pixel"
+        return f"Background: {self.bg_count_rate:07.6f} +- {self.bg_variance:3.2e} counts per second per pixel"
 
     def recalc_background(self):
         aperture_center = PixelCoord(
             x=self.aperture.get_center()[0], y=self.aperture.get_center()[1]  # type: ignore
         )
-        bgresult = bg_in_aperture(
+        self.background_result = background_results_from_aperture(
             img=self.original_img,
             aperture_center=aperture_center,
             aperture_radius=self.aperture.radius,
             bg_estimator=BackgroundValueEstimator.median,
-            exposure_time_s=self.exposure_time_s,
         )
-        self.bg_count_rate = bgresult.value
+        self.bg_count_rate = self.background_result.b_hat
+        self.bg_variance = self.background_result.bg_shot_noise_variance
         self.count_rate_annotation.set_text(self.count_rate_string())
         self.img_plot.set_data(self.original_img - self.bg_count_rate)
 

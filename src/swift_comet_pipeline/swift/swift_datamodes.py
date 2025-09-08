@@ -1,14 +1,28 @@
+import pathlib
+
 from swift_comet_pipeline.types.swift_image_mode import SwiftImageMode
 from swift_comet_pipeline.types.swift_pixel_resolution import SwiftPixelResolution
 
 
-def datamode_from_fits_keyword_string(datamode: str) -> SwiftImageMode | None:
+def datamode_from_fits_keyword_string(
+    datamode: str, fits_file_path: pathlib.Path
+) -> SwiftImageMode | None:
     if datamode == "IMAGE":
         return SwiftImageMode.data_mode
     elif datamode == "EVENT":
         return SwiftImageMode.event_mode
     else:
-        return None
+        # Alternatively, we can just ask the user here
+        print(
+            f"Invalid data mode string: [{datamode}]! Inferring from path {fits_file_path}."
+        )
+        uvot_folder_path = fits_file_path.parent.parent
+        event_folder_path = uvot_folder_path / pathlib.Path("event")
+        print(f"Testing existence of {event_folder_path} ...")
+        if event_folder_path.exists():
+            return SwiftImageMode.event_mode
+        else:
+            return SwiftImageMode.data_mode
 
 
 def datamode_to_pixel_resolution(datamode: SwiftImageMode) -> SwiftPixelResolution:

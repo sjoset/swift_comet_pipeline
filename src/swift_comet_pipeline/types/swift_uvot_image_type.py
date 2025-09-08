@@ -7,6 +7,7 @@ class SwiftUVOTImageType(StrEnum):
     detector = "dt"
     sky_units = "sk"
     exposure_map = "ex"
+    event_mode = "evt"
 
     @classmethod
     def all_image_types(cls):

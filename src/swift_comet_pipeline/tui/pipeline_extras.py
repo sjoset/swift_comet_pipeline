@@ -297,10 +297,10 @@ def show_q_vs_aperture_radius(
     epoch_id_selected = stacked_epoch_menu(scp=scp)
     if epoch_id_selected is None:
         return
-    stacked_epoch = scp.get_product_data(
-        pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
-    )
-    assert stacked_epoch is not None
+    # stacked_epoch = scp.get_product_data(
+    #     pf=PipelineFilesEnum.epoch_post_stack, epoch_id=epoch_id_selected
+    # )
+    # assert stacked_epoch is not None
 
     epoch_sum = get_epoch_summary(scp=scp, epoch_id=epoch_id_selected)
     assert epoch_sum is not None
