@@ -54,7 +54,9 @@ class ValueAndStandardDev:
     def __truediv__(self, other):
         # self/other
         if not isinstance(other, ValueAndStandardDev):
-            return ValueAndStandardDev(value=self.value / other, sigma=self.sigma)
+            return ValueAndStandardDev(
+                value=self.value / other, sigma=self.sigma / other
+            )
 
         v = self.value / other.value
         s = np.abs(v) * np.sqrt(
