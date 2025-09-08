@@ -1,9 +1,14 @@
-import numpy as np
+import astropy.units as u
 from photutils.aperture import ApertureStats, CircularAperture
 from photutils.aperture.stats import SigmaClip
 
-from swift_comet_pipeline.types.background_result import BackgroundValueEstimator
-from swift_comet_pipeline.types.count_rate import CountRatePerPixel
+from swift_comet_pipeline.types.background_determination_method import (
+    BackgroundDeterminationMethod,
+)
+from swift_comet_pipeline.types.background_result import (
+    BackgroundResult,
+    BackgroundValueEstimator,
+)
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
@@ -31,32 +36,66 @@ def bg_sigma_clipped_aperture_stats(
     return aperture_stats
 
 
-def bg_in_aperture(
+def background_results_from_aperture(
     img: SwiftUVOTImage,
     aperture_center: PixelCoord,
     aperture_radius: float,
     bg_estimator: BackgroundValueEstimator,
-    exposure_time_s: float,
     sigma_clip: float = 3.0,
-) -> CountRatePerPixel:
-    bg_stats = bg_sigma_clipped_aperture_stats(
+) -> BackgroundResult:
+    bg_sigma_clip_stats = bg_sigma_clipped_aperture_stats(
         img=img,
         aperture_center=aperture_center,
         aperture_radius=aperture_radius,
         sigma_clip=sigma_clip,
     )
-    ap_area = np.pi * aperture_radius**2
 
     if bg_estimator == BackgroundValueEstimator.median:
-        count_rate_per_pixel = bg_stats.median[0]
-        k = np.pi / 2
-    else:
-        count_rate_per_pixel = bg_stats.mean[0]
-        k = 1
+        b_hat = bg_sigma_clip_stats.median[0]
+    elif bg_estimator == BackgroundValueEstimator.mean:
+        b_hat = bg_sigma_clip_stats.mean[0]
 
-    variance = (k * bg_stats.std[0] ** 2) / (exposure_time_s * ap_area)
+    bg_shot_noise_variance = bg_sigma_clip_stats.var[0]
+    bg_num_pixels = bg_sigma_clip_stats.sum_aper_area[0].to_value(u.pix**2)  # type: ignore
 
-    return CountRatePerPixel(value=count_rate_per_pixel, sigma=np.sqrt(variance))
+    return BackgroundResult(
+        b_hat=b_hat,
+        bg_shot_noise_variance=bg_shot_noise_variance,
+        bg_num_pixels=bg_num_pixels,
+        bg_estimator=bg_estimator,
+        method=BackgroundDeterminationMethod.manual_aperture_median,
+        params={},
+    )
+
+
+# # TODO: what are we measuring here? Is it the median background +/- variance in median?
+# # replace this with something else
+# def bg_in_aperture(
+#     img: SwiftUVOTImage,
+#     aperture_center: PixelCoord,
+#     aperture_radius: float,
+#     bg_estimator: BackgroundValueEstimator,
+#     exposure_time_s: float,
+#     sigma_clip: float = 3.0,
+# ) -> CountRatePerPixel:
+#     bg_stats = bg_sigma_clipped_aperture_stats(
+#         img=img,
+#         aperture_center=aperture_center,
+#         aperture_radius=aperture_radius,
+#         sigma_clip=sigma_clip,
+#     )
+#     ap_area = np.pi * aperture_radius**2
+#
+#     if bg_estimator == BackgroundValueEstimator.median:
+#         count_rate_per_pixel = bg_stats.median[0]
+#         k = np.pi / 2
+#     else:
+#         count_rate_per_pixel = bg_stats.mean[0]
+#         k = 1
+#
+#     variance = (k * bg_stats.std[0] ** 2) / (exposure_time_s * ap_area)
+#
+#     return CountRatePerPixel(value=count_rate_per_pixel, sigma=np.sqrt(variance))
 
 
 # def bg_manual_aperture_median(
