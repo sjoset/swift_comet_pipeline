@@ -1,3 +1,4 @@
+from functools import partial
 from itertools import product
 
 from astropy.time import Time
@@ -6,6 +7,7 @@ import pandas as pd
 from astropy.io import fits
 from tqdm import tqdm
 from icecream import ic
+from concurrent.futures import ProcessPoolExecutor
 
 from swift_comet_pipeline.comet.comet_center import get_comet_center_prefer_user_coords
 from swift_comet_pipeline.image_manipulation.event_mode_downsample import (
@@ -14,9 +16,6 @@ from swift_comet_pipeline.image_manipulation.event_mode_downsample import (
 from swift_comet_pipeline.image_manipulation.image_pad import pad_to_match_sizes
 from swift_comet_pipeline.image_manipulation.image_recenter import (
     center_image_on_coords,
-)
-from swift_comet_pipeline.image_manipulation.utility.plot_image_multi import (
-    plot_images_multi,
 )
 from swift_comet_pipeline.observationlog.epoch_typing import Epoch, EpochID
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
@@ -102,9 +101,6 @@ def process_stackable_precursor(
         # TODO: make num_time_slices an option in the user config, or some way to control the maximum time slice length
         # TODO: we throw away the exposure mask from the event mode stack - probably fine as the offsets between sub-slices are small
         num_time_slices = int(np.ceil(precursor.exposure_time_s / 30.0))
-        # print(
-        #     f"Selecting {num_time_slices} time slices for exposure time of {precursor.exposure_time_s}"
-        # )
         binning_result = event_mode_fits_to_time_binned_image(
             precursor_img=precursor,
             num_time_slices=num_time_slices,
@@ -248,27 +244,28 @@ def stack_epoch_into_sum_and_median(
             )
         )
 
-    # TODO: debug code removal
-    # print("Processed:")
-    # plot_images_multi(
-    #     [x.img for x in stackable_images],
-    #     [x.comet_center for x in stackable_images],
+    # print("Processing precursors ...")
+    # process_one = partial(
+    #     process_stackable_precursor,
+    #     do_coincidence_correction=do_coincidence_correction,
     # )
-
-    # stackable_images = [
-    #     process_stackable_precursor(
-    #         p, do_coincidence_correction=do_coincidence_correction
+    # with ProcessPoolExecutor() as ex:
+    #     stackable_images: list[StackableUVOTImage] = list(
+    #         tqdm(
+    #             ex.map(process_one, stacking_precursors),  # preserves order
+    #             total=len(stacking_precursors),
+    #             unit="images",
+    #         )
     #     )
-    #     for p in stacking_precursors
-    # ]
 
     print("Applying uniform resolution sampling ...  ", end="")
     stackable_images = uniform_pixel_resolution(stackable_images)
 
-    print("Determining final stacked image size ...  ")
+    print("Determining final stacked image size ...  ", end="")
     stacking_image_size = determine_stacking_image_size_from_stackables(
         stackable_images
     )
+    print("Done ... ", end="")
 
     if stacking_image_size is None:
         print("Could not determine stacking image size!  Not stacking.")
@@ -288,7 +285,7 @@ def stack_epoch_into_sum_and_median(
         filter_type=filter_type, t_obs=Time(observation_mid_time)
     )
     print(
-        f"Applying UVOT sensitivity corrections for {observation_mid_time} with factor {uvot_correction_factor} ...  ",
+        f"\nApplying UVOT sensitivity corrections for {observation_mid_time} with factor {uvot_correction_factor:3.2f} ...  ",
         end="",
     )
     # Adjust the sum and median, leave the exposure map alone
@@ -300,12 +297,22 @@ def stack_epoch_into_sum_and_median(
 
     print("Complete!")
 
+    # TODO: remove debug code
+    # if filter_type == SwiftFilter.uvv:
+    #     print(epoch)
+    #     import matplotlib.pyplot as plt
+    #
+    #     zscale = ZScaleInterval()
+    #     vmin, vmax = zscale.get_limits(sensitivity_corrected[0])
+    #
+    #     plt.imshow(sensitivity_corrected[0], vmin=vmin, vmax=vmax, origin="lower")
+    #     # plt.imshow(sensitivity_corrected[0], origin="lower")
+    #     plt.show()
+
     return sensitivity_corrected
 
 
-# TODO: Priority 1: rewrite this
 def make_uw1_and_uvv_stacks(
-    # swift_data: SwiftData,
     scp: SwiftCometPipeline,
     epoch_id: EpochID,
     horizons_id: str,
@@ -331,14 +338,6 @@ def make_uw1_and_uvv_stacks(
     else:
         post_veto_epoch = pre_veto_epoch
 
-    # # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
-    # if not is_epoch_stackable(epoch=post_veto_epoch):
-    #     print("Images in the requested stack have mixed data imaging modes")
-    # else:
-    #     print(
-    #         f"All images taken with FITS keyword DATAMODE={post_veto_epoch.DATAMODE.iloc[0].value}, stacking..."
-    #     )
-
     # now get just the uw1 and uvv images
     stacked_epoch_mask = np.logical_or(
         post_veto_epoch.FILTER == SwiftFilter.uw1,
@@ -346,34 +345,8 @@ def make_uw1_and_uvv_stacks(
     )
     epoch_to_stack = post_veto_epoch[stacked_epoch_mask]
 
-    # # are we stacking images with mixed data modes (and therefore mixed pixel resolutions?)
-    # if not is_epoch_stackable(epoch=epoch_to_stack):
-    #     print("Images in the requested stack have mixed data modes!")
-    #     num_event_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
-    #         SwiftImageMode.event_mode
-    #     ]
-    #     num_data_mode_imgs = epoch_to_stack.DATAMODE.value_counts()[
-    #         SwiftImageMode.data_mode
-    #     ]
-    #     print(
-    #         f"Event mode images: {num_event_mode_imgs}\tData mode images: {num_data_mode_imgs}"
-    #     )
-    #     if num_event_mode_imgs > num_data_mode_imgs:
-    #         selected_data_mode = SwiftImageMode.event_mode
-    #     else:
-    #         selected_data_mode = SwiftImageMode.data_mode
-    #     print(f"Filtering images to use only {selected_data_mode.value} ...")
-    #     epoch_to_stack = epoch_to_stack[
-    #         epoch_to_stack.DATAMODE == selected_data_mode
-    #     ].copy()
-    # else:
-    #     print(
-    #         f"All images taken with FITS keyword DATAMODE={epoch_to_stack.DATAMODE.iloc[0].value}, stacking..."
-    #     )
-
     # now epoch_to_stack has no vetoed images, and only contains uw1 or uvv images
 
-    # epoch_pixel_resolution = epoch_to_stack.ARCSECS_PER_PIXEL.iloc[0]
     stacked_images = StackedUVOTImageSet({})
     exposure_maps = {}
 
@@ -429,6 +402,7 @@ def make_uw1_and_uvv_stacks(
         hdu = epoch_stacked_image_to_fits(
             epoch_summary=epoch_summary,
             img=stacked_images[(filter_type, stacking_method)],
+            filter_type=filter_type,
         )
         img_prod = scp.get_product(
             pf=PipelineFilesEnum.stacked_image,
@@ -446,7 +420,7 @@ def make_uw1_and_uvv_stacks(
     )
     assert uw1_exp_map_prod is not None
     uw1_exp_map_prod.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=uw1_exp_map
+        epoch_summary=epoch_summary, img=uw1_exp_map, filter_type=SwiftFilter.uw1
     )
     uvv_exp_map_prod = scp.get_product(
         pf=PipelineFilesEnum.exposure_map,
@@ -455,7 +429,7 @@ def make_uw1_and_uvv_stacks(
     )
     assert uvv_exp_map_prod is not None
     uvv_exp_map_prod.data = epoch_stacked_image_to_fits(
-        epoch_summary=epoch_summary, img=uvv_exp_map
+        epoch_summary=epoch_summary, img=uvv_exp_map, filter_type=SwiftFilter.uvv
     )
 
 

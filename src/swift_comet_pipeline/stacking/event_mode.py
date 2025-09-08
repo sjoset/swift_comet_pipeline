@@ -1,7 +1,11 @@
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 import numpy as np
 from astropy.io import fits
+from photutils.aperture import CircularAperture
 from tqdm import tqdm
 
+from swift_comet_pipeline.comet.comet_center_finding import find_comet_center
 from swift_comet_pipeline.image_manipulation.image_recenter import (
     center_image_on_coords,
 )
@@ -28,6 +32,9 @@ from swift_comet_pipeline.stacking.determine_stack_size import (
 from swift_comet_pipeline.swift.coincidence_correction import coincidence_correction
 from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
 from swift_comet_pipeline.tui.tui_common import wait_for_key
+from swift_comet_pipeline.types.comet_center_finding_method import (
+    CometCenterFindingMethod,
+)
 from swift_comet_pipeline.types.pixel_coord import PixelCoord
 from swift_comet_pipeline.types.stacking import (
     EventModeTimeBinImageResult,
@@ -40,7 +47,7 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
 # TODO: add method for summation event-mode stacking that tracks the pixel offset as a function of time,
-# than add that offset directly to X and Y, then do just one histogram2d, and center on the comet afterwards, which should be the position at t=0
+# then add that offset directly to X and Y, then do just one histogram2d, and center on the comet afterwards, which should be the position at t=0
 
 
 def slice_event_mode_image_data(
@@ -74,30 +81,85 @@ def slice_event_mode_image_data(
     # bump up the ending time by 1 second to catch every photon
     slice_ending_ts[-1] += 1
 
-    # image_list = []
-    # for t_st, t_e in zip(slice_starting_ts, slice_ending_ts):
-    #     t_mask = np.logical_and(ts >= t_st, ts < t_e)
-    #
-    #     img = np.zeros((y_size, x_size))
-    #     for x, y in zip(xs[t_mask], ys[t_mask]):
-    #         img[y, x] += 1
-    #     image_list.append(img)
-
     x_edges = np.arange(x_size + 1)
     y_edges = np.arange(y_size + 1)
 
-    print("Slicing ... ")
     image_list = []
-    for t_st, t_e in tqdm(
-        zip(slice_starting_ts, slice_ending_ts), total=num_slices, unit="slices"
-    ):
+    for t_st, t_e in zip(slice_starting_ts, slice_ending_ts):
         t_mask = np.logical_and(ts >= t_st, ts < t_e)
 
         img, _, _ = np.histogram2d(ys[t_mask], xs[t_mask], bins=[y_edges, x_edges])
         image_list.append(img)
-    print("Complete!")
 
     return image_list, mid_time_list
+
+
+def _center_one_image(
+    img_coords_and_size: tuple[SwiftUVOTImage, PixelCoord, tuple[int, int]],
+):
+    return center_image_on_coords(
+        source_image=img_coords_and_size[0],
+        source_coords_to_center=img_coords_and_size[1],
+        stacking_image_size=img_coords_and_size[2],
+    )
+
+
+def centering_step(
+    trimmed_imgs: list[SwiftUVOTImage],
+    coords_to_center: list[PixelCoord],
+    event_stack_size: tuple[int, int],
+) -> list[SwiftUVOTImage]:
+
+    img_and_coord_pairs = zip(
+        trimmed_imgs, coords_to_center, [event_stack_size] * len(trimmed_imgs)
+    )
+
+    with ProcessPoolExecutor() as ex:
+        centered_imgs = list(
+            tqdm(
+                ex.map(_center_one_image, img_and_coord_pairs, chunksize=1),
+                total=len(trimmed_imgs),
+                unit="images",
+                leave=False,
+            )
+        )
+    print("")
+
+    return centered_imgs
+
+
+def _coincidence_correct_one_image(
+    img_exp_and_scale: tuple[SwiftUVOTImage, float, SwiftPixelResolution]
+) -> SwiftUVOTImage:
+    coi_map = coincidence_correction(
+        img=img_exp_and_scale[0] / img_exp_and_scale[1], scale=img_exp_and_scale[2]
+    )
+    return img_exp_and_scale[0] * coi_map
+
+
+def coincidence_correction_step(
+    centered_imgs: list[SwiftUVOTImage], exposure_time_per_slice: float
+) -> list[SwiftUVOTImage]:
+
+    num_images = len(centered_imgs)
+    img_exp_and_scale = zip(
+        centered_imgs,
+        [exposure_time_per_slice] * num_images,
+        [SwiftPixelResolution.event_mode] * num_images,
+    )
+
+    with ProcessPoolExecutor() as ex:
+        cc_imgs = list(
+            tqdm(
+                ex.map(_coincidence_correct_one_image, img_exp_and_scale, chunksize=1),
+                total=num_images,
+                unit="images",
+                leave=False,
+            )
+        )
+    print("")
+
+    return cc_imgs
 
 
 def event_mode_fits_to_time_binned_image(
@@ -109,7 +171,8 @@ def event_mode_fits_to_time_binned_image(
     Header entry TLMAX6 = maximum extent of 'X' values, but not necessarily the largest X that was observed (np.min(['X']) is lower than this value)
     Similar for TLMAX7 for the y value
 
-    Returns image coincidence-corrected, comet-centered set of images in counts (not counts per second)
+    Returns coincidence-corrected, comet-centered image in counts (not counts per second) by taking the event mode data and
+    data time slicing it into num_time_slices sub-images, and re-centering on the comet for each sub-image, then stacking.
     """
 
     # construct WCS from header to find comet positions at each time slice
@@ -136,6 +199,7 @@ def event_mode_fits_to_time_binned_image(
     x_max, y_max = np.max(ev_table["X"]), np.max(ev_table["Y"])  # type: ignore
 
     # print("Time slicing event mode image ...  ", end='')
+    print("Time slicing image ... ")
     img_slices_list, mid_time_list = slice_event_mode_image_data(
         event_mode_bintable=ev_table,
         x_size=ev_hdr["TLMAX6"],  # type: ignore
@@ -152,21 +216,24 @@ def event_mode_fits_to_time_binned_image(
     print("Performing Horizons lookups ...  ")
     comet_ras_decs = [
         get_comet_position_at_time(h_id=precursor_img.horizons_id, mt=t)
-        for t in tqdm(astropy_mid_times, total=len(astropy_mid_times), unit="lookups")
+        for t in astropy_mid_times
     ]
     slice_comet_centers = [
         img_wcs.wcs_world2pix(ra, dec, 1) for ra, dec in comet_ras_decs
     ]
+
+    # TODO: this is so ugly
+    custom_x_offset = -12
+    custom_y_offset = 0
     # When we generated the time-binned image frames, we subtracted 1 from each X and Y - the WCS coordinates from the header
     # are off by one coordinate, so adjust them back down to be zero-indexed
     slice_comet_centers_pix = [
-        PixelCoord(x=int(np.round(x - 1)), y=int(np.round(y - 1)))
+        PixelCoord(
+            x=int(np.round(x - 1 + custom_x_offset)),
+            y=int(np.round(y - 1 + custom_y_offset)),
+        )
         for x, y in slice_comet_centers
     ]
-
-    # TODO: debug code removal
-    # print("Event mode slices:")
-    # plot_images_multi(images=img_slices_list, comet_centers=slice_comet_centers_pix)
 
     print("Trimming images ... ")
     # trim the images down: the Xs and Ys that are measured by event mode fall within [[x_min, x_max], [y_min, y_max]]
@@ -174,19 +241,11 @@ def event_mode_fits_to_time_binned_image(
         trim_image_and_relocate_pixel_coords(
             img=i, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, pc=pc
         )
-        for i, pc in tqdm(
-            zip(img_slices_list, slice_comet_centers_pix),
-            total=len(img_slices_list),
-            unit="images",
-        )
+        for i, pc in zip(img_slices_list, slice_comet_centers_pix)
     ]
 
     trimmed_imgs = [x[0] for x in new_imgs_and_centers]
     trimmed_comet_centers = [x[1] for x in new_imgs_and_centers]
-
-    # TODO: debug code removal
-    # print("Event mode slices after trimming:")
-    # plot_images_multi(images=trimmed_imgs, comet_centers=trimmed_comet_centers)
 
     # search_aps = [CircularAperture((pc.x, pc.y), r=10) for pc in trimmed_comet_centers]
     # peak_finding_comet_centers = [
@@ -206,30 +265,42 @@ def event_mode_fits_to_time_binned_image(
     )
     assert event_stack_size is not None
 
-    print("Centering and coincidence correcting ...")
-    event_mode_images_to_stack = []
-    for trimmed_img, peak_finding_comet_center in tqdm(
-        zip(trimmed_imgs, peak_finding_comet_centers),
-        total=len(trimmed_imgs),
-        unit="images",
-    ):
-        image_data = center_image_on_coords(
-            source_image=trimmed_img,
-            source_coords_to_center=peak_finding_comet_center,
-            stacking_image_size=event_stack_size,
-        )
-        if do_coincidence_correction:
-            coi_map = coincidence_correction(
-                img=image_data / (exposure_time_per_slice),
-                scale=SwiftPixelResolution.event_mode,
-            )
-            image_data = image_data * coi_map
-        event_mode_images_to_stack.append(image_data)
+    print("Centering ...")
+    centered_imgs = centering_step(
+        trimmed_imgs=trimmed_imgs,
+        coords_to_center=peak_finding_comet_centers,
+        event_stack_size=event_stack_size,
+    )
+    print("Done centering.")
 
-    # TODO: debug code removal
-    # print("Centered for stacking:")
-    # # set comet_centers to None: the images should have the comets in the centers
-    # plot_images_multi(images=event_mode_images_to_stack, comet_centers=None)
+    if do_coincidence_correction:
+        print("Applying coincidence correction ...")
+        event_mode_images_to_stack = coincidence_correction_step(
+            centered_imgs=centered_imgs, exposure_time_per_slice=exposure_time_per_slice
+        )
+        print("Done coincidence correcting.")
+    else:
+        event_mode_images_to_stack = centered_imgs
+
+    # print("Centering and coincidence correcting ...")
+    # event_mode_images_to_stack = []
+    # for trimmed_img, peak_finding_comet_center in tqdm(
+    #     zip(trimmed_imgs, peak_finding_comet_centers),
+    #     total=len(trimmed_imgs),
+    #     unit="images",
+    # ):
+    #     image_data = center_image_on_coords(
+    #         source_image=trimmed_img,
+    #         source_coords_to_center=peak_finding_comet_center,
+    #         stacking_image_size=event_stack_size,
+    #     )
+    #     if do_coincidence_correction:
+    #         coi_map = coincidence_correction(
+    #             img=image_data / (exposure_time_per_slice),
+    #             scale=SwiftPixelResolution.event_mode,
+    #         )
+    #         image_data = image_data * coi_map
+    #     event_mode_images_to_stack.append(image_data)
 
     print("Calculating sum, median, and exposure mask ...")
     # TODO: do the exposure map properly
