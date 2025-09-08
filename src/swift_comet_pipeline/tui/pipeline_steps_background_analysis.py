@@ -96,7 +96,7 @@ def determine_background_step(swift_project_config: SwiftProjectConfig) -> None:
         rprint(
             f"[blue]{selected_epoch_id}[/blue]\t[green]{filter_to_file_string(filter_type=filter_type)}[/green]\t[orange]{stacking_method}[/orange]"
         )
-        print(f"Background count rate: {bg_result.count_rate_per_pixel}")
+        print(f"Background count rate: {bg_result.b_hat}")
 
         rprint(
             f"[green]Writing background analysis for filter {filter_to_file_string(filter_type)}, stacking method {stacking_method}...[/green]"
@@ -192,7 +192,7 @@ def background_subtract_step(swift_project_config: SwiftProjectConfig) -> None:
             )
             # print(f"Background count rate: {bg_result.count_rate_per_pixel}")
 
-            bg_corrected_img = img_data - bg_result.count_rate_per_pixel.value
+            bg_corrected_img = img_data - bg_result.b_hat
 
             # make a new fits with the background-corrected image, and copy the header information over from the original stacked image
             rprint(

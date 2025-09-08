@@ -92,7 +92,9 @@ def pipeline_extra_epoch_summary(
         print("-----Stacked epoch-----")
         print(stacked_epoch)
 
-    print(get_epoch_summary(scp=scp, epoch_id=epoch_id_selected))
+    es = get_epoch_summary(scp=scp, epoch_id=epoch_id_selected)
+    print(es)
+
     wait_for_key()
 
 

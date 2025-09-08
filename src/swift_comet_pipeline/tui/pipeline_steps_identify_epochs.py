@@ -5,7 +5,6 @@ from swift_comet_pipeline.observationlog.gui_observation_log_slicing import (
 )
 from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
     epochs_from_time_delta,
-    split_epoch_list_into_data_and_event_epochs,
 )
 from swift_comet_pipeline.pipeline.files.pipeline_files_enum import PipelineFilesEnum
 from swift_comet_pipeline.pipeline.pipeline import SwiftCometPipeline
