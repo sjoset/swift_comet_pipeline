@@ -9,9 +9,6 @@ from swift_comet_pipeline.background.methods.bg_method_aperture import (
     background_results_from_aperture,
 )
 from swift_comet_pipeline.swift.swift_filter_to_string import filter_to_file_string
-from swift_comet_pipeline.types.background_determination_method import (
-    BackgroundDeterminationMethod,
-)
 from swift_comet_pipeline.types.background_result import (
     BackgroundResult,
     BackgroundValueEstimator,
@@ -21,22 +18,16 @@ from swift_comet_pipeline.types.swift_filter import SwiftFilter
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 
-# TODO: this shouldn't depend on exposure time anymore, right?
-def bg_gui_manual_aperture(
-    img: SwiftUVOTImage, filter_type: SwiftFilter, exposure_time_s: float
-):
+def bg_gui_manual_aperture(img: SwiftUVOTImage, filter_type: SwiftFilter):
     """
     Calls the GUI matplotlib interface and returns the result
     """
-    bg = BackgroundAperturePlacementPlot(
-        img=img, filter_type=filter_type, exposure_time_s=exposure_time_s
-    )
+    bg = BackgroundAperturePlacementPlot(img=img, filter_type=filter_type)
     bg.show()
 
     ap_x = float(bg.aperture.get_center()[0])  # type: ignore
     ap_y = float(bg.aperture.get_center()[1])  # type: ignore
     ap_radius = float(bg.aperture.radius)
-    # ap_area = int(np.round(np.pi * ap_radius**2))
 
     params = {
         "aperture_x": ap_x,
@@ -47,32 +38,17 @@ def bg_gui_manual_aperture(
     bg_result = bg.background_result
     bg_result.params = params
     return bg_result
-    # return BackgroundResult(
-    #     count_rate_per_pixel=bg_in_aperture(
-    #         img=img,
-    #         aperture_center=PixelCoord(x=ap_x, y=ap_y),
-    #         aperture_radius=ap_radius,
-    #         bg_estimator=BackgroundValueEstimator.median,
-    #         exposure_time_s=exposure_time_s,
-    #     ),
-    #     bg_estimator=BackgroundValueEstimator.median,
-    #     bg_aperture_area=ap_area,
-    #     params=params,
-    #     method=BackgroundDeterminationMethod.gui_manual_aperture,
-    # )
 
 
 class BackgroundAperturePlacementPlot:
-    def __init__(
-        self, img: SwiftUVOTImage, filter_type: SwiftFilter, exposure_time_s: float
-    ):
+    def __init__(self, img: SwiftUVOTImage, filter_type: SwiftFilter):
         self.original_img = copy.deepcopy(img)
         self.bg_count_rate = 0
         self.bg_variance = 0
+        # self.background_result = BackgroundResult(b_hat=0.0, bg_shot_noise_variance=0.0, bg_num_pixels=0, bg_estimator=BackgroundValueEstimator.median)
 
         self.img = img
         self.filter_type = filter_type
-        self.exposure_time_s = exposure_time_s
         self.title = (
             f"Determine background for filter {filter_to_file_string(filter_type)}"
         )
@@ -116,6 +92,16 @@ class BackgroundAperturePlacementPlot:
         self.vmin, self.vmax = self.zscale.get_limits(self.img)
         self.img_plot = self.ax.imshow(  # type: ignore
             self.img, vmin=self.vmin, vmax=self.vmax, origin="lower", cmap=self.colormap
+        )
+
+        aperture_center = PixelCoord(
+            x=self.aperture.get_center()[0], y=self.aperture.get_center()[1]  # type: ignore
+        )
+        self.background_result = background_results_from_aperture(
+            img=self.original_img,
+            aperture_center=aperture_center,
+            aperture_radius=self.aperture.radius,
+            bg_estimator=BackgroundValueEstimator.median,
         )
 
         self.fig.canvas.mpl_connect("button_press_event", self.onclick)  # type: ignore

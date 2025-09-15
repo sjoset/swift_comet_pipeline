@@ -129,6 +129,7 @@ def read_or_create_project_config(
     return swift_project_config
 
 
+# TODO: fix this function
 def create_swift_project_config_from_input(
     swift_project_config_path: pathlib.Path,
 ) -> None:

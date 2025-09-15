@@ -65,11 +65,6 @@ def determine_background_step(swift_project_config: SwiftProjectConfig) -> None:
     if bg_method is None:
         return
 
-    # stacked_epoch = scp.get_product_data(
-    #     pf=PipelineFilesEnum.epoch_post_stack, epoch_id=selected_epoch_id
-    # )
-    # assert stacked_epoch is not None
-
     epoch_summary = get_epoch_summary(scp=scp, epoch_id=selected_epoch_id)
     assert epoch_summary is not None
 
@@ -96,7 +91,9 @@ def determine_background_step(swift_project_config: SwiftProjectConfig) -> None:
         rprint(
             f"[blue]{selected_epoch_id}[/blue]\t[green]{filter_to_file_string(filter_type=filter_type)}[/green]\t[orange]{stacking_method}[/orange]"
         )
-        print(f"Background count rate: {bg_result.b_hat}")
+        print(
+            f"Background count rate: {bg_result.b_hat} +/- shot noise {bg_result.bg_shot_noise_variance}"
+        )
 
         rprint(
             f"[green]Writing background analysis for filter {filter_to_file_string(filter_type)}, stacking method {stacking_method}...[/green]"
@@ -190,7 +187,6 @@ def background_subtract_step(swift_project_config: SwiftProjectConfig) -> None:
             rprint(
                 f"Processing [blue]{epoch_id_to_bg_sub}[/blue]\t[green]{filter_to_file_string(filter_type=filter_type)}[/green]\t[orange1]{stacking_method}[/orange1]"
             )
-            # print(f"Background count rate: {bg_result.count_rate_per_pixel}")
 
             bg_corrected_img = img_data - bg_result.b_hat
 

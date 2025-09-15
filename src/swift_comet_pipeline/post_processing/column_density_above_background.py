@@ -19,6 +19,7 @@ from swift_comet_pipeline.pipeline_utils.get_uw1_and_uvv import (
     get_uw1_and_uvv_background_results,
 )
 from swift_comet_pipeline.swift.swift_datamodes import datamode_to_pixel_resolution
+from swift_comet_pipeline.types.background_result import BackgroundResult
 from swift_comet_pipeline.types.column_density_above_background_analysis import (
     ColumnDensityAboveBackgroundAnalysis,
 )
@@ -51,9 +52,13 @@ def background_oh_equivalent_column_density(
     )
     assert bgs is not None
     bg_uw1, bg_uvv = uw1uvv_getter(bgs)
+    bg_uw1: BackgroundResult = bg_uw1
+    bg_uvv: BackgroundResult = bg_uvv
 
-    bg_oh_cr = bg_uw1.count_rate_per_pixel - beta * bg_uvv.count_rate_per_pixel
-    bg_oh_cr_err = bg_oh_cr.sigma * sigma_level
+    bg_oh_one_sig_err = np.sqrt(
+        bg_uw1.bg_shot_noise_variance**2 + (beta * bg_uvv.bg_shot_noise_variance) ** 2
+    )
+    bg_oh_cr_err = bg_oh_one_sig_err * sigma_level
 
     countrate_profile = np.array([bg_oh_cr_err])
     bg_oh_surf_brightness = countrate_profile_to_surface_brightness(

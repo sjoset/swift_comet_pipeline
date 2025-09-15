@@ -63,7 +63,7 @@ def background_results_from_aperture(
         bg_shot_noise_variance=bg_shot_noise_variance,
         bg_num_pixels=bg_num_pixels,
         bg_estimator=bg_estimator,
-        method=BackgroundDeterminationMethod.manual_aperture_median,
+        method=BackgroundDeterminationMethod.gui_manual_aperture,
         params={},
     )
 

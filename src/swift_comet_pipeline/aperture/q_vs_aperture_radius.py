@@ -173,17 +173,27 @@ def q_vs_aperture_radius(
     ]
     # and the rest are annuli
     uw1_annular_count_rates.extend(
-        [2 * np.pi * x * dr for x, dr in zip(uw1_annular_analyses[1:], drs[1:])]
+        [
+            2 * np.pi * x.median_count_rate * dr
+            for x, dr in zip(uw1_annular_analyses[1:], drs[1:])
+        ]
     )
     uvv_annular_count_rates.extend(
         [
-            2 * np.pi * x * dr
+            2 * np.pi * x.median_count_rate * dr
             for x, dr in zip(uvv_annular_median_count_rates[1:], drs[1:])
         ]
     )
 
     uw1_count_rates = list(accumulate(uw1_annular_count_rates))
     uvv_count_rates = list(accumulate(uvv_annular_count_rates))
+
+    uw1_count_rates_with_err = [
+        CountRate(value=x, sigma=np.sqrt(x)) for x in uw1_count_rates
+    ]
+    uvv_count_rates_with_err = [
+        CountRate(value=x, sigma=np.sqrt(x)) for x in uvv_count_rates
+    ]
 
     num_data_points = len(dust_rednesses) * (len(aperture_radii) - 1)
 
@@ -198,7 +208,7 @@ def q_vs_aperture_radius(
         )
         for dust_redness, (uw1_cr, uvv_cr, ap_radius) in tqdm(
             product(
-                dust_rednesses, zip(uw1_count_rates, uvv_count_rates, aperture_radii)  # type: ignore
+                dust_rednesses, zip(uw1_count_rates_with_err, uvv_count_rates_with_err, aperture_radii)  # type: ignore
             ),
             total=num_data_points,
         )

@@ -107,16 +107,14 @@ def total_count_rate_from_comet_radial_profile(
     )
 
     comet_area = np.pi * comet_profile._radius**2
-    bg_area = bgr.bg_aperture_area
+    bg_area = bgr.bg_num_pixels
 
-    profile_variance = np.sum(
-        (comet_profile.pixel_values - bgr.count_rate_per_pixel.value) / t_exp_s
-    )
+    # TODO: priority one: check this formula
+    profile_variance = np.sum((comet_profile.pixel_values - bgr.b_hat) / t_exp_s)
 
+    # TODO: priority one: check this formula
     profile_variance += (
-        comet_area
-        * bgr.count_rate_per_pixel.value**2
-        * (1 + (np.pi / 2) * (comet_area / bg_area))
+        comet_area * bgr.b_hat**2 * (1 + (np.pi / 2) * (comet_area / bg_area))
     )
 
     return CountRate(value=float(count_rate), sigma=np.sqrt(profile_variance))

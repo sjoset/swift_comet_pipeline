@@ -8,7 +8,6 @@ from swift_comet_pipeline.types.background_result import (
     BackgroundResult,
     BackgroundValueEstimator,
 )
-from swift_comet_pipeline.types.count_rate import CountRate
 from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 
 

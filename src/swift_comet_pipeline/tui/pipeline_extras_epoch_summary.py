@@ -12,7 +12,6 @@ from swift_comet_pipeline.observationlog.observation_log import (
     get_image_path_from_obs_log_row,
 )
 from swift_comet_pipeline.pipeline_utils.epoch_summary import (
-    get_epoch_summary,
     get_unstacked_epoch_summary,
 )
 from swift_comet_pipeline.swift.swift_data import SwiftData

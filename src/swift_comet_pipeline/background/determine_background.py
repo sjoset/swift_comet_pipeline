@@ -29,13 +29,4 @@ def determine_background(
             helio_r_au=epoch_summary.rh_au,
         )
     elif background_method == BackgroundDeterminationMethod.gui_manual_aperture:
-        if filter_type == SwiftFilter.uw1:
-            exposure_time = epoch_summary.uw1_exposure_time_s
-        elif filter_type == SwiftFilter.uvv:
-            exposure_time = epoch_summary.uvv_exposure_time_s
-        else:
-            return None
-
-        return bg_gui_manual_aperture(
-            img=img, filter_type=filter_type, exposure_time_s=exposure_time
-        )
+        return bg_gui_manual_aperture(img=img, filter_type=filter_type)
