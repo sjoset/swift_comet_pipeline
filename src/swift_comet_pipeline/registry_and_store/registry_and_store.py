@@ -51,10 +51,10 @@ class GlobalKey(KeyLike):
 
 
 @dataclass(frozen=True)
-class ProductKey(KeyLike):
+class EpochSubpipelineKey(KeyLike):
     epoch_id: str
-    filt: UvotFilter
-    method: StackingMethod
+    filter_type: UvotFilter
+    stacking_method: StackingMethod
 
 
 # -----------------------------------------------------------------------------
@@ -215,7 +215,6 @@ class SubdirResolver:
     def register_func(self, key_type: Type, func: KeySubdirFunc) -> None:
         self._funcs[key_type] = func
 
-    # TODO: fix artifacts and default path
     def resolve_relative_path(self, cfg: CometProjectConfig, key: KeyLike) -> Path:
         # Try callable first
         for cls in type(key).mro():
@@ -228,8 +227,7 @@ class SubdirResolver:
             if tmpl:
                 # Template can access cfg and key attributes directly
                 return Path(tmpl.format(cfg=cfg, key=key))
-        # Fallback: project scope root
-        return Path(f"artifacts/{cfg.comet_id}")
+        raise ValueError(f"No resolution for relative for {key=} given config {cfg}")
 
 
 # -----------------------------------------------------------------------------
@@ -302,15 +300,14 @@ class ProductRegistry:
 # -----------------------------------------------------------------------------
 # Default registry with central key→subdir policy
 # -----------------------------------------------------------------------------
-# TODO: fix artifacts and default directory
 def default_registry() -> ProductRegistry:
     reg = ProductRegistry()
 
     # Centralized subdir scheme (editable in one place)
-    reg.subdir_resolver().register_template(GlobalKey, "artifacts/{cfg.comet_id}")
+    reg.subdir_resolver().register_template(GlobalKey, "")
     reg.subdir_resolver().register_template(
-        ProductKey,
-        "artifacts/{cfg.comet_id}/stacks/{key.epoch_id}/{key.filt}/{key.method}",
+        EpochSubpipelineKey,
+        "{key.epoch_id}/{key.filter_type}/{key.stacking_method}",
     )
 
     # Product specs (kind → filename stem + codec)

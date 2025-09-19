@@ -9,15 +9,14 @@ from argparse import ArgumentParser
 
 import pandas as pd
 from astropy.wcs.wcs import FITSFixedWarning
-from rich import print as rprint
 
 from swift_comet_pipeline.project_configuration.read_swift_comet_project_config import (
     read_swift_comet_project_config,
 )
+from swift_comet_pipeline.registry_and_store.registry_and_store import Products
 from swift_comet_pipeline.scp_types.compound.swift_project_config import (
     CometProjectConfig,
 )
-from swift_comet_pipeline.tui.tui_common import get_yes_no
 
 
 def process_args():
@@ -152,40 +151,9 @@ def main():
         print("Could not load a valid project configuration! Exiting.")
         return 1
 
-    # set up the cache db and other stuff
-    vectorial_model_settings_init(swift_project_config=comet_project_config)
+    scp = Products(cfg=comet_project_config)
 
-    # TODO: add option to view stacked image pairs
-
-    exit_program = False
-    while not exit_program:
-        clear_screen()
-        step = choose_pipeline_step(comet_project_config)
-        match step:
-            case SwiftCometPipelineStepEnum.observation_log:
-                observation_log_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.download_orbital_data:
-                download_orbital_data(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.identify_epochs:
-                identify_epochs_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.veto_images:
-                veto_epoch_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.epoch_stack:
-                epoch_stacking_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.determine_background:
-                determine_background_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.background_subtract:
-                background_subtract_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.aperture_analysis:
-                aperture_analysis_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.vectorial_analysis:
-                vectorial_analysis_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.build_lightcurves:
-                build_lightcurves_step(swift_project_config=comet_project_config)
-            case SwiftCometPipelineStepEnum.extra_functions:
-                pipeline_extras_menu(swift_project_config=comet_project_config)
-            case None:
-                exit_program = True
+    print(scp)
 
 
 if __name__ == "__main__":
