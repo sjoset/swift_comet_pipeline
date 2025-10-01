@@ -1,4 +1,5 @@
 import itertools
+import logging as log
 
 import numpy as np
 import pandas as pd
@@ -64,7 +65,7 @@ def build_observation_log(
         )
 
         if len(all_observations_for_this_obsid) == 0:
-            print(
+            log.info(
                 f"No valid UVOT observations found for observation ID {obsid}, skipping..."
             )
 
@@ -158,16 +159,6 @@ def build_observation_log(
 
     obs_log = pd.concat([obs_log, horizon_dataframe], axis=1)
 
-    # # TODO: remove x_list, y_list
-    # x_list = []
-    # y_list = []
-    # # use the positions found from Horizons to find the pixel center of the comet based on its image WCS
-    # for ra, dec, wcs_cur in zip(obs_log["RA"], obs_log["DEC"], obs_log["WCS"]):
-    #     x, y = wcs_cur.wcs_world2pix(ra, dec, 1)
-    #     x_list.append(float(x))
-    #     y_list.append(float(y))
-    # print(f"Old comet x list: {x_list}")
-
     comet_centers = [
         img_wcs.wcs_world2pix(r, d, 0)
         for img_wcs, r, d in zip(obs_log.WCS, obs_log.RA, obs_log.DEC)
@@ -183,11 +174,6 @@ def build_observation_log(
 
     obs_log["OBS_ID"] = obs_log["OBS_ID"].apply(swift_observation_id_from_int)
     obs_log["ORBIT_ID"] = obs_log["OBS_ID"].apply(swift_orbit_id_from_obsid)
-
-    # obs_log["DATAMODE"] = obs_log.DATAMODE.apply(datamode_from_fits_keyword_string)
-    # print(f"Full paths:")
-    # for i, row in obs_log.iterrows():
-    #     print(f"{i}: {row.FULL_FITS_PATH}, {row.OBS_ID}, {row.FITS_FILENAME}")
 
     obs_log["DATAMODE"] = obs_log.apply(
         lambda row: datamode_from_fits_keyword_string(

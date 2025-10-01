@@ -3,24 +3,25 @@ from astropy.io import fits
 from astropy.time import Time
 import numpy as np
 
-from swift_comet_pipeline.pipeline.internal_config.pipeline_config import (
+
+from swift_comet_pipeline.pipeline_internal_config.pipeline_internal_config import (
     read_swift_pipeline_config,
 )
-from swift_comet_pipeline.types.swift_filter import SwiftFilter
+from swift_comet_pipeline.scp_types.primitive import *
 
 
 _seconds_in_a_year = 365.2425 * 86400.0
 
 # Translate between filter type to the string in the CALDB FITS header key 'FILTER'
 _swift_filter_to_caldb_dict = {
-    SwiftFilter.uvv: "V",
-    SwiftFilter.ubb: "B",
-    SwiftFilter.uuu: "U",
-    SwiftFilter.uw1: "UVW1",
-    SwiftFilter.um2: "UVM2",
-    SwiftFilter.uw2: "UVW2",
-    SwiftFilter.white: "WHITE",
-    SwiftFilter.magnifier: "MAGNIFIER",
+    UvotFilter.uvv: "V",
+    UvotFilter.ubb: "B",
+    UvotFilter.uuu: "U",
+    UvotFilter.uw1: "UVW1",
+    UvotFilter.um2: "UVM2",
+    UvotFilter.uw2: "UVW2",
+    UvotFilter.white: "WHITE",
+    UvotFilter.magnifier: "MAGNIFIER",
 }
 
 
@@ -30,7 +31,7 @@ def _get_uvot_sensitivity_start_date() -> Time:
     return Time("2005-01-01T00:00")
 
 
-def _get_filter_sensitivity_data(filter_type: SwiftFilter) -> fits.FITS_rec | None:
+def _get_filter_sensitivity_data(filter_type: UvotFilter) -> fits.FITS_rec | None:
     """
     Search through the extension headers until the 'FILTER' keyword matches the filter we want,
     and return the associated data table
@@ -65,7 +66,7 @@ def _seconds_since_uvot_sensitivity_start_date(t: Time) -> float:
 
 
 def uvot_sensitivity_correction_factor(
-    filter_type: SwiftFilter, t_obs: Time
+    filter_type: UvotFilter, t_obs: Time
 ) -> float | None:
 
     sensitivity_table = _get_filter_sensitivity_data(filter_type=filter_type)

@@ -6,7 +6,7 @@ from swift_comet_pipeline.scp_types.primitive import *
 
 
 @dataclass
-class StackableUVOTImagePrecursor:
+class StackableUvotImagePrecursor:
     """
     Read directly from raw FITS data - event mode images need an extra time-slice binning step to become stackable
     """
@@ -20,7 +20,7 @@ class StackableUVOTImagePrecursor:
 
 
 @dataclass
-class StackableUVOTImage:
+class StackableUvotImage:
     """
     Coincidence-corrected images with all below data, for inclusion in sum and median stacks
     """
@@ -37,6 +37,6 @@ class EventModeTimeBinImageResult:
     Resulting data from time-binning a raw event-mode image and stacking.
     """
 
-    sum: StackableUVOTImage
-    median: StackableUVOTImage
-    exposure_map: StackableUVOTImage
+    sum: StackableUvotImage
+    median: StackableUvotImage
+    exposure_map: StackableUvotImage

@@ -1,4 +1,5 @@
 import pathlib
+from astropy.nddata import block_reduce
 import numpy as np
 import os
 import glob
@@ -221,8 +222,12 @@ class SwiftData(SwiftDataset):
 
 @cache
 def event_mode_fits_to_image_simple(
-    fits_path: pathlib.Path, extension_id: int
+    fits_path: pathlib.Path, extension_id: int, downsample_to_image_mode: bool = True
 ) -> SwiftUvotImage:
+    """
+    Return the associated image as SwiftUvotImage, downsampling event mode images in 2x2 bins
+    to match image mode by default
+    """
     ev_hdr = fits.getheader(fits_path, extension_id)
     x_min, x_max = ev_hdr["TLMIN6"], ev_hdr["TLMAX6"]
     y_min, y_max = ev_hdr["TLMIN7"], ev_hdr["TLMAX7"]
@@ -231,10 +236,11 @@ def event_mode_fits_to_image_simple(
     ev_table = fits.getdata(fits_path, extension_id)
     assert ev_table is not None
     img, _, _ = np.histogram2d(ev_table["X"], ev_table["Y"], bins=(x_size, y_size))  # type: ignore
-    img = img.T
-    # binned_img = block_reduce(data=img, block_size=2)
-    # return img.T
-    return img
+    if downsample_to_image_mode:
+        binned_img = block_reduce(data=img, block_size=2)
+        return binned_img.T
+    else:
+        return img.T
 
 
 # TODO: function to go from fits_path of event mode bintable image to its sky image

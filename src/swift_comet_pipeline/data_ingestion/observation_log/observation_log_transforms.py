@@ -8,6 +8,7 @@ from swift_comet_pipeline.scp_types.primitive.swift_uvot_observation_log_datafra
     SwiftUvotObservationLogDataframe,
 )
 
+# TODO: check if we ever use this
 
 # this should be in sync with swift_uvot_observation_log and observation_log_schema()
 _dataframe_column_to_field_name = {

@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from matplotlib.pyplot import cm
 
-from swift_comet_pipeline.observationlog.observation_log import SwiftObservationLog
-from swift_comet_pipeline.observationlog.slice_observation_log_into_epochs import (
+from swift_comet_pipeline.data_ingestion.observation_log.slice_observation_log_into_epochs import (
     epochs_from_time_delta,
+)
+from swift_comet_pipeline.scp_types.primitive.swift_uvot_observation_log_dataframe import (
+    SwiftUvotObservationLogDataframe,
 )
 
 
 class EpochTimeWindowSelect(object):
-    def __init__(self, obs_log: SwiftObservationLog):
+    def __init__(self, obs_log: SwiftUvotObservationLogDataframe):
         self.obs_log = obs_log.copy()
 
         # self.min_time = (Time(np.min(self.obs_log.MID_TIME)) - 1 * u.day).to_datetime()  # type: ignore
@@ -45,6 +47,8 @@ class EpochTimeWindowSelect(object):
         self.do_plot(initial_dt)
 
     def do_plot(self, dt):
+        # TODO: use the raw observation log and call the new function to generate list of epochs
+        # and remove epochs_from_time_delta()
         self.dt = dt
         epoch_list = epochs_from_time_delta(self.obs_log.copy(), self.dt)
 
@@ -91,7 +95,9 @@ class EpochTimeWindowSelect(object):
         plt.show()
 
 
-def gui_select_epoch_time_window(obs_log: SwiftObservationLog) -> u.Quantity:
+def gui_select_epoch_time_window(
+    obs_log: SwiftUvotObservationLogDataframe,
+) -> u.Quantity:
     quantity_support()
     etws = EpochTimeWindowSelect(obs_log)
     etws.show()

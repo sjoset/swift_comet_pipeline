@@ -5,6 +5,7 @@ from .column_density_above_background_analysis import *
 from .comet_profile import *
 from .count_rate import *
 from .countrate_vs_aperture_radius import *
+from .epoch_index import *
 from .epoch_summary import *
 from .hydroxyl_molecule_count import *
 from .lightcurve import *

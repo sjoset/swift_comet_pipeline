@@ -4,6 +4,9 @@ import numpy as np
 from scipy.interpolate import interp1d
 from astropy.io import fits
 
+from swift_comet_pipeline.pipeline_internal_config.pipeline_internal_config import (
+    read_swift_pipeline_config,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 
 
@@ -15,7 +18,7 @@ def read_filter_effective_area(filter_type: UvotFilter) -> FilterEffectiveArea |
         print("Could not read pipeline configuration!")
         exit(1)
 
-    # this should be a function for FilterType -> pathlib.Path
+    # TODO: this should be a function for FilterType -> pathlib.Path
     if filter_type == UvotFilter.uw1:
         effective_area_path = spc.effective_area_uw1_path
     elif filter_type == UvotFilter.uvv:
@@ -30,10 +33,10 @@ def read_filter_effective_area(filter_type: UvotFilter) -> FilterEffectiveArea |
     ea_lambdas_nm = ea_lambdas_angstroms / 10
     ea_responses = filter_ea_data["SPECRESP"]
 
+    # TODO: we can do this more efficiently
     # handle some lambda values repeating (their corresponding responses are 0, which is wrong, so throw them out)
     # Construct new list of unique lambdas, and the responses are now a list because we see some twice.
     # The bad response values are 0.0, so we take the max between the 'good' value and this throwaway response value
-    # TODO: we can do this more efficiently
     new_lambdas = []
     new_responses = []
     for lmbda, r in zip(ea_lambdas_nm, ea_responses):
@@ -44,6 +47,13 @@ def read_filter_effective_area(filter_type: UvotFilter) -> FilterEffectiveArea |
             idx = new_lambdas.index(lmbda)
             new_responses[idx].append(r)
     new_responses = list(map(max, new_responses))
+
+    # # TODO: test above against this
+    # ea_dict = {}
+    # for lmbda, r in zip(ea_lambdas_nm, ea_responses):
+    #     ea_dict[lmbda] = max(r, ea_dict.get(lmbda, r))
+    # new_lambdas = ea_dict.keys()
+    # new_responses = ea_dict.values()
 
     filter_fits_hdul.close()
 

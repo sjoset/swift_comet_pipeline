@@ -70,7 +70,7 @@ def _level_2_data_mode_fits_header_to_columns(
     return series_list
 
 
-def _event_mode_header_to_WCS(hdr: fits.Header) -> WCS:
+def event_mode_header_to_WCS(hdr: fits.Header) -> WCS:
     """
     Build a WCS coordinate system from keywords in the header of an event-mode image
     """
@@ -104,7 +104,7 @@ def _level_2_event_mode_observation_to_series(
         header_series = {
             k: hdr.get(k, None) for k in _level_2_fits_header_keys_to_extract
         }
-        header_series["WCS"] = _event_mode_header_to_WCS(hdr)
+        header_series["WCS"] = event_mode_header_to_WCS(hdr)
         header_series["EXTENSION"] = event_mode_bintable_extension_id
         header_series["FITS_FILENAME"] = str(obs.fits_path.name)
         header_series["FULL_FITS_PATH"] = obs.fits_path

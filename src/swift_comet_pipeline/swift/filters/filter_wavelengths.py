@@ -5,6 +5,10 @@ import astropy.units as u
 
 
 from swift_comet_pipeline.scp_types.primitive import *
+from swift_comet_pipeline.spectra.solar.solar_spectrum import (
+    get_solar_spectrum,
+    interpolate_solar_spectrum_onto,
+)
 from swift_comet_pipeline.swift.filters.read_filter_effective_area import (
     interpolate_filter_effective_area_onto,
     read_filter_effective_area,
