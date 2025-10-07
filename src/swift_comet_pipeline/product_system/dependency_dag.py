@@ -115,11 +115,6 @@ def calculate_statuses(
 
     existences = [scp.exists(ref=x) for x in ref_dep_list]
 
-    # mtimes = [
-    #     scp.path_for(ref=x).stat().st_mtime if scp.path_for(ref=x).exists() else None
-    #     for x in ref_dep_list
-    # ]
-
     mtimes = [safe_mtime(scp, x) for x in ref_dep_list]
 
     stale_products = False

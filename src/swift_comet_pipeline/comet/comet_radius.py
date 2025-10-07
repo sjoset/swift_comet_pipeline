@@ -2,9 +2,9 @@ from swift_comet_pipeline.comet.comet_profile_fitting import fit_comet_profile_g
 from swift_comet_pipeline.comet.extract_comet_radial_profile import (
     extract_comet_radial_profile,
 )
-from swift_comet_pipeline.types.comet_profile import CometProfile
-from swift_comet_pipeline.types.pixel_coord import PixelCoord
-from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
+
+from swift_comet_pipeline.scp_types.compound.comet_profile import CometProfile
+from swift_comet_pipeline.scp_types.primitive import *
 
 
 # TODO: this is not used anywhere: deprecate?
@@ -14,7 +14,7 @@ from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
 # and then test when the signal stays at < 1 sigma background for a certain number of pixels:
 # maybe a percentage of the radius being considered?  Look ahead the next percent * r pixels and test?
 def estimate_comet_radius_at_angle(
-    img: SwiftUVOTImage,
+    img: SwiftUvotImage,
     comet_center: PixelCoord,
     radius_guess: int,
     theta: float,

@@ -404,7 +404,6 @@ def data_ingestion_registry() -> ProductRegistry:
     return reg
 
 
-# TODO: build list of epochs -> filters used -> [sum, median]
 def add_epoch_subpipelines_to_registry(
     reg: ProductRegistry, epoch_index: EpochIndex
 ) -> None:
@@ -424,7 +423,6 @@ def add_epoch_subpipelines_to_registry(
             stacked_image_with_bg_ref = ProductReference(
                 kind=ProductKind.stacked_image_with_background, key=epoch_subpipe_key
             )
-
             reg.register(
                 spec=ProductSpecification(
                     ref=stacked_image_with_bg_ref,

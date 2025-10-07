@@ -2,16 +2,12 @@ import numpy as np
 import pandas as pd
 from scipy.integrate import simpson
 
-from swift_comet_pipeline.swift.get_uvot_image_center import get_uvot_image_center
-from swift_comet_pipeline.types import CometRadialProfile
-from swift_comet_pipeline.types.background_result import BackgroundResult
-from swift_comet_pipeline.types.count_rate import CountRate
-from swift_comet_pipeline.types.pixel_coord import PixelCoord
-from swift_comet_pipeline.types.swift_uvot_image import SwiftUVOTImage
+from swift_comet_pipeline.scp_types.compound.comet_profile import CometRadialProfile
+from swift_comet_pipeline.scp_types.primitive import *
 
 
 def extract_comet_radial_profile(
-    img: SwiftUVOTImage, comet_center: PixelCoord, r: int, theta: float
+    img: SwiftUvotImage, comet_center: PixelCoord, r: int, theta: float
 ) -> CometRadialProfile:
     """
     Extracts the count rate profile along a line starting at the comet center, extending out a distance r at angle theta
@@ -50,7 +46,7 @@ def extract_comet_radial_profile(
 
 
 def extract_comet_radial_median_profile_from_cone(
-    img: SwiftUVOTImage,
+    img: SwiftUvotImage,
     comet_center: PixelCoord,
     r: int,
     theta: float,
@@ -120,7 +116,7 @@ def total_count_rate_from_comet_radial_profile(
     return CountRate(value=float(count_rate), sigma=np.sqrt(profile_variance))
 
 
-def calculate_distance_from_center_mesh(img: SwiftUVOTImage):
+def calculate_distance_from_center_mesh(img: SwiftUvotImage):
     """
     Resulting array has the same dimensions as the input img, but the pixel values are now the distance to the center of the image,
     rounded to the nearest integer.  This allows addressing a radial profile array with the mesh as the index: radial_profile[distance_from_center_mesh]

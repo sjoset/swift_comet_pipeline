@@ -18,7 +18,12 @@ from swift_comet_pipeline.data_ingestion.observation_log.comet_center_tracking i
     get_comet_center_prefer_user_coords,
     get_horizons_comet_center,
 )
-from swift_comet_pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.product_system.registry_and_store import (
+    GlobalKey,
+    ProductKind,
+    ProductReference,
+    Products,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.swift.swift_data import SwiftData
 
@@ -891,8 +896,19 @@ def manual_veto(scp: Products) -> None:
 
     if hash_before != hash_after:
         print("Change detected! Writing.")
+        scp.save_obs_log(df=veto_df)
     else:
-        print("No change detected! Not writing.")
+        print("No change detected!")
+        if not scp.exists(
+            ref=ProductReference(
+                kind=ProductKind.observation_log_with_vetoes, key=GlobalKey()
+            )
+        ):
+            print("Writing vetoed dataframe..")
+            scp.save_obs_log(df=veto_df)
+            print("Done writing.")
+        else:
+            print("Not writing.")
 
     # TODO: actually write or not
 

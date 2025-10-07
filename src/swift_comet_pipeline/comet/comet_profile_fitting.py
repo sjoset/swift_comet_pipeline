@@ -3,7 +3,7 @@ from astropy import modeling
 from astropy.modeling.models import Gaussian1D
 import matplotlib.pyplot as plt
 
-from swift_comet_pipeline.types.comet_profile import CometProfile
+from swift_comet_pipeline.scp_types.compound.comet_profile import CometProfile
 
 
 # No longer used anywhere - deprecate

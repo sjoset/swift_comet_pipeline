@@ -1,6 +1,5 @@
-from swift_comet_pipeline.dust.beta_parameter import beta_parameter
-from swift_comet_pipeline.types.comet_profile import CometRadialProfile
-from swift_comet_pipeline.types.dust_reddening_percent import DustReddeningPercent
+from swift_comet_pipeline.scp_types.compound.comet_profile import CometRadialProfile
+from swift_comet_pipeline.scp_types.primitive import *
 
 
 def subtract_profiles(

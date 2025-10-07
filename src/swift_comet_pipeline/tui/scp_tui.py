@@ -56,6 +56,7 @@ from swift_comet_pipeline.scp_types.primitive.stacking_method import StackingMet
 from swift_comet_pipeline.scp_types.primitive.uvot_filter import UvotFilter
 from swift_comet_pipeline.stacking.stacking import do_stacking
 from swift_comet_pipeline.swift.swift_data import SwiftData
+from swift_comet_pipeline.tui.tui_common import wait_for_key
 from swift_comet_pipeline.ui.mpl_ui.mpl_ui_observation_log_slicing import (
     gui_select_epoch_time_window,
 )
@@ -383,6 +384,46 @@ def build_target_product(scp: Products, target_product: ProductReference) -> Non
     # TODO: instead of one-shot, loop until we are done
 
 
+def build_target_product_loop(scp: Products, target_product: ProductReference) -> None:
+
+    console = Console()
+
+    while True:
+        ts = build_toposorter(scp=scp, target_product=target_product)
+        stat_dict = calculate_statuses(scp=scp, ts=ts)
+        print("")
+        print("------- build status ---------")
+        for ref, stat in stat_dict.items():
+            console.print(f"{ref} --> ", end="")
+            console.print(stat)
+
+        if stat_dict[target_product] == ProductBuildStatus.complete:
+            print(f"Product built!")
+            break
+
+        first_ready = first_with_build_status(
+            stat_dict=stat_dict, status=ProductBuildStatus.ready
+        )
+        first_regen = first_with_build_status(
+            stat_dict=stat_dict, status=ProductBuildStatus.need_regen
+        )
+        first_stale = first_with_build_status(
+            stat_dict=stat_dict, status=ProductBuildStatus.stale
+        )
+
+        first_build = None
+        first_build = first_ready or first_regen or first_stale
+        if first_build is None:
+            print("Everything seems to be ready! Skipping build.")
+            print("")
+            return
+
+        print(f"Ready to build: {first_build}")
+        do_build(scp=scp, target_product=first_build)
+        scp.regenerate()
+        # wait_for_key()
+
+
 def test_obs_log_metadata(scp: Products) -> None:
 
     obs_log = scp.load_raw_log()
@@ -485,34 +526,34 @@ def main():
 
     print("Checking data ingestion ...")
     target_ref = ProductReference(kind=ProductKind.epoch_index, key=GlobalKey())
-    build_target_product(scp=scp, target_product=target_ref)
+    build_target_product_loop(scp=scp, target_product=target_ref)
     show_pipeline_status_for_product(scp=scp, ref=target_ref)
 
-    print("Checking sum stacks")
-    target_ref = ProductReference(
-        kind=ProductKind.stacked_image_with_background,
-        key=EpochSubpipelineKey(
-            epoch_id="000_2014_Aug_14",
-            filter_type=UvotFilter.uw1,
-            stacking_method=StackingMethod.summation,
-        ),
-    )
-
-    build_target_product(scp=scp, target_product=target_ref)
-    show_pipeline_status_for_product(scp=scp, ref=target_ref)
-
-    print("Checking median stacks")
-    target_ref = ProductReference(
-        kind=ProductKind.stacked_image_with_background,
-        key=EpochSubpipelineKey(
-            epoch_id="000_2014_Aug_14",
-            filter_type=UvotFilter.uw1,
-            stacking_method=StackingMethod.median,
-        ),
-    )
-
-    build_target_product(scp=scp, target_product=target_ref)
-    show_pipeline_status_for_product(scp=scp, ref=target_ref)
+    # print("Checking sum stacks")
+    # target_ref = ProductReference(
+    #     kind=ProductKind.stacked_image_with_background,
+    #     key=EpochSubpipelineKey(
+    #         epoch_id="000_2014_Aug_14",
+    #         filter_type=UvotFilter.uw1,
+    #         stacking_method=StackingMethod.summation,
+    #     ),
+    # )
+    #
+    # build_target_product(scp=scp, target_product=target_ref)
+    # show_pipeline_status_for_product(scp=scp, ref=target_ref)
+    #
+    # print("Checking median stacks")
+    # target_ref = ProductReference(
+    #     kind=ProductKind.stacked_image_with_background,
+    #     key=EpochSubpipelineKey(
+    #         epoch_id="000_2014_Aug_14",
+    #         filter_type=UvotFilter.uw1,
+    #         stacking_method=StackingMethod.median,
+    #     ),
+    # )
+    #
+    # build_target_product(scp=scp, target_product=target_ref)
+    # show_pipeline_status_for_product(scp=scp, ref=target_ref)
 
     print("Checking exposure maps")
     target_ref = ProductReference(
@@ -524,20 +565,20 @@ def main():
         ),
     )
 
-    build_target_product(scp=scp, target_product=target_ref)
+    build_target_product_loop(scp=scp, target_product=target_ref)
     show_pipeline_status_for_product(scp=scp, ref=target_ref)
 
-    target_ref = ProductReference(
-        kind=ProductKind.stacked_image_exposure_map,
-        key=EpochSubpipelineKey(
-            epoch_id="000_2014_Aug_14",
-            filter_type=UvotFilter.uw1,
-            stacking_method=StackingMethod.median,
-        ),
-    )
-
-    build_target_product(scp=scp, target_product=target_ref)
-    show_pipeline_status_for_product(scp=scp, ref=target_ref)
+    # target_ref = ProductReference(
+    #     kind=ProductKind.stacked_image_exposure_map,
+    #     key=EpochSubpipelineKey(
+    #         epoch_id="000_2014_Aug_14",
+    #         filter_type=UvotFilter.uw1,
+    #         stacking_method=StackingMethod.median,
+    #     ),
+    # )
+    #
+    # build_target_product(scp=scp, target_product=target_ref)
+    # show_pipeline_status_for_product(scp=scp, ref=target_ref)
 
     # test_fits_loading(scp=scp)
     # test_epoch_index_loading(scp=scp)
