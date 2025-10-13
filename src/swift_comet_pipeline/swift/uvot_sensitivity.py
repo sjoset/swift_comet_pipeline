@@ -4,7 +4,7 @@ from astropy.time import Time
 import numpy as np
 
 
-from swift_comet_pipeline.pipeline_internal_config.pipeline_internal_config import (
+from swift_comet_pipeline.pipeline.internal_config.pipeline_internal_config import (
     read_swift_pipeline_config,
 )
 from swift_comet_pipeline.scp_types.primitive import *
@@ -71,6 +71,7 @@ def uvot_sensitivity_correction_factor(
 
     sensitivity_table = _get_filter_sensitivity_data(filter_type=filter_type)
     if sensitivity_table is None:
+        # print(f"No filter sensitivity data found for {filter_type}..")
         return None
 
     t_obs_delta = _seconds_since_uvot_sensitivity_start_date(t=t_obs)

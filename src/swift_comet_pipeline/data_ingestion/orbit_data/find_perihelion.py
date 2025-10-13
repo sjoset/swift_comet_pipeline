@@ -1,8 +1,8 @@
 from astropy.time import Time
 from astroquery.jplhorizons import Horizons
 
+from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.product_system.registry_and_store import Products
 
 
 # TODO: clean up, document, and decouple from scp

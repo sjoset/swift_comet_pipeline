@@ -1,0 +1,6 @@
+effective_area_uw1_path: "../../../../data/swift_effective_areas/swuw1_20041120v106.arf"
+effective_area_uvv_path: "../../../../data/swift_effective_areas/swuvv_20041120v104.arf"
+
+uvot_sensitivity_path: "../../../../data/sensitivity/swusenscorr20041120v007.fits"
+
+oh_fluorescence_path: "../../../../data/fluorescence/Schleicher_Ahearn_1988_Table5.csv"

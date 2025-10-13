@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from astropy.io import fits
 
-from swift_comet_pipeline.pipeline_internal_config.pipeline_internal_config import (
+from swift_comet_pipeline.pipeline.internal_config.pipeline_internal_config import (
     read_swift_pipeline_config,
 )
 from swift_comet_pipeline.scp_types.primitive import *

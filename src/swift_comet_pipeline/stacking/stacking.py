@@ -6,6 +6,10 @@ import pandas as pd
 from astropy.io import fits
 from tqdm import tqdm
 
+from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+    EpochSubpipelineKey,
+    Products,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 
 from swift_comet_pipeline.image_manipulation.event_mode_downsample import (
@@ -26,10 +30,6 @@ from swift_comet_pipeline.data_ingestion.epoch_index.find_epoch_index_entry impo
 from swift_comet_pipeline.scp_types.compound.stacking import (
     StackableUvotImage,
     StackableUvotImagePrecursor,
-)
-from swift_comet_pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    Products,
 )
 from swift_comet_pipeline.scp_types.primitive.swift_uvot_observation_log_dataframe import (
     SwiftUvotObservationLogDataframe,
@@ -290,8 +290,11 @@ def sum_median_and_exposure_map(
         return None
 
     if do_sensitivity_correction:
-        uvot_correction_factor = uvot_sensitivity_correction_factor(
-            filter_type=filter_type, t_obs=Time(observation_mid_time)
+        uvot_correction_factor = (
+            uvot_sensitivity_correction_factor(
+                filter_type=filter_type, t_obs=Time(observation_mid_time)
+            )
+            or 1.0
         )
         print(
             f"\nApplying UVOT sensitivity corrections for {observation_mid_time} with factor {uvot_correction_factor:3.2f} ...  ",

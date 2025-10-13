@@ -35,6 +35,7 @@ comet-ice-sublimation = "^0.0.1"
 jupyterlab = "^4.4.0"
 regions = "^0.10"
 pyside6 = "^6.9.2"
+cattrs = "^25.3.0"
 
 [tool.poetry.scripts]
 scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'

@@ -1,3 +1,4 @@
+from .annular_aperture_profile import *
 from .background_result import *
 from .bayesian_lightcurve import *
 from .coincidence_correction import *
@@ -12,6 +13,8 @@ from .lightcurve import *
 from .magnitude import *
 from .plateau_list import *
 from .stacking import *
+from .swift_dataset import *
+from .swift_level_2_fits import *
 from .swift_project_config import *
 from .swift_uvot_observation_log import *
 from .uw1_uvv_pair import *

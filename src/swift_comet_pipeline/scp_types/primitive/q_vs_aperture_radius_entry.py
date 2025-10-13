@@ -3,6 +3,10 @@ from dataclasses import asdict, dataclass
 import pandas as pd
 
 
+# TODO: QvsApertureRadius should probably inherit from ApertureCountRateAnalysis also: move this to compound types
+
+
+# TODO: generalize this to continuum filter/ oh+continuum filter and add entries for which filters were used
 @dataclass
 class QvsApertureRadiusEntry:
     aperture_r_pix: float

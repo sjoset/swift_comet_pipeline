@@ -5,4 +5,5 @@ from swift_comet_pipeline.scp_types.primitive.error_propogation import (
 )
 
 
+# TODO: rename to UvotMagnitude?
 Magnitude: TypeAlias = ValueAndStandardDev
