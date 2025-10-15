@@ -7,4 +7,4 @@ from swift_comet_pipeline.scp_types.primitive.error_propogation import (
 
 # defined in terms of counts per second
 CountRate: TypeAlias = ValueAndStandardDev
-CountRatePerPixel: TypeAlias = ValueAndStandardDev
+# CountRatePerPixel: TypeAlias = ValueAndStandardDev

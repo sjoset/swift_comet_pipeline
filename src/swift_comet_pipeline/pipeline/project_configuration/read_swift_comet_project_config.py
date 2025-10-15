@@ -1,11 +1,11 @@
 import pathlib
 
+from swift_comet_pipeline.scp_types.compound.comet_project_config import (
+    CometProjectConfig,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 
 from swift_comet_pipeline.common.read_yaml import read_yaml
-from swift_comet_pipeline.scp_types.compound.swift_project_config import (
-    CometProjectConfig,
-)
 
 
 def _path_from_yaml(yaml_dict: dict, key: str) -> pathlib.Path | None:

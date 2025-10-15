@@ -4,6 +4,7 @@ from .bayesian_lightcurve import *
 from .coincidence_correction import *
 from .column_density_above_background_analysis import *
 from .comet_profile import *
+from .comet_project_config import *
 from .count_rate import *
 from .countrate_vs_aperture_radius import *
 from .epoch_index import *
@@ -15,8 +16,6 @@ from .plateau_list import *
 from .stacking import *
 from .swift_dataset import *
 from .swift_level_2_fits import *
-from .swift_project_config import *
 from .swift_uvot_observation_log import *
 from .uw1_uvv_pair import *
 from .vectorial_model_fit import *
-from .water_molecule_count import *

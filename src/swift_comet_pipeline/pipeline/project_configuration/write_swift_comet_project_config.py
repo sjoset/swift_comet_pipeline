@@ -2,7 +2,7 @@ import yaml
 import pathlib
 from dataclasses import asdict
 
-from swift_comet_pipeline.scp_types.compound.swift_project_config import (
+from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
 

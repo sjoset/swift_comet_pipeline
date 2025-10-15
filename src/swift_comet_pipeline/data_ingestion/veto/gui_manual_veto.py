@@ -29,7 +29,6 @@ from swift_comet_pipeline.swift.swift_data import SwiftData
 
 
 class EpochImageSlider(Slider):
-    # TODO: add resize() function to change number of images, and clear old artists
     def __init__(self, ax, num_images, valfmt="%1d", **kwargs):
         self.facecolor = kwargs.get("facecolor", "w")
         self.activecolor = kwargs.pop("activecolor", "b")
@@ -533,7 +532,8 @@ def manual_veto(scp: Products) -> None:
     eip = EpochImagePlot(scp=scp)
     eip.show()
 
-    # TODO: just make eip take the observation log as argument
+    # TODO: EpochImagePlot only needs SwiftData and observation log for arguments
+    # TODO: add toggle for identifying and marking sources
 
     # reassemble the observation log from the altered epochs during veto
     orig_df = eip.original_obs_log

@@ -1,9 +1,8 @@
-from swift_comet_pipeline.photometry.background.methods.bg_method_gui_manual_aperture import (
+from swift_comet_pipeline.scp_types.primitive import *
+from swift_comet_pipeline.scp_types.compound.background_result import BackgroundResult
+from swift_comet_pipeline.ui.mpl_ui.mpl_ui_background_manual_aperture import (
     bg_gui_manual_aperture,
 )
-from swift_comet_pipeline.scp_types.compound.background_result import BackgroundResult
-from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
-from swift_comet_pipeline.scp_types.primitive import *
 
 
 def determine_background(

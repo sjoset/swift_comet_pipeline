@@ -19,7 +19,8 @@ def aperture_analysis(
     sigma_clip: float = 3.0,
 ) -> ApertureCountRateAnalysis:
     """
-    Takes an aperture and returns ApertureCountRateAnalysis
+    Takes an aperture and returns ApertureCountRateAnalysis - the sum, median, and mean signal in the aperture, along with errors
+
     If a background has not been subtracted, set background to None
     Otherwise, assumes the background has been subtracted, and uses 'background' to factor in bg error
     """
@@ -62,12 +63,12 @@ def aperture_analysis(
     total_variance = count_rate_shot_noise_variance + bg_variance
 
     return ApertureCountRateAnalysis(
-        total_count_rate=total_count_rate,
+        sum_count_rate=total_count_rate,
         median_count_rate=median_count_rate,
         mean_count_rate=mean_count_rate,
         count_rate_shot_noise_variance=count_rate_shot_noise_variance,
         bg_variance=bg_variance,
-        total_count_rate_variance=total_variance,
+        sum_count_rate_variance=total_variance,
         ap_num_pixels=ap_num_pixels,
         sigma_clip=sigma_clip,
     )

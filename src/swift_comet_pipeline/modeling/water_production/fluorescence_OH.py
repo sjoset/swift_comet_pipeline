@@ -11,9 +11,9 @@ from swift_comet_pipeline.scp_types.compound.hydroxyl_molecule_count import (
 
 
 # TODO: change helio_v_kms, helio_r_au, delta_au to be an astropy quantity, add decorator to enforce proper input
-def flux_OH_to_num_OH(
-    flux_OH: OHFlux,
-    helio_r_au: float,
+def oh_flux_to_num_oh(
+    flux_oh: OHFlux,
+    rh_au: float,
     helio_v_kms: float,
     delta_au: float,
 ) -> HydroxylMoleculeCount:
@@ -21,9 +21,9 @@ def flux_OH_to_num_OH(
 
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
     delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore
-    luminescence = 4 * np.pi * flux_OH * delta**2
+    luminescence = 4 * np.pi * flux_oh * delta**2
 
-    g_factor = hydroxyl_gfactor_1au(helio_v_kms=helio_v_kms) / (helio_r_au**2)
+    g_factor = hydroxyl_gfactor_1au(helio_v_kms=helio_v_kms) / (rh_au**2)
 
     num_OH = luminescence / g_factor
 

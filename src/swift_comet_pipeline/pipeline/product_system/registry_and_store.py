@@ -7,7 +7,6 @@ import os
 import shutil
 from dataclasses import dataclass
 
-# from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Protocol, Type
 
@@ -32,16 +31,19 @@ from swift_comet_pipeline.scp_types.compound.comet_profile import (
     comet_radial_profile_from_cone_from_json,
     json_from_comet_radial_profile_from_cone,
 )
+from swift_comet_pipeline.scp_types.compound.comet_project_config import (
+    CometProjectConfig,
+)
 from swift_comet_pipeline.scp_types.compound.epoch_index import (
     EpochIndex,
     EpochIndexEntry,
     epoch_index_from_json,
     json_from_epoch_index,
 )
-from swift_comet_pipeline.scp_types.compound.swift_project_config import (
-    CometProjectConfig,
-)
 from swift_comet_pipeline.scp_types.primitive import *
+
+
+# TODO: break this into multiple files
 
 
 # -----------------------------------------------------------------------------
@@ -856,7 +858,6 @@ class Products:
             kind=ProductKind.annular_aperture_photometry_analysis, key=key
         )
         df = self.registry_load(ref=pref)
-        # return annular_aperture_profile_from_dataframe(df=df)
         return df
 
     def save_annular_aperture_analysis(

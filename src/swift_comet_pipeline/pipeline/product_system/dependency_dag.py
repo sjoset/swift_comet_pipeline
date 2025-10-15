@@ -119,6 +119,12 @@ def calculate_statuses(
 
     stale_products = False
 
+    # TODO: test this value and adjust
+    # a product can be newer than a parent by 10 minutes - this allows the subpipelines to be run within this timeframe and be considered consistent
+    # because of the inconsistent way that the dependency graph is built - it can change the order of products from subpipelines, which causes false staleness
+    # this happens for water production calculations because they pull from a dust and oh subpipeline
+    mtime_tolerance_threshold_s = 10 * 60
+
     statuses = {}
     # fill in the status of each product, from first to be built in dep tree to last
     for i, (ref, ref_exists, mtime) in enumerate(zip(ref_dep_list, existences, mtimes)):
@@ -161,10 +167,28 @@ def calculate_statuses(
             statuses[ref] = status_factory(build_status=ProductBuildStatus.need_regen)
             continue
 
+        # TODO: staleness problem
+        # TODO: when we generate dep tree using two epoch subpipelines, the same kind of product gets grouped next to each other -
+        # which means our dep tree will insist we do both backgrounds one after the other, then subtract one after the other, etc.
+        # If instead we generate products in the subpipelines separately, one subpipeline will be older and marked stale because the
+        # other subpipeline's results are newer
+        # Either we:
+        # 1) standardize the dependency order,
+        # 2) we only generate dag trees using the final product but stop building when we hit our target
+        # 3) *only* allow building the final products, so that only one dep tree is generated and can't conflict with anything else
+        # 4) when marking as stale, check if the product is the same subpipeline - if not, we don't care?
+        # 5) change the mtime comparison to allow for ~5 minutes, 1 day, etc threshold before it's considered stale
+        # Number 2 should be workable - we create a 'final' product that depends on all of our results
+
         # it exists - is there any parent that is newer?
         assert mtime is not None
         prev_mtimes = mtimes[:i]
-        if any([mtime < x if x else None for x in prev_mtimes]):
+        if any(
+            [
+                mtime + mtime_tolerance_threshold_s < x if x else None
+                for x in prev_mtimes
+            ]
+        ):
             print(f"Marking {ref} as stale because a parent is newer!")
             statuses[ref] = status_factory(build_status=ProductBuildStatus.stale)
             stale_products = True
@@ -174,9 +198,15 @@ def calculate_statuses(
         # the rest are stale, but we are complete
         assert mtime is not None
         remaining_mtimes = mtimes[i + 1 :]
-        if any([mtime > x if x else None for x in remaining_mtimes]):
-            # print(f"Marking {ref} as complete and the rest as stale!")
+        if any(
+            [
+                mtime - mtime_tolerance_threshold_s > x if x else None
+                for x in remaining_mtimes
+            ]
+        ):
+            print(f"Marking {ref} as complete and the rest as stale!")
             statuses[ref] = status_factory(build_status=ProductBuildStatus.complete)
+            # TODO: staleness problem
             stale_products = True
             continue
 

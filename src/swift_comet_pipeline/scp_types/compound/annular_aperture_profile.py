@@ -21,10 +21,11 @@ class AnnularApertureProfileEntry(ApertureCountRateAnalysis):
 AnnularApertureProfile: TypeAlias = list[AnnularApertureProfileEntry]
 
 
-def annular_aperture_profile_from_dataframe(
-    df: pd.DataFrame,
-) -> AnnularApertureProfile:
-    return df.apply(lambda row: AnnularApertureProfileEntry(**row), axis=1).to_list()
+# TODO: remove old code
+# def annular_aperture_profile_from_dataframe(
+#     df: pd.DataFrame,
+# ) -> AnnularApertureProfile:
+#     return df.apply(lambda row: AnnularApertureProfileEntry(**row), axis=1).to_list()
 
 
 def dataframe_from_annular_aperture_profile(
@@ -41,6 +42,3 @@ def radial_profile_from_annular_aperture_profile(
     pixel_values = np.array([x.median_count_rate for x in annular_aperture_profile])
 
     return CometRadialProfile(profile_axis_rs=profile_rs_pix, pixel_values=pixel_values)
-
-
-# TODO: library cattrs for structuring into/out of dataclasses and define hooks for certain datatypes once in a central location

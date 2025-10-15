@@ -22,7 +22,6 @@ from scipy.integrate import quad
 
 from swift_comet_pipeline.modeling.vectorial.molecular_parameters import (
     make_hydroxyl_fragment,
-    make_slow_water_molecule_parent,
     make_water_molecule_parent,
 )
 from swift_comet_pipeline.modeling.vectorial.vectorial_model_backend import (
@@ -37,7 +36,7 @@ from swift_comet_pipeline.modeling.vectorial.vectorial_model_grid import (
     make_vectorial_model_grid,
     vectorial_model_grid_quality_init,
 )
-from swift_comet_pipeline.scp_types.compound.swift_project_config import (
+from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
 from swift_comet_pipeline.scp_types.primitive.vectorial_model_backend import (
@@ -45,14 +44,15 @@ from swift_comet_pipeline.scp_types.primitive.vectorial_model_backend import (
 )
 
 
+# TODO: decouple from project config
 def vectorial_model_settings_init(
-    swift_project_config: CometProjectConfig,
+    comet_project_config: CometProjectConfig,
 ) -> None:
-    vectorial_model_cache_init(project_path=swift_project_config.project_path)
+    vectorial_model_cache_init(project_path=comet_project_config.project_path)
     vectorial_model_grid_quality_init(
-        quality=swift_project_config.vectorial_model_quality
+        quality=comet_project_config.vectorial_model_quality
     )
-    vectorial_model_backend_init(backend=swift_project_config.vectorial_model_backend)
+    vectorial_model_backend_init(backend=comet_project_config.vectorial_model_backend)
 
 
 @cache
@@ -60,9 +60,7 @@ def vectorial_model_settings_init(
 def water_vectorial_model(
     base_q: u.Quantity[1 / u.s],  # type: ignore
     helio_r: u.Quantity[u.AU],  # type: ignore
-    water_grains: bool = False,
 ) -> VectorialModelResult:
-    # TODO: water grains modeling as slow-moving water parents did not work - remove code or try something else
 
     vmcache_path = get_vectorial_model_cache_path()
 
@@ -82,20 +80,8 @@ def water_vectorial_model(
     vmc = apply_input_transform(
         vmc=untransformed_vmc, r_h=helio_r, xfrm=VmcTransform.cochran_schleicher_93
     )
-    # TODO: remove, doesn't seem to account for PBS
-    if water_grains:
-        new_parent = make_slow_water_molecule_parent(
-            v_outflow=(0.01 * u.km / u.s) / np.sqrt(helio_r.to(u.AU).value)  # type: ignore
-        )
-        vmc = VectorialModelConfig(
-            production=vmc.production,
-            parent=new_parent,
-            fragment=vmc.fragment,
-            grid=vmc.grid,
-        )
 
     model_backend = get_vectorial_model_backend()
-    # ic(f"Using model backend {model_backend}..")
     if model_backend == VectorialModelBackend.sbpy:
         extra_config = PythonModelExtraConfig(print_progress=False)
     elif model_backend == VectorialModelBackend.rust:
@@ -113,7 +99,7 @@ def water_vectorial_model(
     return vmcalculation.vmr
 
 
-def num_OH_from_vectorial_model_result(
+def num_oh_from_vectorial_model_result(
     vmr: VectorialModelResult,
 ) -> float:
     """
@@ -138,7 +124,7 @@ def num_OH_from_vectorial_model_result(
 
 
 @u.quantity_input
-def num_OH_from_vectorial_model_result_within_r(
+def num_oh_from_vectorial_model_result_within_r(
     vmr: VectorialModelResult, within_r: u.Quantity[u.m]  # type: ignore
 ) -> float:
     """
