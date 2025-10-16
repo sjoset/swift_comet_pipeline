@@ -1,11 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy.visualization import (
-    ImageNormalize,
-    PercentileInterval,
-    LogStretch,
-    ZScaleInterval,
-)
+from astropy.visualization import ZScaleInterval
 
 from swift_comet_pipeline.scp_types.primitive import *
 

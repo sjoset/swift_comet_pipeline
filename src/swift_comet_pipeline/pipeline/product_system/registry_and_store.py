@@ -853,20 +853,44 @@ class Products:
         return self.registry_save(ref=pref, obj=json_dict)
 
     # aperture analysis
-    def load_annular_aperture_analysis(self, key: EpochSubpipelineKey) -> pd.DataFrame:
+    def load_annular_aperture_analysis(
+        self, key: EpochSubpipelineKey
+    ) -> tuple[AnnularAperturePhotometryAnalysis, dict] | None:
+        # returns metadata associated with the photometry as a dict
         pref = ProductReference(
             kind=ProductKind.annular_aperture_photometry_analysis, key=key
         )
         df = self.registry_load(ref=pref)
-        return df
+        aapa = annular_aperture_photometry_analysis_from_dataframe(df=df)
+        return aapa, df.attrs
+
+    # def load_annular_aperture_analysis(self, key: EpochSubpipelineKey) -> pd.DataFrame:
+    #     pref = ProductReference(
+    #         kind=ProductKind.annular_aperture_photometry_analysis, key=key
+    #     )
+    #     df = self.registry_load(ref=pref)
+    #     return df
+
+    # def save_annular_aperture_analysis(
+    #     self, df: pd.DataFrame, key: EpochSubpipelineKey
+    # ) -> pathlib.Path | None:
+    #     pref = ProductReference(
+    #         kind=ProductKind.annular_aperture_photometry_analysis, key=key
+    #     )
+    #     return self.registry_save(ref=pref, obj=df)
 
     def save_annular_aperture_analysis(
-        self, df: pd.DataFrame, key: EpochSubpipelineKey
+        self,
+        aapa: AnnularAperturePhotometryAnalysis,
+        metadata: dict,
+        key: EpochSubpipelineKey,
     ) -> pathlib.Path | None:
         pref = ProductReference(
             kind=ProductKind.annular_aperture_photometry_analysis, key=key
         )
-        return self.registry_save(ref=pref, obj=df)
+        aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=aapa)
+        aapa_df.attrs = metadata
+        return self.registry_save(ref=pref, obj=aapa_df)
 
     # extracted radial profiles
     def load_extracted_radial_profile(

@@ -5,6 +5,7 @@ from dataclasses import dataclass, fields
 class ApertureCountRateAnalysis:
     """
     Given an aperture, we want these results for determining the signal within it
+    Assumes we are working with images with pixels in count rates
     """
 
     sum_count_rate: float

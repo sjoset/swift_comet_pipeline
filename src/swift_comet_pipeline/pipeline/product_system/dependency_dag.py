@@ -120,10 +120,10 @@ def calculate_statuses(
     stale_products = False
 
     # TODO: test this value and adjust
-    # a product can be newer than a parent by 10 minutes - this allows the subpipelines to be run within this timeframe and be considered consistent
+    # a product can be newer than a parent by 20 minutes - this allows the subpipelines to be run within this timeframe and be considered consistent
     # because of the inconsistent way that the dependency graph is built - it can change the order of products from subpipelines, which causes false staleness
     # this happens for water production calculations because they pull from a dust and oh subpipeline
-    mtime_tolerance_threshold_s = 10 * 60
+    mtime_tolerance_threshold_s = 20 * 60
 
     statuses = {}
     # fill in the status of each product, from first to be built in dep tree to last

@@ -1,3 +1,4 @@
+from .annular_aperture_photometry_analysis import *
 from .aperture_count_rate_analysis import *
 from .background_determination_method import *
 from .bayesian_expectation import *

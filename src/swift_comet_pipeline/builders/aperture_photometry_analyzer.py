@@ -67,6 +67,7 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
 
     assert eid.exposure_times.get(pkey.filter_type, None) is not None
 
+    # TODO: decouple this from the TUI
     print("Starting counts ...")
     annular_analyses = [
         aperture_analysis(
@@ -95,14 +96,9 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
         for aa, *data_lists in zip(annular_analyses, *ap_profile_data_lists)
     ]
 
-    analysis_metadata = {
-        "max_aperture_radius_km": str(max_aperture_radius.to_value(u.km)),  # type: ignore
-        "num_concentric_apertures": str(num_concentric_apertures),
-    }
     annular_aperture_analysis_df = dataframe_from_annular_aperture_profile(
         annular_aperture_profile=annular_aperture_profile
     )
-    annular_aperture_analysis_df.attrs = analysis_metadata  # type: ignore
 
     # calculate a few more things - curves of growth etc.
     half_pi = np.pi / 2.0
@@ -111,13 +107,19 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
     df["cumulative_aperture_area"] = df.ap_num_pixels.cumsum()
 
     # median growth curve
-    df["median_signal"] = df.median_count_rate * df.ap_num_pixels
-    df["median_signal_variance"] = (
+    df["area_scaled_median"] = df.median_count_rate * df.ap_num_pixels
+    df["area_scaled_median_variance"] = (
         df.count_rate_shot_noise_variance * half_pi + df.bg_variance
     )
-    df["cumulative_median_signal"] = df.median_signal.cumsum()
-    df["cumulative_median_variance"] = df.median_signal_variance.cumsum()
-    df["cumulative_median_err"] = np.sqrt(df.cumulative_median_variance)
+    df["area_scaled_median_err"] = np.sqrt(df.area_scaled_median_variance)
+
+    df["cumulative_area_scaled_median"] = df.area_scaled_median.cumsum()
+    df["cumulative_area_scaled_median_variance"] = (
+        df.area_scaled_median_variance.cumsum()
+    )
+    df["cumulative_area_scaled_median_err"] = np.sqrt(
+        df.cumulative_area_scaled_median_variance
+    )
 
     # sum growth curve
     df["cumulative_sum"] = df.sum_count_rate.cumsum()
@@ -128,7 +130,9 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
     magnitude_func = partial(magnitude_from_count_rate, filter_type=pkey.filter_type)
     df["cumulative_median_cr"] = [
         CountRate(x, e)
-        for x, e in zip(df.cumulative_median_signal, df.cumulative_median_variance)
+        for x, e in zip(
+            df.cumulative_area_scaled_median, df.cumulative_area_scaled_median_variance
+        )
     ]
     df["cumulative_median_mag"] = df.cumulative_median_cr.apply(magnitude_func)
     df["cumulative_median_magnitude"] = df.cumulative_median_mag.apply(
@@ -136,6 +140,9 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
     )
     df["cumulative_median_magnitude_variance"] = df.cumulative_median_mag.apply(
         lambda x: x.sigma**2
+    )
+    df["cumulative_median_magnitude_err"] = np.sqrt(
+        df.cumulative_median_magnitude_variance
     )
 
     # magnitude from cumulative sum counts
@@ -147,6 +154,8 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
     df["cumulative_sum_magnitude_variance"] = df.cumulative_sum_mag.apply(
         lambda x: x.sigma**2
     )
+    df["cumulative_sum_magnitude_err"] = np.sqrt(df.cumulative_sum_magnitude_variance)
+
     df = df.drop(
         [
             "cumulative_median_cr",
@@ -157,9 +166,10 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
         axis=1,
     )
 
-    # TODO: !! dataclass ApertureAnalysisEntry for the rows we have after we're done here
-    # converters for dataframe -> dataclass list will be called in the load/save facade
+    analysis_metadata = {
+        "max_aperture_radius_km": str(max_aperture_radius.to_value(u.km)),  # type: ignore
+        "num_concentric_apertures": str(num_concentric_apertures),
+    }
 
-    # TODO: convert dataframe to [ApertureAnalysisEntry] and hand off to facade instead of df
-
-    scp.save_annular_aperture_analysis(df=df, key=pkey)
+    aapa = annular_aperture_photometry_analysis_from_dataframe(df=df)
+    scp.save_annular_aperture_analysis(aapa=aapa, metadata=analysis_metadata, key=pkey)

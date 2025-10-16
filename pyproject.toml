@@ -41,7 +41,11 @@ cattrs = "^25.3.0"
 scp_tui = 'swift_comet_pipeline.tui.scp_tui:main'
 scp_gui = 'swift_comet_pipeline.ui.gui.scp_gui:main'
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+vulture = "^2.14"
 
 [tool.pyright]
 reportAttributeAccessIssue = 'information'

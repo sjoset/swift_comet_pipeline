@@ -12,20 +12,18 @@ from swift_comet_pipeline.scp_types.primitive.aperture_count_rate_analysis impor
 
 @dataclass
 class AnnularApertureProfileEntry(ApertureCountRateAnalysis):
+    """
+    For storing pairs of annular aperture radius and width (dr)
+    """
+
     aperture_r_pix: float
     aperture_r_km: float
+
     aperture_dr_pix: float
     aperture_dr_km: float
 
 
 AnnularApertureProfile: TypeAlias = list[AnnularApertureProfileEntry]
-
-
-# TODO: remove old code
-# def annular_aperture_profile_from_dataframe(
-#     df: pd.DataFrame,
-# ) -> AnnularApertureProfile:
-#     return df.apply(lambda row: AnnularApertureProfileEntry(**row), axis=1).to_list()
 
 
 def dataframe_from_annular_aperture_profile(

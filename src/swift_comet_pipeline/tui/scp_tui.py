@@ -405,8 +405,8 @@ def test_aperture_analysis_loading(scp: Products) -> None:
         kind=ProductKind.annular_aperture_photometry_analysis,
         key=EpochSubpipelineKey(
             # epoch_id="000_2014_Aug_14",
-            # epoch_id="001_2014_Nov_05",
-            epoch_id="003_2015_Apr_28",
+            epoch_id="001_2014_Nov_05",
+            # epoch_id="003_2015_Apr_28",
             # epoch_id="005_2015_Aug_11",
             # epoch_id="008_2016_Mar_14",
             # epoch_id="009_2016_Apr_10",
@@ -417,24 +417,30 @@ def test_aperture_analysis_loading(scp: Products) -> None:
     pkey = target_ref.key
     assert isinstance(pkey, EpochSubpipelineKey)
 
-    aaa_df = scp.load_annular_aperture_analysis(key=pkey)
-    assert aaa_df is not None
+    # aaa_df = scp.load_annular_aperture_analysis(key=pkey)
+    # assert aaa_df is not None
 
-    smoothed_total = savgol_filter(aaa_df.cumulative_sum, window_length=20, polyorder=2)
+    aapa, _ = scp.load_annular_aperture_analysis(key=pkey)
+    assert aapa is not None
+    aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=aapa)
+
+    smoothed_total = savgol_filter(
+        aapa_df.cumulative_sum, window_length=20, polyorder=2
+    )
     smoothed_median = savgol_filter(
-        aaa_df.cumulative_median_signal, window_length=20, polyorder=2
+        aapa_df.cumulative_area_scaled_median, window_length=20, polyorder=2
     )
 
     # plt.scatter(x=aaa_df.aperture_r_km, y=aaa_df.cumulative_sum, color="#688894")
     # plt.scatter(
-    #     x=aaa_df.aperture_r_km, y=aaa_df.cumulative_median_signal, color="#688894"
+    #     x=aaa_df.aperture_r_km, y=aaa_df.cumulative_area_scaled_median, color="#688894"
     # )
 
     plt.plot(
-        aaa_df.aperture_r_km, smoothed_total, label="smooth total", color="#688894"
+        aapa_df.aperture_r_km, smoothed_total, label="smooth total", color="#688894"
     )
     plt.plot(
-        aaa_df.aperture_r_km, smoothed_median, label="smooth median", color="#afac7c"
+        aapa_df.aperture_r_km, smoothed_median, label="smooth median", color="#afac7c"
     )
 
     # plt.errorbar(
@@ -446,23 +452,25 @@ def test_aperture_analysis_loading(scp: Products) -> None:
     #
     # plt.errorbar(
     #     aaa_df.aperture_r_km,
-    #     aaa_df.cumulative_median_signal,
-    #     yerr=aaa_df.cumulative_median_err,
+    #     aaa_df.cumulative_area_scaled_median,
+    #     yerr=aaa_df.cumulative_area_scaled_median_err,
     #     label="total median",
     # )
 
     for i in range(4):
         plt.fill_between(
-            aaa_df.aperture_r_km,
-            aaa_df.cumulative_sum - i * aaa_df.cumulative_sum_err,
-            aaa_df.cumulative_sum + i * aaa_df.cumulative_sum_err,
+            aapa_df.aperture_r_km,
+            aapa_df.cumulative_sum - i * aapa_df.cumulative_sum_err,
+            aapa_df.cumulative_sum + i * aapa_df.cumulative_sum_err,
             alpha=0.2,
             color="#688894",
         )
         plt.fill_between(
-            aaa_df.aperture_r_km,
-            aaa_df.cumulative_median_signal - i * aaa_df.cumulative_median_err,
-            aaa_df.cumulative_median_signal + i * aaa_df.cumulative_median_err,
+            aapa_df.aperture_r_km,
+            aapa_df.cumulative_area_scaled_median
+            - i * aapa_df.cumulative_area_scaled_median_err,
+            aapa_df.cumulative_area_scaled_median
+            + i * aapa_df.cumulative_area_scaled_median_err,
             alpha=0.2,
             color="#afac7c",
         )
@@ -480,7 +488,8 @@ def test_radial_profile_loading(scp: Products) -> None:
         kind=ProductKind.annular_aperture_photometry_analysis,
         key=EpochSubpipelineKey(
             # epoch_id="003_2015_Apr_28",
-            epoch_id="004_2015_Jun_19",
+            epoch_id="001_2014_Nov_05",
+            # epoch_id="004_2015_Jun_19",
             # epoch_id="005_2015_Aug_11",
             filter_type=UvotFilter.uw1,
             stacking_method=StackingMethod.summation,
@@ -633,22 +642,31 @@ def main():
     # TODO: add afrho product for each requested dust filter
     # TODO: test uuu filter in aperture/water analysis
 
-    epoch_id = "000_2014_Aug_14"
+    # epoch_id = "000_2014_Aug_14"
     # epoch_id = "001_2014_Nov_05"
     # epoch_id = "002_2014_Dec_20"
     # epoch_id = "003_2015_Apr_28"
     # epoch_id = "004_2015_Jun_19"
     # epoch_id = "005_2015_Aug_11"
-    # epoch_id = "008_2016_Mar_14"
+    # epoch_id = "006_2015_Sep_01"
+    # epoch_id = "007_2016_Feb_11"
+    epoch_id = "008_2016_Mar_14"
     # epoch_id = "009_2016_Apr_10"
+    # epoch_id = "010_2016_Aug_19"
+    # epoch_id = "011_2016_Nov_24"
 
-    pkey_uw1 = EpochSubpipelineKey(
+    oh_filter = UvotFilter.uw1
+    # oh_filter = UvotFilter.uw2
+    dust_filter = UvotFilter.uvv
+    # dust_filter = UvotFilter.uuu
+
+    pkey_oh = EpochSubpipelineKey(
         epoch_id=epoch_id,
-        filter_type=UvotFilter.uw1,
+        filter_type=oh_filter,
         stacking_method=StackingMethod.summation,
     )
-    pkey_uvv = replace(pkey_uw1, filter_type=UvotFilter.uvv)
-    for key in [pkey_uvv, pkey_uw1]:
+    pkey_dust = replace(pkey_oh, filter_type=dust_filter)
+    for key in [pkey_dust, pkey_oh]:
         p_ref = ProductReference(kind=ProductKind.radial_profile_from_cone, key=key)
         build_product_reference_loop(scp=scp, ref=p_ref)
 
@@ -665,8 +683,8 @@ def main():
 
     wkey = WaterProductionKey(
         epoch_id=epoch_id,
-        oh_filter=UvotFilter.uw1,
-        dust_filter=UvotFilter.uvv,
+        oh_filter=oh_filter,
+        dust_filter=dust_filter,
         stacking_method=StackingMethod.summation,
     )
     ap_wat_ref = ProductReference(kind=ProductKind.aperture_water_production, key=wkey)

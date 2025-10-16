@@ -10,26 +10,30 @@ from swift_comet_pipeline.scp_types.primitive import *
 OHFlux: TypeAlias = ValueAndStandardDev
 
 
-def oh_count_rates_to_flux_factor() -> u.Quantity:
+# TODO: turn count_rates_to_flux into a [UvotFilter, float] dictionary based on response to OH fluorescence spectrum
+# The response ratio of the UVW1/UVW2 filters indicate that we get ~0.2 counts per count in UVW1 - so 1 count is worth ~5 times the flux
+
+_count_rates_to_flux_factor = {
     # this comes from an OH spectral model in Bodewits et. al 2019, via convolving the OH spectrum through the uw1 filter
-    # to relate count rate to flux, in ergs/(cm**2  second)
-    return 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s)  # type: ignore
+    UvotFilter.uw1: 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s),  # type: ignore
+    # this was estimated based on the relative effective areas in a window around 308 nm
+    # TODO: obtain OH spectrum and do convolution vs filter response for uw2 for a something better than '5'
+    UvotFilter.uw2: 5 * 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s),  # type: ignore
+}
 
 
-# def OH_flux_from_count_rate(
-#     uw1: CountRate,
-#     uvv: CountRate,
-#     beta: DustReddeningPercent,
-# ) -> OHFlux:
-#
-#     alpha = OH_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
-#     oh_flux = alpha * (uw1 - beta * uvv)
-#
-#     return OHFlux(value=oh_flux.value, sigma=oh_flux.sigma)
+def oh_count_rates_to_flux_factor(filter_type: UvotFilter) -> u.Quantity:
+    return _count_rates_to_flux_factor.get(filter_type, 0)
+    # return 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s)  # type: ignore
 
 
-def oh_flux_from_oh_count_rate(oh_count_rate: CountRate) -> OHFlux:
-
-    alpha = oh_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
-    oh_flux = alpha * oh_count_rate
-    return oh_flux
+def oh_flux_from_oh_count_rate(
+    oh_count_rate: CountRate, filter_type: UvotFilter
+) -> OHFlux:
+    # alpha = oh_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
+    return (
+        oh_count_rates_to_flux_factor(filter_type=filter_type).to_value(
+            u.erg / (u.cm**2 * u.s)  # type: ignore
+        )
+        * oh_count_rate
+    )
