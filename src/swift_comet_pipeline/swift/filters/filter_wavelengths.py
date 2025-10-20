@@ -17,6 +17,7 @@ from swift_comet_pipeline.swift.filters.read_filter_effective_area import (
 
 @cache
 def average_wavelength_of_filter(filter_type: UvotFilter) -> u.Quantity:
+    # Simple 'center of mass' of the filter effective area
 
     filter_effective_area = read_filter_effective_area(filter_type=filter_type)
     if filter_effective_area is None:
@@ -35,6 +36,7 @@ def average_wavelength_of_filter(filter_type: UvotFilter) -> u.Quantity:
 
 @cache
 def pivot_wavelength_of_filter(filter_type: UvotFilter) -> u.Quantity:
+    # TODO: document
 
     filter_effective_area = read_filter_effective_area(filter_type=filter_type)
     if filter_effective_area is None:

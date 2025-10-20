@@ -1,5 +1,12 @@
-effective_area_uw1_path: "../../../../data/swift_effective_areas/swuw1_20041120v106.arf"
+effective_area_uuu_path: "../../../../data/swift_effective_areas/swuuu_20041120v104.arf"
+effective_area_ubb_path: "../../../../data/swift_effective_areas/swubb_20041120v104.arf"
 effective_area_uvv_path: "../../../../data/swift_effective_areas/swuvv_20041120v104.arf"
+effective_area_uw1_path: "../../../../data/swift_effective_areas/swuw1_20041120v106.arf"
+effective_area_uw2_path: "../../../../data/swift_effective_areas/swuw2_20041120v105.arf"
+effective_area_um2_path: "../../../../data/swift_effective_areas/swum2_20041120v105.arf"
+effective_area_white_path: "../../../../data/swift_effective_areas/swuwh_20041120v104.arf"
+effective_area_vgrism_path: "../../../../data/swift_effective_areas/swugv1000_20041120v101.arf"
+effective_area_ugrism_path: "../../../../data/swift_effective_areas/swugu0200_20041120v101.arf"
 
 uvot_sensitivity_path: "../../../../data/sensitivity/swusenscorr20041120v007.fits"
 

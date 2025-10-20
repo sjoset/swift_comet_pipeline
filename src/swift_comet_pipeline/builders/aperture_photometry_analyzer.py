@@ -166,6 +166,7 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
         axis=1,
     )
 
+    # TODO: make a dataclass for this so we can use cattrs to structure it after loading
     analysis_metadata = {
         "max_aperture_radius_km": str(max_aperture_radius.to_value(u.km)),  # type: ignore
         "num_concentric_apertures": str(num_concentric_apertures),

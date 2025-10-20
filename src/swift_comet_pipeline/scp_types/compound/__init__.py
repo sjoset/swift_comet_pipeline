@@ -19,3 +19,4 @@ from .swift_level_2_fits import *
 from .swift_uvot_observation_log import *
 from .uw1_uvv_pair import *
 from .vectorial_model_fit import *
+from .water_production_filter_pair import *

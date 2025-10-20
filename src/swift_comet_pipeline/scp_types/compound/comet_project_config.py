@@ -1,6 +1,10 @@
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from swift_comet_pipeline.scp_types.primitive.dust_reddening_percent import (
+    DustReddeningPercent,
+)
+from swift_comet_pipeline.scp_types.primitive.uvot_filter import UvotFilter
 from swift_comet_pipeline.scp_types.primitive.vectorial_model_backend import (
     VectorialModelBackend,
 )
@@ -9,17 +13,36 @@ from swift_comet_pipeline.scp_types.primitive.vectorial_model_grid_quality impor
 )
 
 
-# TODO: document
 @dataclass
 class CometProjectConfig:
     """
     Holds configuration data for the current comet analysis project
     """
 
+    # path to downloaded swift data - see SwiftData class for folder structure expected
     swift_data_path: pathlib.Path
+    # how to query horizons for the comet ephemera
     jpl_horizons_id: str
-    project_path: pathlib.Path
-    vectorial_model_quality: VectorialModelGridQuality
-    vectorial_model_backend: VectorialModelBackend
-    vectorial_fitting_requires_km: float
-    near_far_split_radius_km: float
+    # where to store the analysis
+    project_path: pathlib.Path = pathlib.Path.cwd()
+
+    # vectorial model settings
+    vectorial_model_quality: VectorialModelGridQuality = VectorialModelGridQuality.high
+    vectorial_model_backend: VectorialModelBackend = VectorialModelBackend.sbpy
+    vectorial_fitting_requires_km: float = 100000
+    near_far_split_radius_km: float = 50000
+
+    oh_filters: list[UvotFilter] = field(
+        default_factory=lambda: [UvotFilter.uw1, UvotFilter.uw2]
+    )
+    dust_filters: list[UvotFilter] = field(
+        default_factory=lambda: [UvotFilter.uvv, UvotFilter.uuu, UvotFilter.ubb]
+    )
+
+    # which dust rednesses do we use for computation?
+    dust_redness_min: DustReddeningPercent = 0.0
+    dust_redness_max: DustReddeningPercent = 40.0
+    dust_redness_step: float = 1.0
+
+    # midpoint of the uw1 and uvv filters as the default for redness context
+    redness_mid_wavelength_nm: float = 438.181

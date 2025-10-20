@@ -1,9 +1,8 @@
-from dataclasses import dataclass
 from functools import partial
 
 import numpy as np
+import pandas as pd
 import astropy.units as u
-import matplotlib.pyplot as plt
 
 from swift_comet_pipeline.modeling.water_production.fluorescence_OH import (
     oh_flux_to_num_oh,
@@ -12,6 +11,7 @@ from swift_comet_pipeline.modeling.water_production.flux_OH import (
     oh_flux_from_oh_count_rate,
 )
 from swift_comet_pipeline.modeling.water_production.num_OH_to_Q import (
+    num_oh_to_q_h2o_vectorial,
     num_oh_within_r_to_q_h2o_vectorial,
 )
 from swift_comet_pipeline.photometry.dust.beta_parameter import beta_parameter
@@ -23,11 +23,10 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 )
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.primitive.annular_aperture_photometry_analysis import (
-    AnnularAperturePhotometryAnalysis,
     dataframe_from_annular_aperture_photometry_analysis,
 )
-from swift_comet_pipeline.scp_types.primitive.dust_reddening_percent import (
-    DustReddeningPercent,
+from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
+    aperture_water_production_analysis_from_dataframe,
 )
 
 
@@ -69,59 +68,7 @@ from swift_comet_pipeline.scp_types.primitive.dust_reddening_percent import (
 #     return q_plateau_list_dict
 
 
-# this makes more sense as dataclass lists
-# def _oh_counts_from_column(oh_df: pd.DataFrame, dust_df: pd.DataFrame, source_column: str, dest_column: str) -> pd.DataFrame:
-
-
-@dataclass
-class ApertureWaterProductionAnalysisEntry(AnnularAperturePhotometryAnalysis):
-    oh_counts_sum: float
-    oh_counts_variance: float
-    oh_counts_err: float
-
-    oh_counts_median: float
-    oh_counts_median_variance: float
-    oh_counts_median_err: float
-
-    oh_flux_sum: float
-    oh_flux_sum_variance: float
-    oh_flux_sum_err: float
-
-    oh_flux_median: float
-    oh_flux_median_variance: float
-    oh_flux_median_err: float
-
-    num_oh_sum: float
-    num_oh_sum_variance: float
-    num_oh_sum_err: float
-
-    num_oh_median: float
-    num_oh_median_variance: float
-    num_oh_median_err: float
-
-    # match the vectorial model number of fragments in this aperture to what we measure
-    aperture_matched_q_h2o_sum: float
-    aperture_matched_q_h2o_sum_variance: float
-    aperture_matched_q_h2o_sum_err: float
-    aperture_matched_q_h2o_median: float
-    aperture_matched_q_h2o_median_variance: float
-    aperture_matched_q_h2o_median_err: float
-
-    # take the observed OH number to be the total produced by a vectorial model, and find the corresponding production
-    equivalent_q_h2o_sum: float
-    equivalent_q_h2o_sum_variance: float
-    equivalent_q_h2o_sum_err: float
-    equivalent_q_h2o_median: float
-    equivalent_q_h2o_median_variance: float
-    equivalent_q_h2o_median_err: float
-
-
 def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
-    # TODO: Jorda 2008 empirical water production rates for V-band
-    # TODO: range of rednesses and combine results with pd.concat
-
-    dust_redness = DustReddeningPercent(55.0)
-
     assert isinstance(ref.key, WaterProductionKey)
 
     oh_subpipe_key = EpochSubpipelineKey(
@@ -140,46 +87,53 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     dust_load_result = scp.load_annular_aperture_analysis(key=dust_subpipe_key)
     assert oh_load_result is not None and dust_load_result is not None
 
-    oh_aapa, _ = oh_load_result
-    dust_aapa, _ = dust_load_result
+    oh_aapa, oh_metadata = oh_load_result
+    dust_aapa, dust_metadata = dust_load_result
 
     oh_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=oh_aapa)
     dust_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=dust_aapa)
 
+    # TODO: rewrite for aperture metadata dataclass
+    assert (
+        oh_metadata["max_aperture_radius_km"] == dust_metadata["max_aperture_radius_km"]
+    )
+    assert (
+        oh_metadata["num_concentric_apertures"]
+        == dust_metadata["num_concentric_apertures"]
+    )
     assert np.sum(oh_aapa_df.aperture_r_km - dust_aapa_df.aperture_r_km) == 0.0
 
-    beta = beta_parameter(dust_redness=dust_redness)
+    beta = beta_parameter(
+        dust_redness=ref.key.dust_redness_pct_per_hundred_nm,
+        oh_filter=ref.key.oh_filter,
+        dust_filter=ref.key.dust_filter,
+    )
     water_df = oh_aapa_df[
         [
             "aperture_r_km",
             "aperture_r_pix",
-            "cumulative_sum",
-            "cumulative_sum_variance",
-            "cumulative_area_scaled_median",
-            "cumulative_area_scaled_median_variance",
-            "cumulative_area_scaled_median_err",
-            "cumulative_sum_magnitude",
-            "cumulative_sum_magnitude_variance",
-            "cumulative_sum_magnitude_err",
+            "aperture_dr_pix",
+            "aperture_dr_km",
         ]
     ].copy()
+    assert isinstance(water_df, pd.DataFrame)
 
     # TODO: generalize this into 'source oh column' and 'destination column name template' to get sum and median
     water_df["oh_counts_sum"] = (
-        water_df.cumulative_sum - beta * dust_aapa_df.cumulative_sum
+        oh_aapa_df.cumulative_sum - beta * dust_aapa_df.cumulative_sum
     )
     water_df["oh_counts_sum_variance"] = (
-        water_df.cumulative_sum_variance
+        oh_aapa_df.cumulative_sum_variance
         + beta**2 * dust_aapa_df.cumulative_sum_variance
     )
     water_df["oh_counts_sum_err"] = np.sqrt(water_df.oh_counts_sum_variance)
 
     water_df["oh_counts_median"] = (
-        water_df.cumulative_area_scaled_median
+        oh_aapa_df.cumulative_area_scaled_median
         - beta * dust_aapa_df.cumulative_area_scaled_median
     )
     water_df["oh_counts_median_variance"] = (
-        water_df.cumulative_area_scaled_median_variance
+        oh_aapa_df.cumulative_area_scaled_median_variance
         + beta**2 * dust_aapa_df.cumulative_area_scaled_median_variance
     )
     water_df["oh_counts_median_err"] = np.sqrt(water_df.oh_counts_median_variance)
@@ -199,6 +153,20 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     )
     water_df["oh_flux_sum_err"] = water_df.oh_flux_sum_val.apply(lambda x: x.sigma)
 
+    water_df["oh_count_rate_median"] = [
+        CountRate(value=x, sigma=s)
+        for x, s in zip(water_df.oh_counts_median, water_df.oh_counts_median_err)
+    ]
+    water_df["oh_flux_median_val"] = water_df.oh_count_rate_median.apply(oh_flux_func)
+    water_df["oh_flux_median"] = water_df.oh_flux_median_val.apply(lambda x: x.value)
+    water_df["oh_flux_median_variance"] = water_df.oh_flux_median_val.apply(
+        lambda x: x.sigma**2
+    )
+    water_df["oh_flux_median_err"] = water_df.oh_flux_median_val.apply(
+        lambda x: x.sigma
+    )
+
+    # oh number
     eid = scp.load_epoch_index_entry(epoch_id=oh_subpipe_key.epoch_id)
     assert eid is not None
     flux_to_num_func = partial(
@@ -209,97 +177,89 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     )
     water_df["num_oh_sum_val"] = water_df.oh_flux_sum_val.apply(flux_to_num_func)
     water_df["num_oh_sum"] = water_df.num_oh_sum_val.apply(lambda x: x.value)
-    water_df["num_oh_sum_var"] = water_df.num_oh_sum_val.apply(lambda x: x.sigma**2)
+    water_df["num_oh_sum_variance"] = water_df.num_oh_sum_val.apply(
+        lambda x: x.sigma**2
+    )
     water_df["num_oh_sum_err"] = water_df.num_oh_sum_val.apply(lambda x: x.sigma)
 
-    aperture_matched_q_vals = [
+    water_df["num_oh_median_val"] = water_df.oh_flux_median_val.apply(flux_to_num_func)
+    water_df["num_oh_median"] = water_df.num_oh_median_val.apply(lambda x: x.value)
+    water_df["num_oh_median_variance"] = water_df.num_oh_median_val.apply(
+        lambda x: x.sigma**2
+    )
+    water_df["num_oh_median_err"] = water_df.num_oh_median_val.apply(lambda x: x.sigma)
+
+    # aperture-matched production rates
+    aperture_matched_q_vals_sum = [
         num_oh_within_r_to_q_h2o_vectorial(
             rh_au=eid.rh_au, num_oh=n, within_r=r_km * u.km  # type: ignore
         )
         for n, r_km in zip(water_df.num_oh_sum_val, water_df.aperture_r_km)
     ]
-
-    # TODO: add the 'equivalent' vectorial production rates
-    water_df["aperture_matched_q_h2o_sum_val"] = aperture_matched_q_vals
+    water_df["aperture_matched_q_h2o_sum_val"] = aperture_matched_q_vals_sum
     water_df["aperture_matched_q_h2o_sum"] = (
         water_df.aperture_matched_q_h2o_sum_val.apply(lambda x: x.value)
     )
-    water_df["aperture_matched_q_h2o_sum_var"] = (
+    water_df["aperture_matched_q_h2o_sum_variance"] = (
         water_df.aperture_matched_q_h2o_sum_val.apply(lambda x: x.sigma**2)
     )
     water_df["aperture_matched_q_h2o_sum_err"] = (
         water_df.aperture_matched_q_h2o_sum_val.apply(lambda x: x.sigma)
     )
 
+    aperture_matched_q_vals_median = [
+        num_oh_within_r_to_q_h2o_vectorial(
+            rh_au=eid.rh_au, num_oh=n, within_r=r_km * u.km  # type: ignore
+        )
+        for n, r_km in zip(water_df.num_oh_median_val, water_df.aperture_r_km)
+    ]
+    water_df["aperture_matched_q_h2o_median_val"] = aperture_matched_q_vals_median
+    water_df["aperture_matched_q_h2o_median"] = (
+        water_df.aperture_matched_q_h2o_median_val.apply(lambda x: x.value)
+    )
+    water_df["aperture_matched_q_h2o_median_variance"] = (
+        water_df.aperture_matched_q_h2o_median_val.apply(lambda x: x.sigma**2)
+    )
+    water_df["aperture_matched_q_h2o_median_err"] = (
+        water_df.aperture_matched_q_h2o_median_val.apply(lambda x: x.sigma)
+    )
+
+    # oh-equivalent production rates
+    equivalent_q_vals_sum = [
+        num_oh_to_q_h2o_vectorial(rh_au=eid.rh_au, num_oh=n)
+        for n in water_df.num_oh_sum_val
+    ]
+    equivalent_q_vals_median = [
+        num_oh_to_q_h2o_vectorial(rh_au=eid.rh_au, num_oh=n)
+        for n in water_df.num_oh_median_val
+    ]
+    water_df["equivalent_q_h2o_sum_val"] = equivalent_q_vals_sum
+    water_df["equivalent_q_h2o_sum"] = water_df.equivalent_q_h2o_sum_val.apply(
+        lambda x: x.value
+    )
+    water_df["equivalent_q_h2o_sum_variance"] = water_df.equivalent_q_h2o_sum_val.apply(
+        lambda x: x.sigma**2
+    )
+    water_df["equivalent_q_h2o_sum_err"] = water_df.equivalent_q_h2o_sum_val.apply(
+        lambda x: x.sigma
+    )
+
+    water_df["equivalent_q_h2o_median_val"] = equivalent_q_vals_median
+    water_df["equivalent_q_h2o_median"] = water_df.equivalent_q_h2o_median_val.apply(
+        lambda x: x.value
+    )
+    water_df["equivalent_q_h2o_median_variance"] = (
+        water_df.equivalent_q_h2o_median_val.apply(lambda x: x.sigma**2)
+    )
+    water_df["equivalent_q_h2o_median_err"] = (
+        water_df.equivalent_q_h2o_median_val.apply(lambda x: x.sigma)
+    )
+
     # TODO: plateau detection and add to metadata
 
-    # TODO: save data: make dataclass to describe rows and convert to dataclass before handing off to scp
-
-    # TODO: move plotting to test functions
-
-    for i in range(4):
-        plt.fill_between(
-            water_df.aperture_r_km,
-            water_df.aperture_matched_q_h2o_sum
-            + i * water_df.aperture_matched_q_h2o_sum_err,
-            water_df.aperture_matched_q_h2o_sum
-            - i * water_df.aperture_matched_q_h2o_sum_err,
-            alpha=0.2,
-            color="#688894",
-        )
-
-    # for i in range(4):
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.cumulative_sum_magnitude
-    #         + i * water_df.cumulative_sum_magnitude_variance,
-    #         water_df.cumulative_sum_magnitude
-    #         - i * water_df.cumulative_sum_magnitude_variance,
-    #         alpha=0.2,
-    #         color="#688894",
-    #     )
-
-    # for i in range(4):
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.num_oh_sum + i * water_df.num_oh_sum_err,
-    #         water_df.num_oh_sum - i * water_df.num_oh_sum_err,
-    #         alpha=0.2,
-    #         color="#688894",
-    #     )
-
-    # for i in range(4):
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.oh_flux_sum + i * water_df.oh_flux_sum_err,
-    #         water_df.oh_flux_sum - i * water_df.oh_flux_sum_err,
-    #         alpha=0.2,
-    #         color="#688894",
-    #     )
-
-    # for i in range(4):
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.oh_counts_sum + i * water_df.oh_counts_sum_err,
-    #         water_df.oh_counts_sum - i * water_df.oh_counts_sum_err,
-    #         alpha=0.2,
-    #         color="#688894",
-    #     )
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.oh_counts_median + i * water_df.oh_counts_median_err,
-    #         water_df.oh_counts_median - i * water_df.oh_counts_median_err,
-    #         alpha=0.2,
-    #         color="#afac7c",
-    #     )
-
-    # plt.yscale("log")
-    # plt.xscale("log")
-
-    # plt.xlim(0, 500000)
-    plt.ylim(
-        0,
+    water_df["dust_redness_pct_per_hundred_nm"] = (
+        ref.key.dust_redness_pct_per_hundred_nm
     )
-    plt.show()
+    awpa = aperture_water_production_analysis_from_dataframe(df=water_df)
 
-    print("done")
+    scp.save_aperture_water_production_analysis(awpa=awpa, key=ref.key)

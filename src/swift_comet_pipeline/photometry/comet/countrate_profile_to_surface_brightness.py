@@ -5,8 +5,8 @@ from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
 
 
-def countrate_profile_to_surface_brightness(
-    countrate_profile: CometCountRateProfile,
+def oh_countrate_profile_to_surface_brightness(
+    oh_countrate_profile: CometCountRateProfile,
     eid: EpochIndexEntry,
 ) -> CometSurfaceBrightnessProfile:
     """
@@ -17,6 +17,6 @@ def countrate_profile_to_surface_brightness(
     pixel_area_cm2 = pixel_side_length.to_value(u.cm) ** 2  # type: ignore
 
     # surface brightness = count rate per unit area
-    surface_brightness_profile = countrate_profile / pixel_area_cm2
+    surface_brightness_profile = oh_countrate_profile / pixel_area_cm2
 
     return surface_brightness_profile

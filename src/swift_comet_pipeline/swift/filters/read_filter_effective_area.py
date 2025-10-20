@@ -18,15 +18,7 @@ def read_filter_effective_area(filter_type: UvotFilter) -> FilterEffectiveArea |
         print("Could not read pipeline configuration!")
         exit(1)
 
-    # TODO: this should be a function for FilterType -> pathlib.Path
-    if filter_type == UvotFilter.uw1:
-        effective_area_path = spc.effective_area_uw1_path
-    elif filter_type == UvotFilter.uvv:
-        effective_area_path = spc.effective_area_uvv_path
-    else:
-        return None
-
-    filter_fits_hdul = fits.open(effective_area_path)
+    filter_fits_hdul = fits.open(spc.effective_areas[filter_type])
     filter_ea_data = filter_fits_hdul[1].data  # type: ignore
     ea_lambdas_angstroms = (filter_ea_data["WAVE_MIN"] + filter_ea_data["WAVE_MAX"]) / 2
     # wavelengths are given in angstroms: convert to nm

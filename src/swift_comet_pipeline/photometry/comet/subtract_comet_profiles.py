@@ -13,28 +13,32 @@ from swift_comet_pipeline.scp_types.primitive import *
 
 
 def subtract_profiles(
-    uw1_profile: CometRadialProfileFromConicalRegion,
-    uvv_profile: CometRadialProfileFromConicalRegion,
+    oh_profile: CometRadialProfileFromConicalRegion,
+    dust_profile: CometRadialProfileFromConicalRegion,
     dust_redness: DustReddeningPercent,
+    oh_filter: UvotFilter,
+    dust_filter: UvotFilter,
 ) -> CometRadialProfile:
     # TODO: documentation
 
     # function assumes radial profile from both filters is the same length radially
-    assert len(uw1_profile.profile_axis_rs) == len(uvv_profile.profile_axis_rs)
+    assert len(oh_profile.profile_axis_rs) == len(dust_profile.profile_axis_rs)
 
     # TODO: we should resize the smaller profile with np.resize to add zeros to the end of the smaller profile
 
-    if uw1_profile._theta != uvv_profile._theta:
+    if oh_profile._theta != dust_profile._theta:
         print("Warning: subtracting profiles taken at different angles!")
 
-    beta = beta_parameter(dust_redness)
+    beta = beta_parameter(
+        dust_redness=dust_redness, oh_filter=oh_filter, dust_filter=dust_filter
+    )
+    subtracted_pixels = oh_profile.pixel_values - beta * dust_profile.pixel_values
 
-    subtracted_pixels = uw1_profile.pixel_values - beta * uvv_profile.pixel_values
-
-    assert uw1_profile._cone_size == uvv_profile._cone_size
+    # TODO: not necessary
+    assert oh_profile._cone_size == dust_profile._cone_size
 
     return CometRadialProfile(
-        profile_axis_rs=uw1_profile.profile_axis_rs,
+        profile_axis_rs=oh_profile.profile_axis_rs,
         pixel_values=subtracted_pixels,
     )
 

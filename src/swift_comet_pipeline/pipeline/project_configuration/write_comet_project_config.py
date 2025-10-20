@@ -10,6 +10,7 @@ from swift_comet_pipeline.scp_types.compound.comet_project_config import (
 def write_swift_comet_project_config(
     config_path: pathlib.Path, swift_project_config: CometProjectConfig
 ) -> None:
+    # TODO: switch to cattrs.unstructure
     dict_to_write = asdict(swift_project_config)
 
     dict_to_write["vectorial_model_quality"] = str(

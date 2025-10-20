@@ -41,6 +41,9 @@ from swift_comet_pipeline.scp_types.compound.epoch_index import (
     json_from_epoch_index,
 )
 from swift_comet_pipeline.scp_types.primitive import *
+from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
+    dataframe_from_aperture_water_production_analysis,
+)
 
 
 # TODO: break this into multiple files
@@ -76,11 +79,15 @@ class ProductKind(StrEnum):
 
     # TODO: remove = also easily obtained from cone profile
     # radial_profile_from_cone_photometry = "photometry from radial cone profile"
+
     # -----------------
+    # Water production and other final products
 
     # aperture continuum subtraction
     aperture_water_production = "aperture water production rate"
     # radial profile continuum subtraction
+
+    radial_profile_water_production = "water production from vectorial fitting"
 
     # results assembly
     # afrho_from_apertures
@@ -117,9 +124,10 @@ class WaterProductionKey(KeyLike):
     oh_filter: UvotFilter
     dust_filter: UvotFilter
     stacking_method: StackingMethod
+    dust_redness_pct_per_hundred_nm: float
 
     def __str__(self):
-        return f"{self.epoch_id} oh: [{self.oh_filter}] dust: [{self.dust_filter}] {self.stacking_method}"
+        return f"{self.epoch_id} oh: {self.oh_filter} dust: {self.dust_filter} redness: {self.dust_redness_pct_per_hundred_nm} {self.stacking_method}"
 
 
 # -----------------------------------------------------------------------------
@@ -128,7 +136,7 @@ class WaterProductionKey(KeyLike):
 @dataclass(frozen=True)
 class ProductReference:
     kind: ProductKind
-    key: KeyLike
+    key: KeyLike = GlobalKey()
 
     def __str__(self):
         keystr = f" {self.key}" if self.key != GlobalKey() else ""
@@ -184,6 +192,7 @@ class PandasDataframeToECSVCodec:
     suffix = ".ecsv"
 
     def dump(self, obj: Any, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         t = Table.from_pandas(obj)
         t.meta = obj.attrs
         t.write(path, format="ascii.ecsv", overwrite=True)
@@ -277,8 +286,6 @@ class ProductSpecification:
     # stem of the file name (without the extension)
     filename_stem_template: str
     codec: Codec
-    # deps: Callable[[ProductReference], Iterable[ProductReference]] | None
-    # TODO: this should just be a list of ProductReference
     deps: Callable[[ProductReference], Iterable[ProductReference]] | None
 
 
@@ -375,7 +382,7 @@ def data_ingestion_registry() -> ProductRegistry:
     )
     reg.subdir_resolver().register_template(
         WaterProductionKey,
-        "{key.epoch_id}/oh_{key.oh_filter}_dust_{key.dust_filter}/{key.stacking_method}",
+        "{key.epoch_id}/oh_{key.oh_filter}_dust_{key.dust_filter}/{key.stacking_method}/{key.dust_redness_pct_per_hundred_nm:06.2f}",
     )
 
     reg.register(
@@ -456,6 +463,9 @@ def data_ingestion_registry() -> ProductRegistry:
 def add_epoch_subpipelines_to_registry(
     reg: ProductRegistry, epoch_index: EpochIndex
 ) -> None:
+    """
+    After the epoch index has been built, we look at which filters have exposure times and add subpipelines for those images
+    """
 
     for epoch in epoch_index:
 
@@ -569,6 +579,7 @@ def add_water_product_products_to_registry(
     epoch_index: EpochIndex,
     oh_filters: list[UvotFilter],
     dust_filters: list[UvotFilter],
+    dust_rednesses: list[DustReddeningPercent],
 ) -> None:
 
     oh_and_dust_filter_combinations = list(product(oh_filters, dust_filters))
@@ -586,17 +597,20 @@ def add_water_product_products_to_registry(
                 continue
 
             # print(f"Found {oh_filter} and {dust_filter} in {eid.epoch_id}")
-            for stacking_method in StackingMethod.all_stacking_methods():
+            for stacking_method, dust_redness in product(
+                StackingMethod.all_stacking_methods(), dust_rednesses
+            ):
                 wkey = wkey_func(
                     oh_filter=oh_filter,
                     dust_filter=dust_filter,
                     stacking_method=stacking_method,
+                    dust_redness_pct_per_hundred_nm=dust_redness,
                 )
 
-                parent_kind = ProductKind.annular_aperture_photometry_analysis
-                deps = lambda p_ref: [
+                ap_parent_kind = ProductKind.annular_aperture_photometry_analysis
+                ap_deps = lambda p_ref: [
                     ProductReference(
-                        kind=parent_kind,
+                        kind=ap_parent_kind,
                         key=EpochSubpipelineKey(
                             epoch_id=p_ref.key.epoch_id,
                             filter_type=f,
@@ -614,120 +628,75 @@ def add_water_product_products_to_registry(
                         ref=ap_wat_ref,
                         filename_stem_template="aperture_water_production",
                         codec=PandasDataframeToECSVCodec(),
-                        deps=deps,
+                        deps=ap_deps,
                     )
                 )
 
+                rad_parent_kind = ProductKind.radial_profile_from_cone
+                rad_deps = lambda p_ref: [
+                    ProductReference(
+                        kind=rad_parent_kind,
+                        key=EpochSubpipelineKey(
+                            epoch_id=p_ref.key.epoch_id,
+                            filter_type=f,
+                            stacking_method=p_ref.key.stacking_method,
+                        ),
+                    )
+                    for f in [p_ref.key.oh_filter, p_ref.key.dust_filter]
+                ]
 
-# def add_water_product_products_to_registry(
-#     reg: ProductRegistry,
-#     epoch_index: EpochIndex,
-#     oh_filters: list[UvotFilter],
-#     dust_filters: list[UvotFilter],
-# ) -> None:
-#
-#     oh_and_dust_filter_combinations = list(product(oh_filters, dust_filters))
-#     aperture_water_spec = partial(
-#         ProductSpecification,
-#         filename_stem_template="aperture_water_production",
-#         codec=PandasDataframeToECSVCodec(),
-#     )
-#
-#     for eid in epoch_index:
-#         for oh_filter, dust_filter in oh_and_dust_filter_combinations:
-#             # check if each filter is in this epoch
-#             if (
-#                 not oh_filter in eid.exposure_times
-#                 or not dust_filter in eid.exposure_times
-#             ):
-#                 continue
-#
-#             print(f"Found {oh_filter} and {dust_filter} in {eid.epoch_id}")
-#             for stacking_method in StackingMethod.all_stacking_methods():
-#                 # parent aperture analysis
-#                 epoch_subpipe_keys = [
-#                     EpochSubpipelineKey(
-#                         epoch_id=eid.epoch_id,
-#                         filter_type=x,
-#                         stacking_method=stacking_method,
-#                     )
-#                     for x in [oh_filter, dust_filter]
-#                 ]
-#                 print(f"{epoch_subpipe_keys=}")
-#                 epoch_subpipe_prefs = [
-#                     ProductReference(
-#                         kind=ProductKind.annular_aperture_photometry_analysis, key=k
-#                     )
-#                     for k in epoch_subpipe_keys
-#                 ]
-#                 # print(f"Parents: {epoch_subpipe_prefs}")
-#
-#                 wkey = WaterProductionKey(
-#                     epoch_id=eid.epoch_id,
-#                     oh_filter=oh_filter,
-#                     dust_filter=dust_filter,
-#                     stacking_method=stacking_method,
-#                 )
-#                 wref = ProductReference(
-#                     kind=ProductKind.aperture_water_production, key=wkey
-#                 )
-#                 wspec = aperture_water_spec(
-#                     ref=wref, deps=lambda _: epoch_subpipe_prefs
-#                 )
-#                 # print(f"{wspec=}")
-#
-#                 # depends on both filters in same epoch
-#                 reg.register(spec=wspec)
-#                 # reg.register(
-#                 #     spec=aperture_water_spec(
-#                 #         ref=wref, deps=lambda _: epoch_subpipe_prefs
-#                 #     )
-#                 # )
-#
-#             # bg_ref = ProductReference(
-#             #     kind=ProductKind.background_determination, key=epoch_subpipe_key
-#             # )
-#             # reg.register(
-#             #     spec=ProductSpecification(
-#             #         ref=bg_ref,
-#             #         filename_stem_template="background_determination",
-#             #         codec=JSONCodec(),
-#             #         deps=lambda p_ref: [
-#             #             ProductReference(
-#             #                 kind=ProductKind.stacked_image_exposure_map, key=p_ref.key
-#             #             )
-#             #         ],
-#             #     )
-#             # )
+                rad_wat_ref = ProductReference(
+                    kind=ProductKind.radial_profile_water_production, key=wkey
+                )
+                reg.register(
+                    spec=ProductSpecification(
+                        ref=rad_wat_ref,
+                        filename_stem_template="radial_profile_water_production",
+                        codec=JSONCodec(),
+                        deps=rad_deps,
+                    )
+                )
 
 
 # -----------------------------------------------------------------------------
 # Convenience facade that binds a project config and loads products from it
 # -----------------------------------------------------------------------------
+# TODO: clean up old code
 class Products:
     """
     Facade to simplify dealing with product storage and retrieval
     This should be regenerated when products are deleted/added.
     """
 
-    # TODO: rewrite function with registry_load/save
-
     def __init__(self, cfg: CometProjectConfig):
         self.cfg = cfg
+        dust_rednesses = [
+            DustReddeningPercent(x)
+            for x in np.arange(
+                cfg.dust_redness_min,
+                cfg.dust_redness_max + cfg.dust_redness_step,
+                step=cfg.dust_redness_step,
+            )
+        ]
+        self.dust_rednesses = dust_rednesses
         self._generate_registry()
 
     def _generate_registry(self):
         self.reg = data_ingestion_registry()
-        self.epoch_index = self.load_epoch_index()
-
-        if self.epoch_index is not None:
-            add_epoch_subpipelines_to_registry(
-                reg=self.reg, epoch_index=self.epoch_index
-            )
-
-        # TODO: rewrite to use these
         self.registry_load = partial(self.reg.load, cfg=self.cfg)
         self.registry_save = partial(self.reg.save, cfg=self.cfg)
+
+        self.epoch_index = self.load_epoch_index()
+        if self.epoch_index is None:
+            return
+        add_epoch_subpipelines_to_registry(reg=self.reg, epoch_index=self.epoch_index)
+        add_water_product_products_to_registry(
+            reg=self.reg,
+            epoch_index=self.epoch_index,
+            oh_filters=self.cfg.oh_filters,
+            dust_filters=self.cfg.dust_filters,
+            dust_rednesses=self.dust_rednesses,
+        )
 
     def regenerate(self):
         self._generate_registry()
@@ -739,79 +708,108 @@ class Products:
         return self.reg.path_for(ref=ref, cfg=self.cfg)
 
     def load_raw_log(self) -> SwiftUvotObservationLogDataframe | None:
-        return self.reg.load(
-            ProductReference(kind=ProductKind.observation_log_raw, key=GlobalKey()),
-            cfg=self.cfg,
+        return self.registry_load(
+            ProductReference(kind=ProductKind.observation_log_raw)
         )
 
     def save_raw_log(self, df: SwiftUvotObservationLogDataframe) -> Path | None:
-        return self.reg.save(
-            ref=ProductReference(kind=ProductKind.observation_log_raw, key=GlobalKey()),
-            obj=df,
-            cfg=self.cfg,
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.observation_log_raw), obj=df
         )
+        # return self.reg.save(
+        #     ref=ProductReference(kind=ProductKind.observation_log_raw, key=GlobalKey()),
+        #     obj=df,
+        #     cfg=self.cfg,
+        # )
 
     def load_epoch_log(self) -> SwiftUvotObservationLogDataframe | None:
-        return self.reg.load(
-            ref=ProductReference(
-                kind=ProductKind.observation_log_with_epochs, key=GlobalKey()
-            ),
-            cfg=self.cfg,
+        return self.registry_load(
+            ref=ProductReference(kind=ProductKind.observation_log_with_epochs)
         )
+        # return self.reg.load(
+        #     ref=ProductReference(
+        #         kind=ProductKind.observation_log_with_epochs, key=GlobalKey()
+        #     ),
+        #     cfg=self.cfg,
+        # )
 
-    def save_epoch_log(self, df) -> Path | None:
-        return self.reg.save(
-            ref=ProductReference(ProductKind.observation_log_with_epochs, GlobalKey()),
-            obj=df,
-            cfg=self.cfg,
+    def save_epoch_log(self, df: pd.DataFrame) -> Path | None:
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.observation_log_with_epochs), obj=df
         )
+        # return self.reg.save(
+        #     ref=ProductReference(ProductKind.observation_log_with_epochs, GlobalKey()),
+        #     obj=df,
+        #     cfg=self.cfg,
+        # )
 
     def load_obs_log(self) -> SwiftUvotObservationLogDataframe | None:
-        return self.reg.load(
-            ref=ProductReference(
-                kind=ProductKind.observation_log_with_vetoes, key=GlobalKey()
-            ),
-            cfg=self.cfg,
+        return self.registry_load(
+            ref=ProductReference(kind=ProductKind.observation_log_with_vetoes)
         )
+        # return self.reg.load(
+        #     ref=ProductReference(
+        #         kind=ProductKind.observation_log_with_vetoes, key=GlobalKey()
+        #     ),
+        #     cfg=self.cfg,
+        # )
 
-    def save_obs_log(self, df) -> Path | None:
-        return self.reg.save(
-            ref=ProductReference(ProductKind.observation_log_with_vetoes, GlobalKey()),
-            obj=df,
-            cfg=self.cfg,
+    def save_obs_log(self, df: pd.DataFrame) -> Path | None:
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.observation_log_with_vetoes), obj=df
         )
+        # return self.reg.save(
+        #     ref=ProductReference(ProductKind.observation_log_with_vetoes, GlobalKey()),
+        #     obj=df,
+        #     cfg=self.cfg,
+        # )
 
     def load_earth_orbit_data(self) -> pd.DataFrame | None:
-        return self.reg.load(
-            ref=ProductReference(kind=ProductKind.orbit_data_earth, key=GlobalKey()),
-            cfg=self.cfg,
+        return self.registry_load(
+            ref=ProductReference(kind=ProductKind.orbit_data_earth)
         )
+        # return self.reg.load(
+        #     ref=ProductReference(kind=ProductKind.orbit_data_earth, key=GlobalKey()),
+        #     cfg=self.cfg,
+        # )
 
-    def save_earth_orbit_data(self, df) -> Path | None:
-        return self.reg.save(
-            ref=ProductReference(kind=ProductKind.orbit_data_earth, key=GlobalKey()),
-            obj=df,
-            cfg=self.cfg,
+    def save_earth_orbit_data(self, df: pd.DataFrame) -> Path | None:
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.orbit_data_earth), obj=df
         )
+        # return self.reg.save(
+        #     ref=ProductReference(kind=ProductKind.orbit_data_earth, key=GlobalKey()),
+        #     obj=df,
+        #     cfg=self.cfg,
+        # )
 
     def load_comet_orbit_data(self) -> pd.DataFrame | None:
-        return self.reg.load(
-            ref=ProductReference(kind=ProductKind.orbit_data_comet, key=GlobalKey()),
-            cfg=self.cfg,
+        return self.registry_load(
+            ref=ProductReference(kind=ProductKind.orbit_data_comet)
         )
+        # return self.reg.load(
+        #     ref=ProductReference(kind=ProductKind.orbit_data_comet, key=GlobalKey()),
+        #     cfg=self.cfg,
+        # )
 
-    def save_comet_orbit_data(self, df) -> Path | None:
-        return self.reg.save(
-            ref=ProductReference(kind=ProductKind.orbit_data_comet, key=GlobalKey()),
-            obj=df,
-            cfg=self.cfg,
+    def save_comet_orbit_data(self, df: pd.DataFrame) -> Path | None:
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.orbit_data_comet), obj=df
         )
+        # return self.reg.save(
+        #     ref=ProductReference(kind=ProductKind.orbit_data_comet, key=GlobalKey()),
+        #     obj=df,
+        #     cfg=self.cfg,
+        # )
 
     # Epoch index
     def load_epoch_index(self):
-        json_dict = self.reg.load(
-            ref=ProductReference(kind=ProductKind.epoch_index, key=GlobalKey()),
-            cfg=self.cfg,
+        # json_dict = self.reg.load(
+        #     ref=ProductReference(kind=ProductKind.epoch_index, key=GlobalKey()),
+        #     cfg=self.cfg,
+        # )
+        json_dict = self.registry_load(
+            ref=ProductReference(kind=ProductKind.epoch_index)
         )
         if json_dict is None:
             return None
@@ -824,10 +822,13 @@ class Products:
 
     def save_epoch_index(self, epoch_index: EpochIndex) -> Path | None:
         json_dict = json_from_epoch_index(epoch_index=epoch_index)
-        return self.reg.save(
-            ref=ProductReference(kind=ProductKind.epoch_index, key=GlobalKey()),
-            obj=json_dict,
-            cfg=self.cfg,
+        # return self.reg.save(
+        #     ref=ProductReference(kind=ProductKind.epoch_index, key=GlobalKey()),
+        #     obj=json_dict,
+        #     cfg=self.cfg,
+        # )
+        return self.registry_save(
+            ref=ProductReference(kind=ProductKind.epoch_index), obj=json_dict
         )
 
     # FITS images
@@ -835,7 +836,8 @@ class Products:
         return self.registry_load(ref=ref)
 
     def save_fits_image(self, img: fits.ImageHDU, ref: ProductReference):
-        return self.reg.save(ref=ref, obj=img, cfg=self.cfg)
+        return self.registry_save(ref=ref, obj=img)
+        # return self.reg.save(ref=ref, obj=img, cfg=self.cfg)
 
     # background
     def load_background_result(
@@ -864,21 +866,6 @@ class Products:
         aapa = annular_aperture_photometry_analysis_from_dataframe(df=df)
         return aapa, df.attrs
 
-    # def load_annular_aperture_analysis(self, key: EpochSubpipelineKey) -> pd.DataFrame:
-    #     pref = ProductReference(
-    #         kind=ProductKind.annular_aperture_photometry_analysis, key=key
-    #     )
-    #     df = self.registry_load(ref=pref)
-    #     return df
-
-    # def save_annular_aperture_analysis(
-    #     self, df: pd.DataFrame, key: EpochSubpipelineKey
-    # ) -> pathlib.Path | None:
-    #     pref = ProductReference(
-    #         kind=ProductKind.annular_aperture_photometry_analysis, key=key
-    #     )
-    #     return self.registry_save(ref=pref, obj=df)
-
     def save_annular_aperture_analysis(
         self,
         aapa: AnnularAperturePhotometryAnalysis,
@@ -906,3 +893,18 @@ class Products:
         pref = ProductReference(kind=ProductKind.radial_profile_from_cone, key=key)
         json_dict = json_from_comet_radial_profile_from_cone(crpfc=crp)
         return self.registry_save(obj=json_dict, ref=pref)
+
+    # aperture water analysis
+    def load_aperture_water_production_analysis(
+        self, key: WaterProductionKey
+    ) -> ApertureWaterProductionAnalysis:
+        pref = ProductReference(kind=ProductKind.aperture_water_production, key=key)
+        df = self.registry_load(ref=pref)
+        return aperture_water_production_analysis_from_dataframe(df=df)
+
+    def save_aperture_water_production_analysis(
+        self, awpa: ApertureWaterProductionAnalysis, key: WaterProductionKey
+    ) -> pathlib.Path | None:
+        pref = ProductReference(kind=ProductKind.aperture_water_production, key=key)
+        awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
+        return self.registry_save(ref=pref, obj=awpa_df)

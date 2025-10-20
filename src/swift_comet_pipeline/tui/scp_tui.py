@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from dataclasses import replace
+# from dataclasses import replace
 import os
 import pathlib
 import sys
@@ -15,43 +15,28 @@ from astropy.wcs.wcs import FITSFixedWarning
 from pandas.errors import SettingWithCopyWarning
 from rich.console import Console
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
+from swift_comet_pipeline.builders.build_dispatcher import do_build
 from swift_comet_pipeline.image_manipulation.utility.plot_image_multi import (
     plot_images_multi,
 )
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     vectorial_model_settings_init,
 )
+from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_config import (
+    read_comet_project_config,
+)
+from swift_comet_pipeline.pipeline.terminal_products import (
+    enumerate_aperture_water_production_products,
+)
 from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
+from swift_comet_pipeline.scp_types.compound.epoch_index import (
+    EpochIndexEntry,
+)
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.builders.aperture_photometry_analyzer import (
-    do_aperture_photometry_analysis,
-)
-from swift_comet_pipeline.builders.aperture_water_production_calculator import (
-    do_aperture_water_production,
-)
-from swift_comet_pipeline.builders.background_determiner import (
-    do_background_determination,
-)
-from swift_comet_pipeline.builders.background_subtractor import (
-    do_background_subtraction,
-)
-from swift_comet_pipeline.builders.epoch_identifier import do_epoch_identification
-from swift_comet_pipeline.builders.epoch_indexer import do_epoch_index
-from swift_comet_pipeline.builders.image_vetoer import do_image_veto
-from swift_comet_pipeline.builders.orbit_downloader import (
-    do_comet_orbit_download,
-    do_earth_orbit_download,
-)
-from swift_comet_pipeline.builders.radial_profile_extractor import (
-    do_radial_profile_from_cone,
-)
-from swift_comet_pipeline.builders.raw_observation_log_builder import (
-    do_observation_log_raw,
-)
-from swift_comet_pipeline.builders.stacker import do_stack
 from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
     ProductBuildStatus,
     ProductStatus,
@@ -60,15 +45,10 @@ from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
 )
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
-    GlobalKey,
     ProductKind,
     ProductReference,
     Products,
     WaterProductionKey,
-    add_water_product_products_to_registry,
-)
-from swift_comet_pipeline.pipeline.project_configuration.read_swift_comet_project_config import (
-    read_swift_comet_project_config,
 )
 
 
@@ -120,7 +100,7 @@ def read_or_create_project_config(
         #     return
 
     # load the project config
-    swift_project_config = read_swift_comet_project_config(swift_project_config_path)
+    swift_project_config = read_comet_project_config(swift_project_config_path)
     if swift_project_config is None:
         print(f"Error reading config file {swift_project_config_path}, exiting.")
         return None
@@ -185,52 +165,6 @@ def read_or_create_project_config(
 #     )
 
 
-def do_build(scp: Products, ref: ProductReference) -> None:
-
-    if ref == ProductReference(kind=ProductKind.observation_log_raw, key=GlobalKey()):
-        do_observation_log_raw(scp=scp)
-
-    if ref == ProductReference(
-        kind=ProductKind.observation_log_with_epochs, key=GlobalKey()
-    ):
-        do_epoch_identification(scp=scp)
-
-    if ref == ProductReference(
-        kind=ProductKind.observation_log_with_vetoes, key=GlobalKey()
-    ):
-        do_image_veto(scp=scp)
-
-    if ref == ProductReference(kind=ProductKind.orbit_data_earth, key=GlobalKey()):
-        do_earth_orbit_download(scp=scp)
-
-    if ref == ProductReference(kind=ProductKind.orbit_data_comet, key=GlobalKey()):
-        do_comet_orbit_download(scp=scp)
-
-    if ref == ProductReference(ProductKind.epoch_index, key=GlobalKey()):
-        do_epoch_index(scp=scp)
-
-    if (
-        ref.kind == ProductKind.stacked_image_with_background
-        or ref.kind == ProductKind.stacked_image_exposure_map
-    ):
-        do_stack(scp=scp, ref=ref)
-
-    if ref.kind == ProductKind.background_determination:
-        do_background_determination(scp=scp, ref=ref)
-
-    if ref.kind == ProductKind.bg_subtracted_stacked_image:
-        do_background_subtraction(scp=scp, ref=ref)
-
-    if ref.kind == ProductKind.annular_aperture_photometry_analysis:
-        do_aperture_photometry_analysis(scp=scp, ref=ref)
-
-    if ref.kind == ProductKind.radial_profile_from_cone:
-        do_radial_profile_from_cone(scp=scp, ref=ref)
-
-    if ref.kind == ProductKind.aperture_water_production:
-        do_aperture_water_production(scp=scp, ref=ref)
-
-
 def first_with_build_status(
     stat_dict: dict[ProductReference, ProductStatus], status: ProductBuildStatus
 ) -> ProductReference | None:
@@ -246,7 +180,7 @@ def build_product_reference(scp: Products, ref: ProductReference) -> None:
     ts = build_toposorter(scp=scp, target_product=ref)
     stat_dict = calculate_statuses(scp=scp, ts=ts)
 
-    show_pipeline_status_for_product(scp=scp, ref=ref)
+    # show_pipeline_status_for_product(scp=scp, ref=ref)
 
     first_ready = first_with_build_status(
         stat_dict=stat_dict, status=ProductBuildStatus.ready
@@ -285,7 +219,7 @@ def build_product_reference_loop(scp: Products, ref: ProductReference) -> None:
         #     console.print(f"{ref} --> ", end="")
         #     console.print(stat)
 
-        show_pipeline_status_for_product(scp=scp, ref=ref)
+        # show_pipeline_status_for_product(scp=scp, ref=ref)
 
         if stat_dict[ref].build_status == ProductBuildStatus.complete:
             # print(f"Product built!")
@@ -310,7 +244,11 @@ def build_product_reference_loop(scp: Products, ref: ProductReference) -> None:
 
         print(f"Ready to build: {first_build}")
         do_build(scp=scp, ref=first_build)
-        scp.regenerate()
+
+        if ref.kind == ProductKind.epoch_index:
+            # we need to do this after epoch_index to build out epoch subpipelines
+            scp.regenerate()
+
         # wait_for_key()
 
 
@@ -405,12 +343,12 @@ def test_aperture_analysis_loading(scp: Products) -> None:
         kind=ProductKind.annular_aperture_photometry_analysis,
         key=EpochSubpipelineKey(
             # epoch_id="000_2014_Aug_14",
-            epoch_id="001_2014_Nov_05",
+            # epoch_id="001_2014_Nov_05",
             # epoch_id="003_2015_Apr_28",
             # epoch_id="005_2015_Aug_11",
-            # epoch_id="008_2016_Mar_14",
+            epoch_id="008_2016_Mar_14",
             # epoch_id="009_2016_Apr_10",
-            filter_type=UvotFilter.uw1,
+            filter_type=UvotFilter.uw2,
             stacking_method=StackingMethod.summation,
         ),
     )
@@ -420,8 +358,10 @@ def test_aperture_analysis_loading(scp: Products) -> None:
     # aaa_df = scp.load_annular_aperture_analysis(key=pkey)
     # assert aaa_df is not None
 
-    aapa, _ = scp.load_annular_aperture_analysis(key=pkey)
-    assert aapa is not None
+    aapa_load_res = scp.load_annular_aperture_analysis(key=pkey)
+    assert aapa_load_res is not None
+    aapa, metadata = aapa_load_res
+    print(f"Aperture analysis metadata: {metadata}")
     aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=aapa)
 
     smoothed_total = savgol_filter(
@@ -488,9 +428,9 @@ def test_radial_profile_loading(scp: Products) -> None:
         kind=ProductKind.annular_aperture_photometry_analysis,
         key=EpochSubpipelineKey(
             # epoch_id="003_2015_Apr_28",
-            epoch_id="001_2014_Nov_05",
+            # epoch_id="001_2014_Nov_05",
             # epoch_id="004_2015_Jun_19",
-            # epoch_id="005_2015_Aug_11",
+            epoch_id="005_2015_Aug_11",
             filter_type=UvotFilter.uw1,
             stacking_method=StackingMethod.summation,
         ),
@@ -514,11 +454,360 @@ def test_radial_profile_loading(scp: Products) -> None:
     # plt.show()
 
 
+def test_aperture_water_analysis_loading(scp: Products, ref: ProductReference) -> None:
+    pkey = ref.key
+    assert isinstance(pkey, WaterProductionKey)
+
+    awpa = scp.load_aperture_water_production_analysis(key=pkey)
+    water_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         + i * water_df.aperture_matched_q_h2o_sum_err,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         - i * water_df.aperture_matched_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+    #
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
+    #         water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#dbb89c",
+    #         # color="#c74a77",
+    #     )
+
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.aperture_matched_q_h2o_sum
+            + i * water_df.aperture_matched_q_h2o_sum_err,
+            water_df.aperture_matched_q_h2o_sum
+            - i * water_df.aperture_matched_q_h2o_sum_err,
+            alpha=0.2,
+            color="#688894",
+        )
+
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.aperture_matched_q_h2o_median
+            + i * water_df.aperture_matched_q_h2o_median_err,
+            water_df.aperture_matched_q_h2o_median
+            - i * water_df.aperture_matched_q_h2o_median_err,
+            alpha=0.2,
+            color="#afac7c",
+        )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
+    #         water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_median + i * water_df.equivalent_q_h2o_median_err,
+    #         water_df.equivalent_q_h2o_median - i * water_df.equivalent_q_h2o_median_err,
+    #         alpha=0.2,
+    #         color="#afac7c",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.cumulative_sum_magnitude
+    #         + i * water_df.cumulative_sum_magnitude_variance,
+    #         water_df.cumulative_sum_magnitude
+    #         - i * water_df.cumulative_sum_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         dust_aapa_df.aperture_r_km,
+    #         dust_aapa_df.cumulative_sum_magnitude
+    #         + i * dust_aapa_df.cumulative_sum_magnitude_variance,
+    #         dust_aapa_df.cumulative_sum_magnitude
+    #         - i * dust_aapa_df.cumulative_sum_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.cumulative_median_magnitude
+    #         + i * water_df.cumulative_median_magnitude_variance,
+    #         water_df.cumulative_median_magnitude
+    #         - i * water_df.cumulative_median_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         dust_aapa_df.aperture_r_km,
+    #         dust_aapa_df.cumulative_median_magnitude
+    #         + i * dust_aapa_df.cumulative_median_magnitude_variance,
+    #         dust_aapa_df.cumulative_median_magnitude
+    #         - i * dust_aapa_df.cumulative_median_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.num_oh_sum + i * water_df.num_oh_sum_err,
+    #         water_df.num_oh_sum - i * water_df.num_oh_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_flux_sum + i * water_df.oh_flux_sum_err,
+    #         water_df.oh_flux_sum - i * water_df.oh_flux_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_counts_sum + i * water_df.oh_counts_sum_err,
+    #         water_df.oh_counts_sum - i * water_df.oh_counts_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_counts_median + i * water_df.oh_counts_median_err,
+    #         water_df.oh_counts_median - i * water_df.oh_counts_median_err,
+    #         alpha=0.2,
+    #         color="#afac7c",
+    #     )
+
+    plt.yscale("log")
+    # plt.xscale("log")
+
+    # plt.xlim(0, 500000)
+    plt.ylim(
+        1e26,
+    )
+    plt.show()
+
+
+def test_aperture_water_analysis_plotting(
+    scp: Products,
+    eid: EpochIndexEntry,
+    oh_filter: UvotFilter,
+    dust_filter: UvotFilter,
+    dust_redness: DustReddeningPercent,
+) -> None:
+
+    awp_prefs = enumerate_aperture_water_production_products(
+        epochs=[eid],
+        oh_filters=[oh_filter],
+        dust_filters=[dust_filter],
+        stacking_methods=[StackingMethod.summation],
+        dust_rednesses=[dust_redness],
+    )
+    # print(f"{awp_prefs=}")
+
+    pkey = awp_prefs[0].key
+    assert isinstance(pkey, WaterProductionKey)
+
+    awpa = scp.load_aperture_water_production_analysis(key=pkey)
+    water_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         + i * water_df.aperture_matched_q_h2o_sum_err,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         - i * water_df.aperture_matched_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
+    #         water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#dbb89c",
+    #         # color="#c74a77",
+    #     )
+
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.equivalent_q_h2o_median + i * water_df.equivalent_q_h2o_median_err,
+            water_df.equivalent_q_h2o_median - i * water_df.equivalent_q_h2o_median_err,
+            alpha=0.2,
+            color="#dbb89c",
+            # color="#c74a77",
+        )
+
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.aperture_matched_q_h2o_sum
+            + i * water_df.aperture_matched_q_h2o_sum_err,
+            water_df.aperture_matched_q_h2o_sum
+            - i * water_df.aperture_matched_q_h2o_sum_err,
+            alpha=0.2,
+            color="#688894",
+        )
+
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.aperture_matched_q_h2o_median
+            + i * water_df.aperture_matched_q_h2o_median_err,
+            water_df.aperture_matched_q_h2o_median
+            - i * water_df.aperture_matched_q_h2o_median_err,
+            alpha=0.2,
+            color="#afac7c",
+        )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
+    #         water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.equivalent_q_h2o_median + i * water_df.equivalent_q_h2o_median_err,
+    #         water_df.equivalent_q_h2o_median - i * water_df.equivalent_q_h2o_median_err,
+    #         alpha=0.2,
+    #         color="#afac7c",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.cumulative_sum_magnitude
+    #         + i * water_df.cumulative_sum_magnitude_variance,
+    #         water_df.cumulative_sum_magnitude
+    #         - i * water_df.cumulative_sum_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         dust_aapa_df.aperture_r_km,
+    #         dust_aapa_df.cumulative_sum_magnitude
+    #         + i * dust_aapa_df.cumulative_sum_magnitude_variance,
+    #         dust_aapa_df.cumulative_sum_magnitude
+    #         - i * dust_aapa_df.cumulative_sum_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.cumulative_median_magnitude
+    #         + i * water_df.cumulative_median_magnitude_variance,
+    #         water_df.cumulative_median_magnitude
+    #         - i * water_df.cumulative_median_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         dust_aapa_df.aperture_r_km,
+    #         dust_aapa_df.cumulative_median_magnitude
+    #         + i * dust_aapa_df.cumulative_median_magnitude_variance,
+    #         dust_aapa_df.cumulative_median_magnitude
+    #         - i * dust_aapa_df.cumulative_median_magnitude_variance,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.num_oh_sum + i * water_df.num_oh_sum_err,
+    #         water_df.num_oh_sum - i * water_df.num_oh_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_flux_sum + i * water_df.oh_flux_sum_err,
+    #         water_df.oh_flux_sum - i * water_df.oh_flux_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_counts_sum + i * water_df.oh_counts_sum_err,
+    #         water_df.oh_counts_sum - i * water_df.oh_counts_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.oh_counts_median + i * water_df.oh_counts_median_err,
+    #         water_df.oh_counts_median - i * water_df.oh_counts_median_err,
+    #         alpha=0.2,
+    #         color="#afac7c",
+    #     )
+
+    plt.yscale("log")
+    # plt.xscale("log")
+
+    # plt.xlim(0, 500000)
+    plt.ylim(
+        1e26,
+    )
+    plt.show()
+
+
+def get_pipeline_status_for_product(
+    scp: Products, ref: ProductReference
+) -> ProductBuildStatus:
+
+    ts = build_toposorter(scp=scp, target_product=ref)
+    stat_dict = calculate_statuses(scp=scp, ts=ts)
+    return stat_dict[ref].build_status
+
+
 def show_pipeline_status_for_product(scp: Products, ref: ProductReference) -> None:
     console = Console()
     ts = build_toposorter(scp=scp, target_product=ref)
     stat_dict = calculate_statuses(scp=scp, ts=ts)
     for ref, stat in stat_dict.items():
+        if stat.build_status == ProductBuildStatus.complete:
+            continue
         console.print(f"{ref} --> ", end="")
         console.print(stat)
         # console.print(scp.path_for(ref=ref))
@@ -637,10 +926,10 @@ def main():
 
     # show_pipeline_status_for_product(scp=scp, ref=target_ref)
 
-    # TODO: all builders should look for existing products and attempt to use those same parameters to re-build
-
     # TODO: add afrho product for each requested dust filter
-    # TODO: test uuu filter in aperture/water analysis
+    # TODO: Jorda 2008 empirical water production rates for V-band
+
+    # TODO: function for selecting epoch by date --> return closest observation epoch index entry
 
     # epoch_id = "000_2014_Aug_14"
     # epoch_id = "001_2014_Nov_05"
@@ -650,48 +939,76 @@ def main():
     # epoch_id = "005_2015_Aug_11"
     # epoch_id = "006_2015_Sep_01"
     # epoch_id = "007_2016_Feb_11"
-    epoch_id = "008_2016_Mar_14"
+    # epoch_id = "008_2016_Mar_14"
     # epoch_id = "009_2016_Apr_10"
     # epoch_id = "010_2016_Aug_19"
     # epoch_id = "011_2016_Nov_24"
 
-    oh_filter = UvotFilter.uw1
-    # oh_filter = UvotFilter.uw2
-    dust_filter = UvotFilter.uvv
-    # dust_filter = UvotFilter.uuu
-
-    pkey_oh = EpochSubpipelineKey(
-        epoch_id=epoch_id,
-        filter_type=oh_filter,
-        stacking_method=StackingMethod.summation,
-    )
-    pkey_dust = replace(pkey_oh, filter_type=dust_filter)
-    for key in [pkey_dust, pkey_oh]:
-        p_ref = ProductReference(kind=ProductKind.radial_profile_from_cone, key=key)
-        build_product_reference_loop(scp=scp, ref=p_ref)
-
-    oh_filters = [UvotFilter.uw1, UvotFilter.uw2]
-    dust_filters = [UvotFilter.uvv, UvotFilter.uuu]
     epoch_index = scp.load_epoch_index()
     assert epoch_index is not None
-    add_water_product_products_to_registry(
-        reg=scp.reg,
-        epoch_index=epoch_index,
-        oh_filters=oh_filters,
-        dust_filters=dust_filters,
+    eid = epoch_index[8]
+
+    # oh_filter = UvotFilter.uw1
+    # oh_filter = UvotFilter.uw2
+    # dust_filter = UvotFilter.uvv
+    # dust_filter = UvotFilter.uuu
+
+    # pkey_oh = EpochSubpipelineKey(
+    #     epoch_id=epoch_id,
+    #     filter_type=oh_filter,
+    #     stacking_method=StackingMethod.summation,
+    # )
+    # pkey_dust = replace(pkey_oh, filter_type=dust_filter)
+    # for key in [pkey_dust, pkey_oh]:
+    #     p_ref = ProductReference(kind=ProductKind.radial_profile_from_cone, key=key)
+    #     build_product_reference_loop(scp=scp, ref=p_ref)
+
+    # oh_filters = [UvotFilter.uw1, UvotFilter.uw2]
+    # dust_filters = [UvotFilter.uvv, UvotFilter.uuu]
+    # oh_filters = [UvotFilter.uw2]
+    # dust_filters = [UvotFilter.uvv]
+
+    # Manually build a aperture water product
+    # wkey = WaterProductionKey(
+    #     epoch_id=epoch_id,
+    #     oh_filter=oh_filter,
+    #     dust_filter=dust_filter,
+    #     stacking_method=StackingMethod.summation,
+    #     dust_redness_pct_per_hundred_nm=dust_rednesses[1],
+    # )
+    # ap_wat_ref = ProductReference(kind=ProductKind.aperture_water_production, key=wkey)
+    # show_pipeline_status_for_product(scp=scp, ref=ap_wat_ref)
+    # build_product_reference_loop(scp=scp, ref=ap_wat_ref)
+
+    awp_prefs = enumerate_aperture_water_production_products(
+        epochs=[eid],
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=[StackingMethod.summation],
+        dust_rednesses=scp.dust_rednesses,
+    )
+    incomplete_awp_prefs = list(
+        filter(
+            lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
+            != ProductBuildStatus.complete,
+            awp_prefs,
+        )
+    )
+    for awp in tqdm(incomplete_awp_prefs, total=len(incomplete_awp_prefs)):
+        assert isinstance(awp.key, WaterProductionKey)
+        show_pipeline_status_for_product(scp=scp, ref=awp)
+        build_product_reference_loop(scp=scp, ref=awp)
+        # test_aperture_water_analysis_loading(scp=scp, ref=awp)
+
+    test_aperture_water_analysis_plotting(
+        scp=scp,
+        eid=eid,
+        oh_filter=UvotFilter.uw1,
+        dust_filter=UvotFilter.uvv,
+        dust_redness=DustReddeningPercent(30.0),
     )
 
-    wkey = WaterProductionKey(
-        epoch_id=epoch_id,
-        oh_filter=oh_filter,
-        dust_filter=dust_filter,
-        stacking_method=StackingMethod.summation,
-    )
-    ap_wat_ref = ProductReference(kind=ProductKind.aperture_water_production, key=wkey)
-
-    build_product_reference(scp=scp, ref=ap_wat_ref)
-    show_pipeline_status_for_product(scp=scp, ref=ap_wat_ref)
-
+    # test_aperture_water_analysis_loading(scp=scp, ref=ap_wat_ref)
     # test_radial_profile_loading(scp=scp)
     # test_aperture_analysis_loading(scp=scp)
     # test_background_result_loading(scp=scp)

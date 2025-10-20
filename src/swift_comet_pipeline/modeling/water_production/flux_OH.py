@@ -6,6 +6,7 @@ import astropy.units as u
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.primitive import *
 
+# TODO: move to types
 # in erg/(s cm^2)
 OHFlux: TypeAlias = ValueAndStandardDev
 
@@ -24,13 +25,11 @@ _count_rates_to_flux_factor = {
 
 def oh_count_rates_to_flux_factor(filter_type: UvotFilter) -> u.Quantity:
     return _count_rates_to_flux_factor.get(filter_type, 0)
-    # return 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s)  # type: ignore
 
 
 def oh_flux_from_oh_count_rate(
     oh_count_rate: CountRate, filter_type: UvotFilter
 ) -> OHFlux:
-    # alpha = oh_count_rates_to_flux_factor().to_value(u.erg / (u.cm**2 * u.s))  # type: ignore
     return (
         oh_count_rates_to_flux_factor(filter_type=filter_type).to_value(
             u.erg / (u.cm**2 * u.s)  # type: ignore
