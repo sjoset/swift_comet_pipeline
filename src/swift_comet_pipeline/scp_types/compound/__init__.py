@@ -13,6 +13,7 @@ from .hydroxyl_molecule_count import *
 from .lightcurve import *
 from .magnitude import *
 from .plateau_list import *
+from .radial_profile_water_production import *
 from .stacking import *
 from .swift_dataset import *
 from .swift_level_2_fits import *

@@ -40,6 +40,11 @@ from swift_comet_pipeline.scp_types.compound.epoch_index import (
     epoch_index_from_json,
     json_from_epoch_index,
 )
+from swift_comet_pipeline.scp_types.compound.radial_profile_water_production import (
+    RadialProfileWaterProductionAnalysis,
+    json_from_radial_profile_water_production_analysis,
+    radial_profile_water_production_analysis_from_json,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
     dataframe_from_aperture_water_production_analysis,
@@ -89,10 +94,9 @@ class ProductKind(StrEnum):
 
     radial_profile_water_production = "water production from vectorial fitting"
 
-    # results assembly
     # afrho_from_apertures
-    # afrho_from_aperture_median_profile
-    # etc
+    # afrho_from_profiles
+    # active area
 
 
 # -----------------------------------------------------------------------------
@@ -574,7 +578,7 @@ def add_epoch_subpipelines_to_registry(
     return
 
 
-def add_water_product_products_to_registry(
+def add_water_production_products_to_registry(
     reg: ProductRegistry,
     epoch_index: EpochIndex,
     oh_filters: list[UvotFilter],
@@ -690,7 +694,7 @@ class Products:
         if self.epoch_index is None:
             return
         add_epoch_subpipelines_to_registry(reg=self.reg, epoch_index=self.epoch_index)
-        add_water_product_products_to_registry(
+        add_water_production_products_to_registry(
             reg=self.reg,
             epoch_index=self.epoch_index,
             oh_filters=self.cfg.oh_filters,
@@ -908,3 +912,26 @@ class Products:
         pref = ProductReference(kind=ProductKind.aperture_water_production, key=key)
         awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
         return self.registry_save(ref=pref, obj=awpa_df)
+
+    # radial profile water production
+    def load_radial_profile_water_production_analysis(
+        self, key: WaterProductionKey
+    ) -> RadialProfileWaterProductionAnalysis:
+        pref = ProductReference(
+            kind=ProductKind.radial_profile_water_production, key=key
+        )
+        rpwpa_json_dict = self.registry_load(ref=pref)
+        return radial_profile_water_production_analysis_from_json(
+            json_dict=rpwpa_json_dict
+        )
+
+    def save_radial_profile_water_production_analysis(
+        self, rpwpa: RadialProfileWaterProductionAnalysis, key: WaterProductionKey
+    ) -> pathlib.Path | None:
+        pref = ProductReference(
+            kind=ProductKind.radial_profile_water_production, key=key
+        )
+        rpwpa_json_dict = json_from_radial_profile_water_production_analysis(
+            rpwpa=rpwpa
+        )
+        return self.registry_save(ref=pref, obj=rpwpa_json_dict)

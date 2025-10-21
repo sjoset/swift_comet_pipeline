@@ -40,6 +40,8 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 # TODO: all builders should ask to replace existing products
 def do_build(scp: Products, ref: ProductReference) -> None:
 
+    print(f"Dispatching build for {ref}")
+
     if ref == ProductKind.observation_log_raw:
         do_observation_log_raw(scp=scp)
 

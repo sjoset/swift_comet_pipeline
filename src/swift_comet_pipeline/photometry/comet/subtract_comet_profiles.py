@@ -9,8 +9,6 @@ from swift_comet_pipeline.scp_types.primitive import *
 # TODO: change this to take CometRadialProfile if we don't care about angle
 # or split into two functions, one for each type of radial profile
 
-# TODO: This fails if profiles are not the same length - is there a better way to handle it?
-
 
 def subtract_profiles(
     oh_profile: CometRadialProfileFromConicalRegion,
@@ -21,24 +19,33 @@ def subtract_profiles(
 ) -> CometRadialProfile:
     # TODO: documentation
 
-    # function assumes radial profile from both filters is the same length radially
-    assert len(oh_profile.profile_axis_rs) == len(dust_profile.profile_axis_rs)
+    # This function assumes that the pixel scale does not change considerably during an epoch
 
-    # TODO: we should resize the smaller profile with np.resize to add zeros to the end of the smaller profile
+    # if the profiles are unequal lengths, use the shorter profile length for subtraction
+    subtraction_profile_len = min(
+        len(oh_profile.profile_axis_rs), len(dust_profile.profile_axis_rs)
+    )
 
-    if oh_profile._theta != dust_profile._theta:
-        print("Warning: subtracting profiles taken at different angles!")
+    # # function assumes radial profile from both filters is the same length radially
+    # assert len(oh_profile.profile_axis_rs) == len(dust_profile.profile_axis_rs)
+
+    # if oh_profile._theta != dust_profile._theta:
+    #     print("Warning: subtracting profiles taken at different angles!")
 
     beta = beta_parameter(
         dust_redness=dust_redness, oh_filter=oh_filter, dust_filter=dust_filter
     )
-    subtracted_pixels = oh_profile.pixel_values - beta * dust_profile.pixel_values
+    subtracted_pixels = (
+        oh_profile.pixel_values[:subtraction_profile_len]
+        - beta * dust_profile.pixel_values[:subtraction_profile_len]
+    )
+    subtracted_profile_rs = oh_profile.profile_axis_rs[:subtraction_profile_len]
 
-    # TODO: not necessary
-    assert oh_profile._cone_size == dust_profile._cone_size
+    # # TODO: not necessary
+    # assert oh_profile._cone_size == dust_profile._cone_size
 
     return CometRadialProfile(
-        profile_axis_rs=oh_profile.profile_axis_rs,
+        profile_axis_rs=subtracted_profile_rs,
         pixel_values=subtracted_pixels,
     )
 

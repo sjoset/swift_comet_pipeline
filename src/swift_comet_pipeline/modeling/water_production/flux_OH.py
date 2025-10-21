@@ -18,8 +18,10 @@ _count_rates_to_flux_factor = {
     # this comes from an OH spectral model in Bodewits et. al 2019, via convolving the OH spectrum through the uw1 filter
     UvotFilter.uw1: 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s),  # type: ignore
     # this was estimated based on the relative effective areas in a window around 308 nm
-    # TODO: obtain OH spectrum and do convolution vs filter response for uw2 for a something better than '5'
+    # TODO: obtain OH spectrum and do convolution vs filter response for uw2 for something better than '5': it is ~5 times less sensitive at 308 nm
     UvotFilter.uw2: 5 * 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s),  # type: ignore
+    # TODO: obtain OH spectrum and do convolution vs filter response for uuu for something better than '1/6': it is ~6 times more sensitive at 308 nm
+    UvotFilter.uuu: (1 / 6) * 1.2750906353215913e-12 * u.erg / (u.cm**2 * u.s),  # type: ignore
 }
 
 

@@ -101,15 +101,6 @@ def structure_astropy_timedelta(d: dict, _) -> TimeDelta:
 
 # cattrs defaults to asdict() for dataclasses
 
-# @conv.register_unstructure_hook
-# def unstructure_pixelcoord(pc: PixelCoord) -> dict:
-#     return asdict(pc)
-#
-#
-# @conv.register_structure_hook
-# def structure_pixelcoord(d: dict, _) -> PixelCoord:
-#     return PixelCoord(**d)
-
 
 def to_unstructured(obj: Any) -> Any:
     return conv.unstructure(obj)

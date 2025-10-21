@@ -10,7 +10,7 @@ from swift_comet_pipeline.scp_types.primitive import *
 
 
 def fit_vectorial_model_to_comet_column_density(
-    comet_column_density: ColumnDensity,
+    fragment_column_density: ColumnDensity,
     vmr: VectorialModelResult,
     model_Q: u.Quantity,
     r_fit_min: u.Quantity,  # type: ignore
@@ -19,8 +19,8 @@ def fit_vectorial_model_to_comet_column_density(
     # TODO: documentation
 
     # vectorial model column density interpolation is in 1/m^2, with radii in meters, so convert here
-    ccd_fit = (comet_column_density.cd_cm2 / u.cm**2).to(1 / u.m**2).value  # type: ignore
-    rs_fit = (comet_column_density.rs_km * u.km).to(u.m).value  # type: ignore
+    ccd_fit = (fragment_column_density.cd_cm2 / u.cm**2).to(1 / u.m**2).value  # type: ignore
+    rs_fit = (fragment_column_density.rs_km * u.km).to(u.m).value  # type: ignore
 
     fit_mask_min = rs_fit > r_fit_min.to_value(u.m)  # type: ignore
     fit_mask_max = rs_fit < r_fit_max.to_value(u.m)  # type: ignore
@@ -40,7 +40,7 @@ def fit_vectorial_model_to_comet_column_density(
 
 
 def vectorial_fit(
-    comet_column_density: ColumnDensity,
+    fragment_column_density: ColumnDensity,
     vmr: VectorialModelResult,
     model_Q: u.Quantity,
     r_fit_min: u.Quantity,
@@ -49,7 +49,7 @@ def vectorial_fit(
     # TODO: documentation
 
     fit_Q, fit_err = fit_vectorial_model_to_comet_column_density(
-        comet_column_density=comet_column_density,
+        fragment_column_density=fragment_column_density,
         vmr=vmr,
         model_Q=model_Q,
         r_fit_min=r_fit_min,
@@ -59,16 +59,15 @@ def vectorial_fit(
     q_ratio = (fit_Q / model_Q).decompose()
 
     vec_col_dens_m2 = vmr.column_density_interpolation(
-        (comet_column_density.rs_km * u.km).to_value(u.m)  # type: ignore
+        (fragment_column_density.rs_km * u.km).to_value(u.m)  # type: ignore
     )
     vec_col_dens = ColumnDensity(
-        rs_km=comet_column_density.rs_km,
-        cd_cm2=q_ratio
-        * (vec_col_dens_m2 / (u.m**2)).to_value(1 / u.cm**2),  # type: ignore
+        rs_km=fragment_column_density.rs_km,
+        cd_cm2=np.array(q_ratio * (vec_col_dens_m2 / (u.m**2)).to_value(1 / u.cm**2)),  # type: ignore
     )
 
     return VectorialModelFit(
-        best_fit_Q=fit_Q,
-        best_fit_Q_err=fit_err * fit_Q,
+        best_fit_q_per_s=fit_Q.to_value(1 / u.s),  # type: ignore
+        best_fit_q_per_s_err=fit_err * fit_Q.to_value(1 / u.s),  # type: ignore
         vectorial_column_density=vec_col_dens,
     )

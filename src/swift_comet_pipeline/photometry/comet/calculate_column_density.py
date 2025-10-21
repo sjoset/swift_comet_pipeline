@@ -1,44 +1,19 @@
-import numpy as np
 import astropy.units as u
 
-from swift_comet_pipeline.modeling.fluorescence.hydroxyl_gfactor import (
-    hydroxyl_gfactor_1au,
-)
-from swift_comet_pipeline.modeling.water_production.flux_OH import (
-    oh_count_rates_to_flux_factor,
-)
 from swift_comet_pipeline.photometry.comet.countrate_profile_to_surface_brightness import (
-    oh_countrate_profile_to_surface_brightness,
+    countrate_profile_to_surface_brightness,
 )
 from swift_comet_pipeline.photometry.comet.subtract_comet_profiles import (
     subtract_profiles,
+)
+from swift_comet_pipeline.photometry.comet.surface_brightness_to_column_density import (
+    surface_brightness_profile_to_oh_column_density,
 )
 from swift_comet_pipeline.scp_types.compound.comet_profile import (
     CometRadialProfileFromConicalRegion,
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
 from swift_comet_pipeline.scp_types.primitive import *
-
-
-# TODO: add decorators to enforce the arguments are the correct Quantity
-def surface_brightness_profile_to_oh_column_density(
-    eid: EpochIndexEntry,
-    surface_brightness_profile: CometSurfaceBrightnessProfile,
-    oh_filter: UvotFilter,
-) -> np.ndarray:
-    # return type has Quantity attached - num oh per cm^2
-
-    delta_cm = (eid.delta_au * u.AU).to_value(u.cm)  # type: ignore
-    alpha = oh_count_rates_to_flux_factor(filter_type=oh_filter).to_value(
-        u.erg / (u.cm**2 * u.s)  # type: ignore
-    )
-    flux = surface_brightness_profile * alpha
-    lumi = flux * 4 * np.pi * delta_cm**2
-
-    gfactor_scaled = hydroxyl_gfactor_1au(helio_v_kms=eid.helio_v_kms) / eid.rh_au**2
-    column_density = lumi / gfactor_scaled
-
-    return column_density / (u.cm**2)
 
 
 def calculate_oh_column_density(
@@ -69,8 +44,8 @@ def calculate_oh_column_density(
         profile_mask
     ]
 
-    surface_brightness_profile = oh_countrate_profile_to_surface_brightness(
-        eid=eid, oh_countrate_profile=countrate_profile
+    surface_brightness_profile = countrate_profile_to_surface_brightness(
+        eid=eid, countrate_profile=countrate_profile
     )
 
     comet_column_density_values = surface_brightness_profile_to_oh_column_density(

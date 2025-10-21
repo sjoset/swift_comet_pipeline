@@ -1,3 +1,5 @@
+import copy
+
 from matplotlib.widgets import Slider
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,6 +11,7 @@ from swift_comet_pipeline.image_manipulation.get_stacked_uvot_image_center impor
 from swift_comet_pipeline.photometry.comet.extract_comet_radial_profile import (
     calculate_distance_from_center_mesh,
     extract_comet_radial_median_profile_from_cone,
+    radial_profile_to_image,
 )
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
@@ -39,9 +42,11 @@ class RadialProfileSelectionPlot(object):
         reference_profiles: (
             dict[UvotFilter, CometRadialProfileFromConicalRegion] | None
         ),
+        filter_type: UvotFilter,
     ):
         self.epoch_summary = eid
         self.img = img
+        self.filter_type = filter_type
         self.bgr = bgr
         self.bg_shot_noise_error = np.sqrt(self.bgr.bg_shot_noise_variance)
 
@@ -76,11 +81,23 @@ class RadialProfileSelectionPlot(object):
         self.update_plots()
 
     def create_basic_mpl_elements(self):
-        self.fig, self.axes = plt.subplots(1, 2)
-        self.img_ax = self.axes[0]
-        self.profile_ax = self.axes[1]
+        # self.fig, self.axes = plt.subplots(1, 4)
+        self.fig, self.axes = plt.subplot_mosaic(
+            # [["profile", "profile", "profile"], ["cone", "subtracted", "profile_img"]]
+            [["cone", "cone", "cone"], ["profile", "subtracted", "profile_img"]]
+        )
+        self.img_ax = self.axes["cone"]
+        self.prof_sub_ax = self.axes["subtracted"]
+        self.profile_ax = self.axes["profile"]
+        self.prof_img_ax = self.axes["profile_img"]
+        # self.img_ax = self.axes[0]
+        # self.prof_sub_ax = self.axes[1]
+        # self.profile_ax = self.axes[2]
+        # self.prof_img_ax = self.axes[3]
         self.img_ax.set_aspect("equal")  # type: ignore
-        self.img_ax.set_title("Select radial profile")  # type: ignore
+        self.img_ax.set_title(
+            f"Select radial profile for filter {str(self.filter_type)}"
+        )
 
     def create_cone_slider_mpl_elements(self):
         # extract profiles in a cone around the selection from -angle to +angle from the profile selection vector
@@ -102,6 +119,20 @@ class RadialProfileSelectionPlot(object):
         self.zscale = ZScaleInterval()
         self.img_vmin, self.img_vmax = self.zscale.get_limits(self.img)
         self.img_plot = self.img_ax.imshow(  # type: ignore
+            self.img,
+            vmin=self.img_vmin,
+            vmax=self.img_vmax,
+            origin="lower",
+            cmap=self.colormap,
+        )
+        self.prof_sub_plot = self.prof_sub_ax.imshow(
+            self.img,
+            vmin=self.img_vmin,
+            vmax=self.img_vmax,
+            origin="lower",
+            cmap=self.colormap,
+        )
+        self.prof_img_plot = self.prof_img_ax.imshow(
             self.img,
             vmin=self.img_vmin,
             vmax=self.img_vmax,
@@ -139,6 +170,7 @@ class RadialProfileSelectionPlot(object):
     def update_plots(self):
         self.update_profile_extraction()
         self.update_profile_plot()
+        self.update_profile_subtraction_plots()
         self.fig.canvas.draw_idle()  # type: ignore
 
     def create_profile_extraction_mpl_elements(self):
@@ -237,6 +269,17 @@ class RadialProfileSelectionPlot(object):
                 alpha=0.05,
             )
 
+    def update_profile_subtraction_plots(self):
+        img_copy = copy.deepcopy(self.img)
+        self.profile_img = radial_profile_to_image(
+            profile=self.radial_profile,
+            distance_from_center_mesh=self.distance_from_center_mesh,
+            empty_pixel_fill_value=0.0,
+        )
+        self.profile_sub_img = img_copy - self.profile_img
+        self.prof_sub_plot.set_data(self.profile_sub_img)
+        self.prof_img_plot.set_data(self.profile_img)
+
     def show(self):
         plt.show()
 
@@ -263,7 +306,11 @@ def profile_extraction_from_cone(
     reference_profiles = None
 
     rpsp = RadialProfileSelectionPlot(
-        eid=eid, img=img_fits.data, bgr=bgr, reference_profiles=reference_profiles
+        eid=eid,
+        img=img_fits.data,
+        bgr=bgr,
+        reference_profiles=reference_profiles,
+        filter_type=pkey.filter_type,
     )
     rpsp.show()
 

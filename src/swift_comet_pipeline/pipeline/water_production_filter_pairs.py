@@ -15,7 +15,9 @@ def get_valid_water_production_filter_pairs(
     valid_pairs = [
         WaterProductionFilterPair(oh_filter=oh, dust_filter=dust)
         for oh, dust in oh_and_dust_pairs
-        if eid.exposure_times.get(oh, 0) > 0 and eid.exposure_times.get(dust, 0) > 0
+        if eid.exposure_times.get(oh, 0) > 0
+        and eid.exposure_times.get(dust, 0) > 0
+        and oh != dust
     ]
 
     return valid_pairs

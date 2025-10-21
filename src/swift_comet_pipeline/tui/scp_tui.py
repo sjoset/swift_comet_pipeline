@@ -29,6 +29,7 @@ from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_conf
 )
 from swift_comet_pipeline.pipeline.terminal_products import (
     enumerate_aperture_water_production_products,
+    enumerate_radial_profile_water_production_products,
 )
 from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
@@ -792,6 +793,72 @@ def test_aperture_water_analysis_plotting(
     plt.show()
 
 
+def test_radial_profile_plotting(scp: Products, ref: ProductReference) -> None:
+    pkey = ref.key
+    assert isinstance(pkey, WaterProductionKey)
+
+    rpwpa = scp.load_radial_profile_water_production_analysis(key=pkey)
+
+    left_edge = scp.cfg.near_far_split_radius_km
+    right_edge = np.max(rpwpa.oh_column_density.rs_km)
+    plt.axvspan(
+        left_edge, right_edge, color="orange", alpha=0.07, label="fitting region"
+    )
+
+    plt.plot(
+        rpwpa.oh_column_density.rs_km, rpwpa.oh_column_density.cd_cm2, label="data"
+    )
+    plt.plot(
+        rpwpa.near_fit.vectorial_column_density.rs_km,
+        rpwpa.near_fit.vectorial_column_density.cd_cm2,
+        label="near",
+        alpha=0.7,
+    )
+    plt.plot(
+        rpwpa.far_fit.vectorial_column_density.rs_km,
+        rpwpa.far_fit.vectorial_column_density.cd_cm2,
+        label="far",
+        alpha=0.7,
+    )
+    plt.plot(
+        rpwpa.full_fit.vectorial_column_density.rs_km,
+        rpwpa.full_fit.vectorial_column_density.cd_cm2,
+        label="full",
+        alpha=0.7,
+    )
+    plt.legend()
+
+    # water_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
+
+    # for i in range(4):
+    #     plt.fill_between(
+    #         water_df.aperture_r_km,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         + i * water_df.aperture_matched_q_h2o_sum_err,
+    #         water_df.aperture_matched_q_h2o_sum
+    #         - i * water_df.aperture_matched_q_h2o_sum_err,
+    #         alpha=0.2,
+    #         color="#688894",
+    #     )
+
+    # awp_prefs = enumerate_aperture_water_production_products(
+    #     epochs=[eid],
+    #     oh_filters=[oh_filter],
+    #     dust_filters=[dust_filter],
+    #     stacking_methods=[StackingMethod.summation],
+    #     dust_rednesses=[dust_redness],
+    # )
+
+    plt.yscale("log")
+    plt.xscale("log")
+
+    # plt.xlim(0, 500000)
+    # plt.ylim(
+    #     1e26,
+    # )
+    plt.show()
+
+
 def get_pipeline_status_for_product(
     scp: Products, ref: ProductReference
 ) -> ProductBuildStatus:
@@ -944,9 +1011,9 @@ def main():
     # epoch_id = "010_2016_Aug_19"
     # epoch_id = "011_2016_Nov_24"
 
-    epoch_index = scp.load_epoch_index()
-    assert epoch_index is not None
-    eid = epoch_index[8]
+    # epoch_index = scp.load_epoch_index()
+    # assert epoch_index is not None
+    # eid = epoch_index[9]
 
     # oh_filter = UvotFilter.uw1
     # oh_filter = UvotFilter.uw2
@@ -980,33 +1047,72 @@ def main():
     # show_pipeline_status_for_product(scp=scp, ref=ap_wat_ref)
     # build_product_reference_loop(scp=scp, ref=ap_wat_ref)
 
-    awp_prefs = enumerate_aperture_water_production_products(
+    epoch_index = scp.load_epoch_index()
+    assert epoch_index is not None
+    epoch_int = 7
+    eid = epoch_index[epoch_int]
+
+    # # aperture analysis water production
+    # awp_prefs = enumerate_aperture_water_production_products(
+    #     epochs=[eid],
+    #     oh_filters=scp.cfg.oh_filters,
+    #     dust_filters=scp.cfg.dust_filters,
+    #     stacking_methods=[StackingMethod.summation],
+    #     dust_rednesses=scp.dust_rednesses,
+    # )
+    # incomplete_awp_prefs = list(
+    #     filter(
+    #         lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
+    #         != ProductBuildStatus.complete,
+    #         awp_prefs,
+    #     )
+    # )
+    # for awp in tqdm(incomplete_awp_prefs, total=len(incomplete_awp_prefs)):
+    #     assert isinstance(awp.key, WaterProductionKey)
+    #     show_pipeline_status_for_product(scp=scp, ref=awp)
+    #     build_product_reference_loop(scp=scp, ref=awp)
+    #     # test_aperture_water_analysis_loading(scp=scp, ref=awp)
+
+    # vectorial model/radial profile water production
+    rwp_prefs = enumerate_radial_profile_water_production_products(
         epochs=[eid],
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
         stacking_methods=[StackingMethod.summation],
         dust_rednesses=scp.dust_rednesses,
     )
-    incomplete_awp_prefs = list(
+    incomplete_rwp_prefs = list(
         filter(
             lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
             != ProductBuildStatus.complete,
-            awp_prefs,
+            rwp_prefs,
         )
     )
-    for awp in tqdm(incomplete_awp_prefs, total=len(incomplete_awp_prefs)):
-        assert isinstance(awp.key, WaterProductionKey)
-        show_pipeline_status_for_product(scp=scp, ref=awp)
-        build_product_reference_loop(scp=scp, ref=awp)
-        # test_aperture_water_analysis_loading(scp=scp, ref=awp)
+    for rwp in tqdm(incomplete_rwp_prefs, total=len(incomplete_rwp_prefs)):
+        assert isinstance(rwp.key, WaterProductionKey)
+        show_pipeline_status_for_product(scp=scp, ref=rwp)
+        build_product_reference_loop(scp=scp, ref=rwp)
+        show_pipeline_status_for_product(scp=scp, ref=rwp)
 
-    test_aperture_water_analysis_plotting(
-        scp=scp,
-        eid=eid,
-        oh_filter=UvotFilter.uw1,
-        dust_filter=UvotFilter.uvv,
-        dust_redness=DustReddeningPercent(30.0),
-    )
+    # TODO: Afrho, active area, blue spot detection, Q expectation value
+
+    # wkey = WaterProductionKey(
+    #     epoch_id=eid.epoch_id,
+    #     oh_filter=UvotFilter.uw1,
+    #     dust_filter=UvotFilter.uvv,
+    #     stacking_method=StackingMethod.summation,
+    #     dust_redness_pct_per_hundred_nm=35.0,
+    # )
+    # rpref = ProductReference(kind=ProductKind.radial_profile_water_production, key=wkey)
+    # test_radial_profile_plotting(scp=scp, ref=rpref)
+
+    # test_aperture_water_analysis_plotting(
+    #     scp=scp,
+    #     eid=eid,
+    #     oh_filter=UvotFilter.uw1,
+    #     dust_filter=UvotFilter.uvv,
+    #     dust_redness=DustReddeningPercent(30.0),
+    # )
 
     # test_aperture_water_analysis_loading(scp=scp, ref=ap_wat_ref)
     # test_radial_profile_loading(scp=scp)
