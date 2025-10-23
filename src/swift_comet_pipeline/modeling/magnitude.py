@@ -9,12 +9,14 @@ from swift_comet_pipeline.swift.filters.uvot_filter_parameters import (
     get_filter_parameters,
 )
 
+# reminder: np.log is natural log, not base 10
 _magnitude_error_factor = 2.5 / np.log(10)
 
 # TODO: read up about the astropy Magnitude to see if it would be useful here
 
 
-@cache
+# TODO: enable cache
+# @cache
 def magnitude_from_count_rate(
     count_rate: CountRate, filter_type: UvotFilter
 ) -> Magnitude:

@@ -51,6 +51,12 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     Products,
     WaterProductionKey,
 )
+from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry import (
+    dataframe_from_afrho_aperture_photometry_analysis,
+)
+from swift_comet_pipeline.scp_types.primitive.afrho_from_profile import (
+    dataframe_from_afrho_from_radial_profile,
+)
 
 
 def process_args():
@@ -859,6 +865,34 @@ def test_radial_profile_plotting(scp: Products, ref: ProductReference) -> None:
     plt.show()
 
 
+def test_afrho_aperture_plotting(scp: Products, ref: ProductReference) -> None:
+
+    pkey = ref.key
+    assert isinstance(pkey, EpochSubpipelineKey)
+
+    afapa = scp.load_afrho_from_aperture_photometry(key=pkey)
+    afapa_df = dataframe_from_afrho_aperture_photometry_analysis(afapa=afapa)
+
+    plt.plot(afapa_df.aperture_r_km, np.log10(afapa_df.cumulative_afrho_zero_median_cm))
+    plt.plot(afapa_df.aperture_r_km, np.log10(afapa_df.cumulative_afrho_zero_sum_cm))
+
+    plt.show()
+
+
+def test_afrho_profile_plotting(scp: Products, ref: ProductReference) -> None:
+
+    pkey = ref.key
+    assert isinstance(pkey, EpochSubpipelineKey)
+
+    afrp = scp.load_afrho_from_profile(key=pkey)
+    # assert afrp is not None
+    afrp_df = dataframe_from_afrho_from_radial_profile(afrp=afrp)
+
+    plt.plot(afrp_df.r_km, np.log10(afrp_df.cumulative_afrho_zero_cm))
+    # plt.plot(afrp_df.r_km, afrp_df.cumulative_afrho_cm)
+    plt.show()
+
+
 def get_pipeline_status_for_product(
     scp: Products, ref: ProductReference
 ) -> ProductBuildStatus:
@@ -1047,10 +1081,13 @@ def main():
     # show_pipeline_status_for_product(scp=scp, ref=ap_wat_ref)
     # build_product_reference_loop(scp=scp, ref=ap_wat_ref)
 
+    # TODO: water production builders need to convert the redness given in config to their own values for the filters being used
+
     epoch_index = scp.load_epoch_index()
     assert epoch_index is not None
-    epoch_int = 7
+    epoch_int = 9
     eid = epoch_index[epoch_int]
+    print(eid)
 
     # # aperture analysis water production
     # awp_prefs = enumerate_aperture_water_production_products(
@@ -1073,28 +1110,50 @@ def main():
     #     build_product_reference_loop(scp=scp, ref=awp)
     #     # test_aperture_water_analysis_loading(scp=scp, ref=awp)
 
-    # vectorial model/radial profile water production
-    rwp_prefs = enumerate_radial_profile_water_production_products(
-        epochs=[eid],
-        oh_filters=scp.cfg.oh_filters,
-        dust_filters=scp.cfg.dust_filters,
-        stacking_methods=[StackingMethod.summation],
-        dust_rednesses=scp.dust_rednesses,
-    )
-    incomplete_rwp_prefs = list(
-        filter(
-            lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
-            != ProductBuildStatus.complete,
-            rwp_prefs,
-        )
-    )
-    for rwp in tqdm(incomplete_rwp_prefs, total=len(incomplete_rwp_prefs)):
-        assert isinstance(rwp.key, WaterProductionKey)
-        show_pipeline_status_for_product(scp=scp, ref=rwp)
-        build_product_reference_loop(scp=scp, ref=rwp)
-        show_pipeline_status_for_product(scp=scp, ref=rwp)
+    # # vectorial model/radial profile water production
+    # rwp_prefs = enumerate_radial_profile_water_production_products(
+    #     epochs=[eid],
+    #     oh_filters=scp.cfg.oh_filters,
+    #     dust_filters=scp.cfg.dust_filters,
+    #     stacking_methods=[StackingMethod.summation],
+    #     dust_rednesses=scp.dust_rednesses,
+    # )
+    # incomplete_rwp_prefs = list(
+    #     filter(
+    #         lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
+    #         != ProductBuildStatus.complete,
+    #         rwp_prefs,
+    #     )
+    # )
+    # for rwp in tqdm(incomplete_rwp_prefs, total=len(incomplete_rwp_prefs)):
+    #     assert isinstance(rwp.key, WaterProductionKey)
+    #     show_pipeline_status_for_product(scp=scp, ref=rwp)
+    #     build_product_reference_loop(scp=scp, ref=rwp)
+    #     show_pipeline_status_for_product(scp=scp, ref=rwp)
 
-    # TODO: Afrho, active area, blue spot detection, Q expectation value
+    # TODO: active area, blue spot detection, Q expectation value
+
+    afrho_ref = ProductReference(
+        kind=ProductKind.afrho_from_aperture_photometry_analysis,
+        key=EpochSubpipelineKey(
+            epoch_id=eid.epoch_id,
+            filter_type=UvotFilter.uuu,
+            stacking_method=StackingMethod.summation,
+        ),
+    )
+    build_product_reference_loop(scp=scp, ref=afrho_ref)
+    test_afrho_aperture_plotting(scp=scp, ref=afrho_ref)
+
+    afrho_ref = ProductReference(
+        kind=ProductKind.afrho_from_radial_profile,
+        key=EpochSubpipelineKey(
+            epoch_id=eid.epoch_id,
+            filter_type=UvotFilter.uuu,
+            stacking_method=StackingMethod.summation,
+        ),
+    )
+    build_product_reference_loop(scp=scp, ref=afrho_ref)
+    test_afrho_profile_plotting(scp=scp, ref=afrho_ref)
 
     # wkey = WaterProductionKey(
     #     epoch_id=eid.epoch_id,

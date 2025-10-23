@@ -231,7 +231,9 @@ def halley_marcus_curve_interpolation(
     hmc: HalleyMarcusCurve = get_halley_marcus_curve(),
     normalization_phase_deg: float = 0.0,
 ) -> Callable | None:
-
+    """
+    Returns a function that takes phase angle in degrees, and returns a factor to divide afrho by to normalize it to 'normalization_phase_deg'
+    """
     # TODO: we can produce the curve for an arbitrary normalization phase by finding the value of the curve's interpolation at normalization_phase
     # and dividing by that value, instead of doing the two cases below
 

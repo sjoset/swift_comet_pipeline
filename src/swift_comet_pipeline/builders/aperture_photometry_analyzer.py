@@ -67,8 +67,6 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
 
     assert eid.exposure_times.get(pkey.filter_type, None) is not None
 
-    # TODO: decouple this from the TUI
-    print("Starting counts ...")
     annular_analyses = [
         aperture_analysis(
             img=img,

@@ -1,3 +1,4 @@
+from .afrho_from_aperture_photometry import *
 from .annular_aperture_photometry_analysis import *
 from .aperture_count_rate_analysis import *
 from .aperture_water_production_analysis import *

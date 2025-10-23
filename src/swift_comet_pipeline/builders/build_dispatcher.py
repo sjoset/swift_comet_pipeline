@@ -1,3 +1,7 @@
+from swift_comet_pipeline.builders.afrho_calculator import (
+    do_afrho_from_aperture_photometry_analysis,
+    do_afrho_from_radial_profile,
+)
 from swift_comet_pipeline.builders.epoch_identifier import do_epoch_identification
 from swift_comet_pipeline.builders.epoch_indexer import do_epoch_index
 from swift_comet_pipeline.builders.image_vetoer import do_image_veto
@@ -40,7 +44,7 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 # TODO: all builders should ask to replace existing products
 def do_build(scp: Products, ref: ProductReference) -> None:
 
-    print(f"Dispatching build for {ref}")
+    # TODO: use log to record which ProductReference we are attempting to build
 
     if ref == ProductKind.observation_log_raw:
         do_observation_log_raw(scp=scp)
@@ -83,3 +87,9 @@ def do_build(scp: Products, ref: ProductReference) -> None:
 
     if ref.kind == ProductKind.radial_profile_water_production:
         do_radial_profile_water_production(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.afrho_from_aperture_photometry_analysis:
+        do_afrho_from_aperture_photometry_analysis(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.afrho_from_radial_profile:
+        do_afrho_from_radial_profile(scp=scp, ref=ref)

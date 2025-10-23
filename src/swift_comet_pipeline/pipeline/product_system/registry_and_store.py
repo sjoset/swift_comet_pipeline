@@ -46,6 +46,16 @@ from swift_comet_pipeline.scp_types.compound.radial_profile_water_production imp
     radial_profile_water_production_analysis_from_json,
 )
 from swift_comet_pipeline.scp_types.primitive import *
+from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry import (
+    AfrhoFromAperturePhotometryAnalysis,
+    afrho_aperture_photometry_analysis_from_dataframe,
+    dataframe_from_afrho_aperture_photometry_analysis,
+)
+from swift_comet_pipeline.scp_types.primitive.afrho_from_profile import (
+    AfrhoFromRadialProfile,
+    afrho_from_radial_profile_from_dataframe,
+    dataframe_from_afrho_from_radial_profile,
+)
 from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
     dataframe_from_aperture_water_production_analysis,
 )
@@ -75,15 +85,7 @@ class ProductKind(StrEnum):
     bg_subtracted_stacked_image = "stacked image, no bg"
 
     annular_aperture_photometry_analysis = "annular aperture photometry"
-
-    # TODO: remove - these are easily obtained from annular_aperture_photometry_analysis
-    # aperture_median_radial_profile = "median radial profile from apertures"
-    # aperture_median_radial_profile_photometry = "photometry from median aperture radial profile"
-
     radial_profile_from_cone = "radial profile from cone"
-
-    # TODO: remove = also easily obtained from cone profile
-    # radial_profile_from_cone_photometry = "photometry from radial cone profile"
 
     # -----------------
     # Water production and other final products
@@ -91,11 +93,12 @@ class ProductKind(StrEnum):
     # aperture continuum subtraction
     aperture_water_production = "aperture water production rate"
     # radial profile continuum subtraction
-
     radial_profile_water_production = "water production from vectorial fitting"
 
-    # afrho_from_apertures
-    # afrho_from_profiles
+    # afrho
+    afrho_from_aperture_photometry_analysis = "Afrho from aperture photometry"
+    afrho_from_radial_profile = "Afrho from radial profiles"
+
     # active area
 
 
@@ -559,6 +562,24 @@ def add_epoch_subpipelines_to_registry(
                 )
             )
 
+            afrho_ap_ref = ProductReference(
+                ProductKind.afrho_from_aperture_photometry_analysis,
+                key=epoch_subpipe_key,
+            )
+            reg.register(
+                spec=ProductSpecification(
+                    ref=afrho_ap_ref,
+                    filename_stem_template="afrho_from_aperture_photometry",
+                    codec=PandasDataframeToECSVCodec(),
+                    deps=lambda p_ref: [
+                        ProductReference(
+                            kind=ProductKind.annular_aperture_photometry_analysis,
+                            key=p_ref.key,
+                        )
+                    ],
+                )
+            )
+
             cone_prof_ref = ProductReference(
                 ProductKind.radial_profile_from_cone, key=epoch_subpipe_key
             )
@@ -570,6 +591,24 @@ def add_epoch_subpipelines_to_registry(
                     deps=lambda p_ref: [
                         ProductReference(
                             kind=ProductKind.bg_subtracted_stacked_image, key=p_ref.key
+                        )
+                    ],
+                )
+            )
+
+            afrho_prof_ref = ProductReference(
+                ProductKind.afrho_from_radial_profile,
+                key=epoch_subpipe_key,
+            )
+            reg.register(
+                spec=ProductSpecification(
+                    ref=afrho_prof_ref,
+                    filename_stem_template="afrho_from_radial_profile",
+                    codec=PandasDataframeToECSVCodec(),
+                    deps=lambda p_ref: [
+                        ProductReference(
+                            kind=ProductKind.radial_profile_from_cone,
+                            key=p_ref.key,
                         )
                     ],
                 )
@@ -935,3 +974,37 @@ class Products:
             rpwpa=rpwpa
         )
         return self.registry_save(ref=pref, obj=rpwpa_json_dict)
+
+    # afrho from apertures
+    def load_afrho_from_aperture_photometry(
+        self, key: EpochSubpipelineKey
+    ) -> AfrhoFromAperturePhotometryAnalysis:
+        pref = ProductReference(
+            kind=ProductKind.afrho_from_aperture_photometry_analysis, key=key
+        )
+        afapa_df = self.registry_load(ref=pref)
+        return afrho_aperture_photometry_analysis_from_dataframe(df=afapa_df)
+
+    def save_afrho_from_aperture_photometry(
+        self, afapa: AfrhoFromAperturePhotometryAnalysis, key: EpochSubpipelineKey
+    ) -> pathlib.Path | None:
+        pref = ProductReference(
+            kind=ProductKind.afrho_from_aperture_photometry_analysis, key=key
+        )
+        afapa_df = dataframe_from_afrho_aperture_photometry_analysis(afapa=afapa)
+        return self.registry_save(ref=pref, obj=afapa_df)
+
+    # afrho from profiles
+    def load_afrho_from_profile(
+        self, key: EpochSubpipelineKey
+    ) -> AfrhoFromRadialProfile:
+        pref = ProductReference(kind=ProductKind.afrho_from_radial_profile, key=key)
+        afrp_df = self.registry_load(ref=pref)
+        return afrho_from_radial_profile_from_dataframe(df=afrp_df)
+
+    def save_afrho_from_profile(
+        self, afrp: AfrhoFromRadialProfile, key: EpochSubpipelineKey
+    ) -> pathlib.Path | None:
+        pref = ProductReference(kind=ProductKind.afrho_from_radial_profile, key=key)
+        afrp_df = dataframe_from_afrho_from_radial_profile(afrp=afrp)
+        return self.registry_save(ref=pref, obj=afrp_df)

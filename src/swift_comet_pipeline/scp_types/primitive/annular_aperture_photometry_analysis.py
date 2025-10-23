@@ -32,6 +32,7 @@ class AnnularAperturePhotometryAnalysisEntry:
     cumulative_median_magnitude: float
     cumulative_median_magnitude_variance: float
     cumulative_median_magnitude_err: float
+
     cumulative_sum_magnitude: float
     cumulative_sum_magnitude_variance: float
     cumulative_sum_magnitude_err: float
