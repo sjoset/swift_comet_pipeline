@@ -45,11 +45,12 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 def do_build(scp: Products, ref: ProductReference) -> None:
 
     # TODO: use log to record which ProductReference we are attempting to build
+    # print(f"Building {ref}...")
 
-    if ref == ProductKind.observation_log_raw:
+    if ref.kind == ProductKind.observation_log_raw:
         do_observation_log_raw(scp=scp)
 
-    if ref == ProductKind.observation_log_with_epochs:
+    if ref.kind == ProductKind.observation_log_with_epochs:
         do_epoch_identification(scp=scp)
 
     if ref.kind == ProductKind.observation_log_with_vetoes:

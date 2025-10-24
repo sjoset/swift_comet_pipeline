@@ -114,6 +114,9 @@ class KeyLike:
 class GlobalKey(KeyLike):
     pass
 
+    def __str__(self):
+        return ""
+
 
 @dataclass(frozen=True)
 class EpochSubpipelineKey(KeyLike):
@@ -146,8 +149,8 @@ class ProductReference:
     key: KeyLike = GlobalKey()
 
     def __str__(self):
-        keystr = f" {self.key}" if self.key != GlobalKey() else ""
-        return f"[{self.kind.value:^30}]{keystr}"
+        keystr = str(self.key)
+        return f"[{self.kind.value:<30}]: {keystr}"
 
 
 # -----------------------------------------------------------------------------
@@ -508,9 +511,7 @@ def add_epoch_subpipelines_to_registry(
                     ref=exp_map_ref,
                     filename_stem_template="exposure_map",
                     codec=InternalFITSImageCodec(),
-                    deps=lambda _: [
-                        ProductReference(kind=ProductKind.epoch_index, key=GlobalKey())
-                    ],
+                    deps=lambda _: [ProductReference(kind=ProductKind.epoch_index)],
                 )
             )
 

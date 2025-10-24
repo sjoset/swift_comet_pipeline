@@ -4,6 +4,8 @@ from datetime import datetime
 from enum import StrEnum, auto
 from graphlib import TopologicalSorter
 
+import numpy as np
+import astropy.units as u
 from rich.console import RenderResult
 from rich.text import Text
 
@@ -120,10 +122,10 @@ def calculate_statuses(
     stale_products = False
 
     # TODO: test this value and adjust
-    # a product can be newer than a parent by 20 minutes - this allows the subpipelines to be run within this timeframe and be considered consistent
+    # a product can be newer than a parent by amount of seconds below - this allows the subpipelines to be run within this timeframe and be considered consistent
     # because of the inconsistent way that the dependency graph is built - it can change the order of products from subpipelines, which causes false staleness
     # this happens for water production calculations because they pull from a dust and oh subpipeline
-    mtime_tolerance_threshold_s = 20 * 60
+    mtime_tolerance_threshold_s = (24 * u.hour).to_value(u.s)
 
     statuses = {}
     # fill in the status of each product, from first to be built in dep tree to last
@@ -137,7 +139,7 @@ def calculate_statuses(
         # does this product not exist?
         if not ref_exists:
 
-            # then we are ready if all parents are complete -
+            # then we are ready if all parents are complete
             if all([ProductBuildStatus.complete == x for x in build_statuses]):
                 # print(
                 #     f"Marking {ref} as ready because it is missing and all parents complete!"
@@ -178,7 +180,7 @@ def calculate_statuses(
         # 3) *only* allow building the final products, so that only one dep tree is generated and can't conflict with anything else
         # 4) when marking as stale, check if the product is the same subpipeline - if not, we don't care?
         # 5) change the mtime comparison to allow for ~5 minutes, 1 day, etc threshold before it's considered stale
-        # Number 2 should be workable - we create a 'final' product that depends on all of our results
+        # Decided on number 5 but this seems suboptimal
 
         # it exists - is there any parent that is newer?
         assert mtime is not None
@@ -189,7 +191,18 @@ def calculate_statuses(
                 for x in prev_mtimes
             ]
         ):
-            print(f"Marking {ref} as stale because a parent is newer!")
+            print(
+                f"Marking {ref.kind.value, ref.key} as stale because a parent is newer!"
+            )
+            # print(f"Previous mtimes: {prev_mtimes} {np.array(prev_mtimes) - mtime}")
+            # print(
+            #     f"{ [(x.kind.value, m - mtime) for x, m in list(mtime_dict.items())[:i]] }"
+            # )
+            # report = [
+            #     (x.kind.value, x.key, m - mtime)
+            #     for x, m in list(mtime_dict.items())[:i]
+            # ]
+            # print(report)
             statuses[ref] = status_factory(build_status=ProductBuildStatus.stale)
             stale_products = True
             continue

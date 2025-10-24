@@ -9,8 +9,6 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import Prod
 
 def do_epoch_index(scp: Products) -> None:
 
-    print("Building epoch index...")
-
     p_list = find_perihelia(scp=scp)
     if p_list is None:
         return

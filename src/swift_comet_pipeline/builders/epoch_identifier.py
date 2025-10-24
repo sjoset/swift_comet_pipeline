@@ -1,3 +1,5 @@
+import astropy.units as u
+
 from swift_comet_pipeline.data_ingestion.observation_log.slice_observation_log_into_epochs import (
     add_epoch_ids_by_time_window,
 )

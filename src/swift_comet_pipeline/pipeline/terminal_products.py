@@ -1,5 +1,7 @@
+from functools import partial
 from itertools import product
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+    EpochSubpipelineKey,
     ProductKind,
     ProductReference,
     WaterProductionKey,
@@ -9,6 +11,11 @@ from swift_comet_pipeline.pipeline.water_production_filter_pairs import (
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndex
 from swift_comet_pipeline.scp_types.primitive import *
+
+# TODO: rename this to product enumeration or something similar
+
+# TODO: write function to search through directory for all dust rednesses that have been run, and build product references from that
+# use the registry's name template or path_for with a dummy redness and then search the parent directory
 
 
 # TODO: turn these into one function that takes a 'kind' parameter (or kinds=[...] like the rest of the arguments)
@@ -74,5 +81,23 @@ def enumerate_radial_profile_water_production_products(
     return terminal_products
 
 
-# TODO: write function to search through directory for all dust rednesses that have been run, and build product references from that
-# use the registry's name template or path_for with a dummy redness and then search the parent directory
+def enumerate_stacked_unbackgrounded_images(
+    epochs: EpochIndex,
+) -> list[ProductReference]:
+
+    stackable_list = []
+    for eid in epochs:
+        available_keys = [
+            EpochSubpipelineKey(epoch_id=eid.epoch_id, filter_type=f, stacking_method=s)
+            for f, s in product(
+                UvotFilter.all_filters(), StackingMethod.all_stacking_methods()
+            )
+            if eid.exposure_times.get(f, 0) > 0.0
+        ]
+        stackable_products = [
+            ProductReference(kind=ProductKind.stacked_image_with_background, key=k)
+            for k in available_keys
+        ]
+        stackable_list.extend(stackable_products)
+
+    return stackable_list
