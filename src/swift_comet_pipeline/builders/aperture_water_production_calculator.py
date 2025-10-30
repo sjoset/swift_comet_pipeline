@@ -19,7 +19,7 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
     ProductReference,
     Products,
-    WaterProductionKey,
+    ContinuumSubtractionKey,
 )
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.primitive.annular_aperture_photometry_analysis import (
@@ -69,7 +69,7 @@ from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis
 
 
 def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
-    assert isinstance(ref.key, WaterProductionKey)
+    assert isinstance(ref.key, ContinuumSubtractionKey)
 
     oh_subpipe_key = EpochSubpipelineKey(
         epoch_id=ref.key.epoch_id,
@@ -93,7 +93,7 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     oh_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=oh_aapa)
     dust_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=dust_aapa)
 
-    # TODO: rewrite for aperture metadata dataclass
+    # TODO: rewrite using an aperture metadata dataclass
     assert (
         oh_metadata["max_aperture_radius_km"] == dust_metadata["max_aperture_radius_km"]
     )
@@ -118,7 +118,7 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     ].copy()
     assert isinstance(water_df, pd.DataFrame)
 
-    # TODO: generalize this into 'source oh column' and 'destination column name template' to get sum and median
+    # TODO: rewrite for _DataframeColumnAndErrorSet
     water_df["oh_counts_sum"] = (
         oh_aapa_df.cumulative_sum - beta * dust_aapa_df.cumulative_sum
     )

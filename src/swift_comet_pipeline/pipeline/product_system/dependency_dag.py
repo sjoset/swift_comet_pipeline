@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum, auto
 from graphlib import TopologicalSorter
 
-import numpy as np
+# import numpy as np
 import astropy.units as u
 from rich.console import RenderResult
 from rich.text import Text

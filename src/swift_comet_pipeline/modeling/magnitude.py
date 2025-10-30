@@ -15,8 +15,6 @@ _magnitude_error_factor = 2.5 / np.log(10)
 # TODO: read up about the astropy Magnitude to see if it would be useful here
 
 
-# TODO: enable cache
-# @cache
 def magnitude_from_count_rate(
     count_rate: CountRate, filter_type: UvotFilter
 ) -> Magnitude:

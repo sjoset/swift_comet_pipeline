@@ -1,3 +1,4 @@
+from .active_area_analysis import *
 from .afrho_from_aperture_photometry import *
 from .annular_aperture_photometry_analysis import *
 from .aperture_count_rate_analysis import *
@@ -8,6 +9,7 @@ from .column_density import *
 from .comet_center_finding_method import *
 from .comet_count_rate_profile import *
 from .comet_surface_brightness_profile import *
+from .dataframe_column_and_error_set import *
 from .dust_reddening_percent import *
 from .epoch import *
 from .epoch_id import *

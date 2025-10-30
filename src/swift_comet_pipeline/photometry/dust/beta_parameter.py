@@ -1,4 +1,4 @@
-# from functools import cache
+from functools import cache
 
 from swift_comet_pipeline.modeling.spectra.solar.solar_count_rate import (
     solar_count_rate_in_filter_1au,
@@ -12,8 +12,7 @@ from swift_comet_pipeline.pipeline.internal_config.pipeline_internal_config impo
 from swift_comet_pipeline.scp_types.primitive import *
 
 
-# TODO: re-enable cache
-# @cache
+@cache
 def beta_parameter(
     dust_redness: DustReddeningPercent, oh_filter: UvotFilter, dust_filter: UvotFilter
 ) -> float:

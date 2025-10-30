@@ -84,8 +84,13 @@ class ProductKind(StrEnum):
     background_determination = "background level and error"
     bg_subtracted_stacked_image = "stacked image, no bg"
 
+    # photometry/profiling of OH/dust
     annular_aperture_photometry_analysis = "annular aperture photometry"
     radial_profile_from_cone = "radial profile from cone"
+
+    # afrho
+    afrho_from_aperture_photometry_analysis = "Afrho from aperture photometry"
+    afrho_from_radial_profile = "Afrho from radial profiles"
 
     # -----------------
     # Water production and other final products
@@ -95,11 +100,12 @@ class ProductKind(StrEnum):
     # radial profile continuum subtraction
     radial_profile_water_production = "water production from vectorial fitting"
 
-    # afrho
-    afrho_from_aperture_photometry_analysis = "Afrho from aperture photometry"
-    afrho_from_radial_profile = "Afrho from radial profiles"
 
-    # active area
+# TODO: remove old code
+# class ProductClassification(StrEnum):
+#     data_ingestion = auto()
+#     epoch_subpipeline = auto()
+#     water_production = auto()
 
 
 # -----------------------------------------------------------------------------
@@ -129,7 +135,7 @@ class EpochSubpipelineKey(KeyLike):
 
 
 @dataclass(frozen=True)
-class WaterProductionKey(KeyLike):
+class ContinuumSubtractionKey(KeyLike):
     epoch_id: EpochID
     oh_filter: UvotFilter
     dust_filter: UvotFilter
@@ -391,7 +397,7 @@ def data_ingestion_registry() -> ProductRegistry:
         "{key.epoch_id}/{key.filter_type}/{key.stacking_method}",
     )
     reg.subdir_resolver().register_template(
-        WaterProductionKey,
+        ContinuumSubtractionKey,
         "{key.epoch_id}/oh_{key.oh_filter}_dust_{key.dust_filter}/{key.stacking_method}/{key.dust_redness_pct_per_hundred_nm:06.2f}",
     )
 
@@ -618,7 +624,7 @@ def add_epoch_subpipelines_to_registry(
     return
 
 
-def add_water_production_products_to_registry(
+def add_continuum_subtraction_products_to_registry(
     reg: ProductRegistry,
     epoch_index: EpochIndex,
     oh_filters: list[UvotFilter],
@@ -629,7 +635,7 @@ def add_water_production_products_to_registry(
     oh_and_dust_filter_combinations = list(product(oh_filters, dust_filters))
 
     for eid in epoch_index:
-        wkey_func = partial(WaterProductionKey, epoch_id=eid.epoch_id)
+        wkey_func = partial(ContinuumSubtractionKey, epoch_id=eid.epoch_id)
 
         for oh_filter, dust_filter in oh_and_dust_filter_combinations:
             # check if each filter is in this epoch
@@ -734,7 +740,7 @@ class Products:
         if self.epoch_index is None:
             return
         add_epoch_subpipelines_to_registry(reg=self.reg, epoch_index=self.epoch_index)
-        add_water_production_products_to_registry(
+        add_continuum_subtraction_products_to_registry(
             reg=self.reg,
             epoch_index=self.epoch_index,
             oh_filters=self.cfg.oh_filters,
@@ -940,14 +946,14 @@ class Products:
 
     # aperture water analysis
     def load_aperture_water_production_analysis(
-        self, key: WaterProductionKey
+        self, key: ContinuumSubtractionKey
     ) -> ApertureWaterProductionAnalysis:
         pref = ProductReference(kind=ProductKind.aperture_water_production, key=key)
         df = self.registry_load(ref=pref)
         return aperture_water_production_analysis_from_dataframe(df=df)
 
     def save_aperture_water_production_analysis(
-        self, awpa: ApertureWaterProductionAnalysis, key: WaterProductionKey
+        self, awpa: ApertureWaterProductionAnalysis, key: ContinuumSubtractionKey
     ) -> pathlib.Path | None:
         pref = ProductReference(kind=ProductKind.aperture_water_production, key=key)
         awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
@@ -955,7 +961,7 @@ class Products:
 
     # radial profile water production
     def load_radial_profile_water_production_analysis(
-        self, key: WaterProductionKey
+        self, key: ContinuumSubtractionKey
     ) -> RadialProfileWaterProductionAnalysis:
         pref = ProductReference(
             kind=ProductKind.radial_profile_water_production, key=key
@@ -966,7 +972,7 @@ class Products:
         )
 
     def save_radial_profile_water_production_analysis(
-        self, rpwpa: RadialProfileWaterProductionAnalysis, key: WaterProductionKey
+        self, rpwpa: RadialProfileWaterProductionAnalysis, key: ContinuumSubtractionKey
     ) -> pathlib.Path | None:
         pref = ProductReference(
             kind=ProductKind.radial_profile_water_production, key=key

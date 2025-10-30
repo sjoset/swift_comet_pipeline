@@ -11,7 +11,7 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
     ProductReference,
     Products,
-    WaterProductionKey,
+    ContinuumSubtractionKey,
 )
 from swift_comet_pipeline.scp_types.compound.radial_profile_water_production import (
     RadialProfileWaterProductionAnalysis,
@@ -23,7 +23,7 @@ from swift_comet_pipeline.scp_types.primitive.vectorial_model_fit_type import (
 
 def do_radial_profile_water_production(scp: Products, ref: ProductReference) -> None:
 
-    assert isinstance(ref.key, WaterProductionKey)
+    assert isinstance(ref.key, ContinuumSubtractionKey)
 
     # load the epoch info
     eid = scp.load_epoch_index_entry(epoch_id=ref.key.epoch_id)
