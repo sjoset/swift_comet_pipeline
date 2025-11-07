@@ -1,4 +1,5 @@
 import astropy.units as u
+import numpy as np
 
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     water_vectorial_model,
@@ -6,6 +7,9 @@ from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
 from swift_comet_pipeline.modeling.vectorial.vectorial_model_fit import vectorial_fit
 from swift_comet_pipeline.photometry.comet.calculate_column_density import (
     calculate_oh_column_density,
+)
+from swift_comet_pipeline.photometry.dust.reddening_translate import (
+    recalculate_redness_with_new_filter_pair,
 )
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
@@ -18,6 +22,9 @@ from swift_comet_pipeline.scp_types.compound.radial_profile_water_production imp
 )
 from swift_comet_pipeline.scp_types.primitive.vectorial_model_fit_type import (
     VectorialFitType,
+)
+from swift_comet_pipeline.swift.filters.filter_wavelengths import (
+    calculate_mid_wavelength_nm,
 )
 
 
@@ -40,6 +47,26 @@ def do_radial_profile_water_production(scp: Products, ref: ProductReference) -> 
         stacking_method=ref.key.stacking_method,
     )
 
+    # The product key holds the redness at a certain reference mid wavelength - convert the redness to the proper value
+    # for the filters in use while we do the calculations
+    # All of the products are stored on disk referring to the dust redness relative to redness_mid_wavelength_nm in the config file
+    untransformed_redness = ref.key.dust_redness_pct_per_hundred_nm
+    from_mid_wavelength = scp.cfg.redness_mid_wavelength_nm
+    to_mid_wavelength = calculate_mid_wavelength_nm(
+        filter_one=oh_key.filter_type, filter_two=dust_key.filter_type
+    )
+    transformed_dust_redness = np.round(
+        recalculate_redness_with_new_filter_pair(
+            known_redness=untransformed_redness,
+            old_mid_wave_nm=from_mid_wavelength,
+            new_filter_one=oh_key.filter_type,
+            new_filter_two=dust_key.filter_type,
+        )
+    )
+    print(
+        f"Transforming given redness of {untransformed_redness} at mid wave {from_mid_wavelength} to {transformed_dust_redness} at mid wave {to_mid_wavelength}."
+    )
+
     # load the radial profiles from the oh and dust filters
     oh_rad_prof = scp.load_extracted_radial_profile(key=oh_key)
     dust_rad_prof = scp.load_extracted_radial_profile(key=dust_key)
@@ -50,7 +77,8 @@ def do_radial_profile_water_production(scp: Products, ref: ProductReference) -> 
         eid=eid,
         oh_profile=oh_rad_prof,
         dust_profile=dust_rad_prof,
-        dust_redness=ref.key.dust_redness_pct_per_hundred_nm,
+        # dust_redness=ref.key.dust_redness_pct_per_hundred_nm,
+        dust_redness=transformed_dust_redness,
         oh_filter=oh_key.filter_type,
         dust_filter=dust_key.filter_type,
     )

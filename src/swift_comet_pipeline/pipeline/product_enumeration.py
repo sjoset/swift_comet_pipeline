@@ -140,15 +140,19 @@ def _is_continuum_subtraction_product(kind: ProductKind) -> bool:
 def enumerate_subpipeline_product(
     kind: ProductKind,
     epochs: EpochIndex,
-    oh_filters: list[UvotFilter],
-    dust_filters: list[UvotFilter],
+    # oh_filters: list[UvotFilter],
+    # dust_filters: list[UvotFilter],
+    filter_types: list[UvotFilter],
     stacking_methods: list[StackingMethod],
 ) -> list[ProductReference]:
     """
-    Returns a list of product references that can be stacked
+    Returns a list of product references of the given kind from all 'epochs' based on exposure times available for each filter
     """
 
-    all_filters = oh_filters + dust_filters
+    # all_filters = list(set(oh_filters + dust_filters))
+
+    # remove duplicate filters
+    all_filters = list(set(filter_types))
 
     prod_list = []
     for eid in epochs:
@@ -206,6 +210,17 @@ def enumerate_all_products_of(
     stacking_methods: list[StackingMethod] | None = None,
     dust_rednesses: list[DustReddeningPercent] | None = None,
 ) -> list[ProductReference]:
+    """
+    Take these parameters and build a list of ProductReferences that the EpochIndex says should exist,
+    based on what filters have non-zero exposure times
+
+    If you're asking for water production products, then only water based on combinations of oh_filters and dust_filters
+    will be returned, not all possible combinations
+
+    For things like radial profiles that come from one filter only, then we look for oh_filters+dust_filters and return
+    them in the list without any distinction between oh/dust because that doesn't matter until we put them together for
+    continuum subtraction
+    """
 
     if _is_data_ingestion_product(kind=kind):
         return [ProductReference(kind=kind)]
@@ -218,8 +233,9 @@ def enumerate_all_products_of(
             return enumerate_subpipeline_product(
                 kind=kind,
                 epochs=epochs,
-                oh_filters=oh_filters,
-                dust_filters=dust_filters,
+                # oh_filters=oh_filters,
+                # dust_filters=dust_filters,
+                filter_types=oh_filters + dust_filters,
                 stacking_methods=stacking_methods,
             )
     elif _is_continuum_subtraction_product(kind=kind):

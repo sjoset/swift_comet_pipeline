@@ -1,5 +1,5 @@
 from typing import TypeAlias
 
 
-# in percent per 100 nm
+# in percent per 1000 Angstroms
 DustReddeningPercent: TypeAlias = float

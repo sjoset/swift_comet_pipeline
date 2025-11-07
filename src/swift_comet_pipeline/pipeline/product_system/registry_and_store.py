@@ -13,6 +13,8 @@ from typing import Any, Callable, Dict, Iterable, Protocol, Type
 import pandas as pd
 from astropy.io import fits
 from astropy.table import Table
+from rich.console import RenderResult
+from rich.text import Text
 
 from swift_comet_pipeline.data_ingestion.epoch_index.find_epoch_index_entry import (
     get_epoch_index_entry,
@@ -65,7 +67,7 @@ from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis
 
 
 # -----------------------------------------------------------------------------
-# Product kinds (kind chooses filename stem & codec; key chooses instance)
+# Product kinds (kind chooses filename stem & codec, key chooses instance)
 # -----------------------------------------------------------------------------
 class ProductKind(StrEnum):
     # Ingestion / logs
@@ -99,13 +101,6 @@ class ProductKind(StrEnum):
     aperture_water_production = "aperture water production rate"
     # radial profile continuum subtraction
     radial_profile_water_production = "water production from vectorial fitting"
-
-
-# TODO: remove old code
-# class ProductClassification(StrEnum):
-#     data_ingestion = auto()
-#     epoch_subpipeline = auto()
-#     water_production = auto()
 
 
 # -----------------------------------------------------------------------------
@@ -154,9 +149,12 @@ class ProductReference:
     kind: ProductKind
     key: KeyLike = GlobalKey()
 
-    def __str__(self):
+    def __str__(self) -> str:
         keystr = str(self.key)
         return f"[{self.kind.value:<30}]: {keystr}"
+
+    def __rich_console__(self, *_) -> RenderResult:
+        yield Text(self.__str__(), end="")
 
 
 # -----------------------------------------------------------------------------
@@ -265,16 +263,31 @@ KeySubdirFunc = Callable[[KeyLike, CometProjectConfig], Path]
 
 
 class SubdirResolver:
+    """
+    Provides paths inside our project for a KeyLike, based on a template OR function
+    Registering a template or function is mutually exclusive - we want a non-ambiguous path resolution
+    """
+
     def __init__(self):
         self._formats: Dict[Type, str] = {}
         self._funcs: Dict[Type, KeySubdirFunc] = {}
 
     def register_template(self, key_type: Type, subdir_template: str) -> None:
-        # TODO: cross-check for a registered function for key_type and throw exception
+        if key_type in self._funcs:
+            print(
+                f"SubdirResolver already has function to resolve keys of type {key_type}!"
+            )
+            print(f"Not registering the template {subdir_template}.")
+            return
         self._formats[key_type] = subdir_template
 
     def register_func(self, key_type: Type, func: KeySubdirFunc) -> None:
-        # TODO: cross-check for a registered template for key_type and throw exception
+        if key_type in self._formats:
+            print(
+                f"SubdirResolver already has function to resolve keys of type {key_type}!"
+            )
+            print(f"Not registering the function template.")
+            return
         self._funcs[key_type] = func
 
     def resolve_relative_path(self, cfg: CometProjectConfig, key: KeyLike) -> Path:

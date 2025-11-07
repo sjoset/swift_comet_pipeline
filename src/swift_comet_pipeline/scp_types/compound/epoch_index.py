@@ -10,6 +10,7 @@ from swift_comet_pipeline.scp_types.serialization.structure_unstructure import (
 )
 
 
+# TODO: add position angles for velocity/dust and sun/ion tail
 @dataclass(frozen=True)
 class EpochIndexEntry:
     epoch_id: EpochID
@@ -37,7 +38,7 @@ EpochIndex: TypeAlias = list[EpochIndexEntry]
 
 def epoch_index_from_json(json_dict: dict) -> EpochIndex | None:
     """
-    Get EpochIndex from json stored in the current project
+    Get EpochIndex from json stored in a dictionary for serialization
     Sorts entries by epoch_id
     """
     ei = from_unstructured(obj=json_dict, c=EpochIndex)
@@ -50,70 +51,3 @@ def json_from_epoch_index(epoch_index: EpochIndex) -> list[dict]:
         to_unstructured(epoch_index_entry) for epoch_index_entry in epoch_index
     ]
     return dict_list
-
-
-# TODO: clean old code
-
-# def epoch_index_from_json_old(json_dict: dict) -> EpochIndex | None:
-#     # Read epoch index from file json file
-#
-#     entry_list = [EpochIndexEntry(**entry) for entry in json_dict]
-#
-#     typed_entries = []
-#     for entry in entry_list:
-#         observation_time = pd.Timestamp(entry.observation_time)
-#         epoch_length = pd.to_timedelta(entry.epoch_length)
-#         t_p = TimeDelta(entry.time_from_perihelion * u.day)  # type: ignore
-#
-#         if isinstance(observation_time, NaTType):
-#             print("Could not read observation time in epoch_index_from_json")
-#             return None
-#         if isinstance(epoch_length, NaTType):
-#             print("Could not read epoch length in epoch_index_from_json")
-#             return None
-#
-#         exposure_times = {}
-#         for filter_type, exp_t in entry.exposure_times.items():
-#             exposure_times[UvotFilter(filter_type)] = exp_t
-#
-#         exposure_times_no_veto = {}
-#         for filter_type, exp_t in entry.exposure_times_no_veto.items():
-#             exposure_times_no_veto[UvotFilter(filter_type)] = exp_t
-#
-#         new_entry = EpochIndexEntry(
-#             epoch_id=entry.epoch_id,
-#             observation_time=observation_time,
-#             epoch_length=epoch_length,
-#             rh_au=entry.rh_au,
-#             helio_v_kms=entry.helio_v_kms,
-#             delta_au=entry.delta_au,
-#             phase_angle_deg=entry.phase_angle_deg,
-#             km_per_pix=entry.km_per_pix,
-#             arcsecs_per_pix=entry.arcsecs_per_pix,
-#             time_from_perihelion=t_p,
-#             sky_motion_arcsec_min=entry.sky_motion_arcsec_min,
-#             sky_motion_pa=entry.sky_motion_pa,
-#             exposure_times=exposure_times,
-#             exposure_times_no_veto=exposure_times_no_veto,
-#         )
-#         typed_entries.append(new_entry)
-#
-#     return typed_entries
-#
-#
-# def json_from_epoch_index_old(epoch_index: EpochIndex) -> list[dict]:
-#     """
-#     Serialize a list of EpochIndexEntry
-#     """
-#     dict_list = [asdict(epoch) for epoch in epoch_index]
-#
-#     for entry_dict in dict_list:
-#         entry_dict["observation_time"] = entry_dict["observation_time"].strftime(
-#             "%Y-%m-%d %H:%M:%S"
-#         )
-#         entry_dict["epoch_length"] = str(entry_dict["epoch_length"])
-#         entry_dict["time_from_perihelion"] = float(
-#             entry_dict["time_from_perihelion"].to_value(u.day)  # type: ignore
-#         )
-#
-#     return dict_list

@@ -28,39 +28,12 @@ class BackgroundResult:
     params: dict
 
 
-# def background_result_to_dict(
-#     bg_result: BackgroundResult,
-# ) -> dict:
-#
-#     bg_dict = {
-#         "b_hat": float(bg_result.b_hat),
-#         "bg_shot_noise_variance": float(bg_result.bg_shot_noise_variance),
-#         "bg_num_pixels": float(bg_result.bg_num_pixels),
-#         "bg_estimator": str(bg_result.bg_estimator),
-#         "method": str(bg_result.method),
-#         "params": bg_result.params,
-#     }
-#
-#     return bg_dict
-
-
+# TODO: transfer this cattrs structure/unstructure
 def json_from_background_result(bgr: BackgroundResult) -> dict:
     """
     the 'params' dict should be pre-serialized to strings for json
     """
     return asdict(bgr)
-
-
-# def yaml_dict_to_background_result(raw_yaml: dict) -> BackgroundResult:
-#     bg = SimpleNamespace(**raw_yaml)
-#     return BackgroundResult(
-#         b_hat=float(bg.b_hat),
-#         bg_shot_noise_variance=float(bg.bg_shot_noise_variance),
-#         bg_num_pixels=float(bg.bg_num_pixels),
-#         bg_estimator=BackgroundValueEstimator(bg.bg_estimator),
-#         method=BackgroundDeterminationMethod(bg.method),
-#         params=bg.params,
-#     )
 
 
 def background_result_from_json(json_dict: dict) -> BackgroundResult:

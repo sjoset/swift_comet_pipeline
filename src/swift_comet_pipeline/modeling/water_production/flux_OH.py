@@ -14,6 +14,7 @@ OHFlux: TypeAlias = ValueAndStandardDev
 # TODO: turn count_rates_to_flux into a [UvotFilter, float] dictionary based on response to OH fluorescence spectrum
 # The response ratio of the UVW1/UVW2 filters indicate that we get ~0.2 counts per count in UVW1 - so 1 count is worth ~5 times the flux
 
+# TODO: these units are wrong but they are effectively stripped anyway
 _flux_units = u.erg / (u.cm**2 * u.s)  # type: ignore
 _count_rates_to_flux_factor = {
     # this comes from an OH spectral model in Bodewits et. al 2019, via convolving the OH spectrum through the uw1 filter

@@ -44,6 +44,7 @@ class SwiftPipelineConfig:
     effective_areas: dict[UvotFilter, pathlib.Path]
 
 
+# TODO: just define the paths here and ditch the yaml
 @cache
 def read_swift_pipeline_config() -> SwiftPipelineConfig | None:
     script_path = pathlib.Path(os.path.realpath(os.path.dirname(__file__)))

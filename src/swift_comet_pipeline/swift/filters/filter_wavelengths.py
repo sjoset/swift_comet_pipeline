@@ -36,7 +36,7 @@ def average_wavelength_of_filter(filter_type: UvotFilter) -> u.Quantity:
 
 @cache
 def pivot_wavelength_of_filter(filter_type: UvotFilter) -> u.Quantity:
-    # TODO: document
+    # TODO: document & cite definition
 
     filter_effective_area = read_filter_effective_area(filter_type=filter_type)
     if filter_effective_area is None:
@@ -100,3 +100,21 @@ def effective_wavelength_of_filter_observing_solar_flux(
     )
 
     return (eff_wave_numerator / eff_wave_denominator) * u.nm  # type: ignore
+
+
+@cache
+def calculate_mid_wavelength_nm(
+    filter_one: UvotFilter, filter_two: UvotFilter, use_pivot: bool = False
+) -> float:
+
+    if use_pivot:
+        wave_func = pivot_wavelength_of_filter
+    else:
+        wave_func = effective_wavelength_of_filter_observing_solar_flux
+
+    lambda_one = wave_func(filter_type=filter_one).to_value(u.nm)  # type: ignore
+    lambda_two = wave_func(filter_type=filter_two).to_value(u.nm)  # type: ignore
+    assert isinstance(lambda_one, float)
+    assert isinstance(lambda_two, float)
+
+    return (lambda_one + lambda_two) / 2.0

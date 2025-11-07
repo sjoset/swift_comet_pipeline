@@ -10,7 +10,7 @@ from swift_comet_pipeline.swift.filters.filter_wavelengths import (
 
 
 # TODO: re-enable cache
-# @cache
+@cache
 def reddening_correction(
     dust_redness: DustReddeningPercent, filter_low: UvotFilter, filter_high: UvotFilter
 ) -> float:

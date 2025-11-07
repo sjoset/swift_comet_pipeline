@@ -51,7 +51,7 @@ def background_results_from_aperture(
     elif bg_estimator == BackgroundValueEstimator.mean:
         b_hat = bg_sigma_clip_stats.mean[0]
 
-    bg_shot_noise_variance = bg_sigma_clip_stats.var[0]
+    bg_shot_noise_variance = bg_sigma_clip_stats.mad_std[0] ** 2
     bg_num_pixels = bg_sigma_clip_stats.sum_aper_area[0].to_value(u.pix**2)  # type: ignore
 
     return BackgroundResult(

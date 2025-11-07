@@ -1,51 +1,83 @@
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.swift.filters.filter_wavelengths import (
+    calculate_mid_wavelength_nm,
     effective_wavelength_of_filter_observing_solar_flux,
-    pivot_wavelength_of_filter,
 )
 
 
-def recalculate_redness_under_filter_swap(
+# TODO: these are not necessary: use recalculate_redness_under_new_filter_pair()
+# def recalculate_redness_under_filter_swap(
+#     known_redness: DustReddeningPercent,
+#     filter_to_drop: UvotFilter,
+#     filter_to_swap: UvotFilter,
+#     use_pivot_wavelengths: bool = False,
+# ) -> DustReddeningPercent:
+#     """
+#     Recalculates redness after changing one filter in the pair used to calculate known_redness
+#     filter_to_drop: one of the filters used to take measurement of known_redness
+#     filter_to_swap: replace the dropped filter with this filter
+#     """
+#
+#     if use_pivot_wavelengths:
+#         wave_func = pivot_wavelength_of_filter
+#     else:
+#         wave_func = effective_wavelength_of_filter_observing_solar_flux
+#
+#     wave_to_drop_ang = float(wave_func(filter_to_drop).to_value(u.angstrom))  # type: ignore
+#     wave_to_swap_ang = float(wave_func(filter_to_swap).to_value(u.angstrom))  # type: ignore
+#
+#     return recalculate_redness_under_swap(
+#         known_redness=known_redness,
+#         wavelength_to_drop_angstrom=wave_to_drop_ang,
+#         wavelength_to_swap_angstrom=wave_to_swap_ang,
+#     )
+#
+#
+# def recalculate_redness_under_swap(
+#     known_redness: DustReddeningPercent,
+#     wavelength_to_drop_angstrom: float,
+#     wavelength_to_swap_angstrom: float,
+# ) -> DustReddeningPercent:
+#     """
+#     Same function as recalculate_redness_under_filter_swap, expressed purely in terms of the wavelengths involved in the calculation
+#     and not the UvotFilter types
+#     """
+#     wave_diff = wavelength_to_swap_angstrom - wavelength_to_drop_angstrom
+#     return known_redness / (1 + (known_redness / 200000) * wave_diff)
+
+
+# TODO: decide on nm or angstroms for these filter functions and add xxx_units() version of the functions for when we don't care about speed
+def recalculate_redness_with_new_filter_pair(
     known_redness: DustReddeningPercent,
-    filter_to_drop: UvotFilter,
-    filter_to_swap: UvotFilter,
-    use_pivot: bool = False,
+    old_mid_wave_nm: float,
+    new_filter_one: UvotFilter,
+    new_filter_two: UvotFilter,
 ) -> DustReddeningPercent:
-
-    if use_pivot:
-        wave_func = pivot_wavelength_of_filter
-    else:
-        wave_func = effective_wavelength_of_filter_observing_solar_flux
-
-    wave_to_drop_ang = float(wave_func(filter_to_drop).to_value(u.angstrom))  # type: ignore
-    wave_to_swap_ang = float(wave_func(filter_to_swap).to_value(u.angstrom))  # type: ignore
-
-    return recalculate_redness_under_swap(
+    """
+    Calculates the new redness observed at old_mid_wave_nm by finding the new midpoint
+    wavelength and transforming the redness relative to the new midpoint
+    """
+    new_mid_wave_angstrom = 10 * calculate_mid_wavelength_nm(
+        filter_one=new_filter_one, filter_two=new_filter_two
+    )
+    return recalculate_redness_at_new_wavelength_midpoint(
         known_redness=known_redness,
-        wavelength_to_drop_angstrom=wave_to_drop_ang,
-        wavelength_to_swap_angstrom=wave_to_swap_ang,
+        old_mid_wave_angstrom=old_mid_wave_nm * 10,
+        new_mid_wave_angstrom=new_mid_wave_angstrom,
     )
 
 
-def recalculate_redness_under_swap(
-    known_redness: DustReddeningPercent,
-    wavelength_to_drop_angstrom: float,
-    wavelength_to_swap_angstrom: float,
-) -> DustReddeningPercent:
-
-    wave_diff = wavelength_to_swap_angstrom - wavelength_to_drop_angstrom
-    # print(
-    #     f"Wavelength difference between dropped {wavelength_to_drop_angstrom} and swapped in {wavelength_to_swap_angstrom}: {wave_diff} angstroms"
-    # )
-    return known_redness / (1 + (known_redness / 200000) * wave_diff)
-
-
-def recalculate_redness_under_new_filter_pair(
+def recalculate_redness_at_new_wavelength_midpoint(
     known_redness: DustReddeningPercent,
     old_mid_wave_angstrom: float,
     new_mid_wave_angstrom: float,
 ) -> DustReddeningPercent:
-
+    """
+    Takes a redness measured with a filter pair and transforms to the redness one would measure if using the new filter pair.
+    Assumes a linear normalized spectral gradient.
+    'Mid wave' refers to the wavelength halfway between the two filter wavelengths
+    """
+    # this factor comes from the normalized spectral gradient for 100% per 1000 angstroms
     gamma = 200000
 
     return (gamma * known_redness) / (
@@ -72,13 +104,13 @@ def demo_reddening_recalculation() -> None:
         effective_wavelength_of_filter_observing_solar_flux(UvotFilter.uvv)
         + effective_wavelength_of_filter_observing_solar_flux(UvotFilter.uw1)
     ) / 2
-    uw1_uvv_mid = float(uw1_uvv_mid_wave.to_value(u.angstrom))  # type: ignore
+    uw1_uvv_mid_ang = float(uw1_uvv_mid_wave.to_value(u.angstrom))  # type: ignore
 
     translated_rednesses = [
-        recalculate_redness_under_new_filter_pair(
+        recalculate_redness_at_new_wavelength_midpoint(
             known_redness=z[0],
             old_mid_wave_angstrom=y,
-            new_mid_wave_angstrom=uw1_uvv_mid,
+            new_mid_wave_angstrom=uw1_uvv_mid_ang,
         )
         for y, z in rdata.items()
     ]
@@ -91,10 +123,10 @@ def demo_reddening_recalculation() -> None:
         dust_redness_up = [z[0] + sigma * z[1] for z in rdata.values()]
         dust_redness_down = [z[0] - sigma * z[1] for z in rdata.values()]
         sigma_up = [
-            recalculate_redness_under_new_filter_pair(
+            recalculate_redness_at_new_wavelength_midpoint(
                 known_redness=z,
                 old_mid_wave_angstrom=y,
-                new_mid_wave_angstrom=uw1_uvv_mid,
+                new_mid_wave_angstrom=uw1_uvv_mid_ang,
             )
             - zorig
             for y, z, zorig in zip(
@@ -103,17 +135,17 @@ def demo_reddening_recalculation() -> None:
         ]
         sigma_down = [
             zorig
-            - recalculate_redness_under_new_filter_pair(
+            - recalculate_redness_at_new_wavelength_midpoint(
                 known_redness=z,
                 old_mid_wave_angstrom=y,
-                new_mid_wave_angstrom=uw1_uvv_mid,
+                new_mid_wave_angstrom=uw1_uvv_mid_ang,
             )
             for y, z, zorig in zip(
                 midpoint_lambdas, dust_redness_down, translated_rednesses
             )
         ]
-        print(f"{dust_redness_up=} {dust_redness_down=}")
-        print(f"{sigma=}, {sigma_down=}, {sigma_up=}")
+        # print(f"{dust_redness_up=} {dust_redness_down=}")
+        # print(f"{sigma=}, {sigma_down=}, {sigma_up=}")
 
         sig_errs = np.vstack([sigma_down, sigma_up])
 
@@ -134,7 +166,7 @@ def demo_reddening_recalculation() -> None:
             elinewidth=1.2,
             capsize=3,
         )
-        print("----\n\n")
+        # print("----\n\n")
 
     plt.errorbar(
         measured_rednesses,

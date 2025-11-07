@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# from dataclasses import replace
 import os
 import pathlib
 import sys
@@ -26,8 +25,6 @@ from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
 )
 from swift_comet_pipeline.photometry.dust.reddening_translate import (
     demo_reddening_recalculation,
-    recalculate_redness_under_filter_swap,
-    recalculate_redness_under_new_filter_pair,
 )
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
 from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_config import (
@@ -59,10 +56,6 @@ from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry imp
 )
 from swift_comet_pipeline.scp_types.primitive.afrho_from_profile import (
     dataframe_from_afrho_from_radial_profile,
-)
-from swift_comet_pipeline.swift.filters.filter_wavelengths import (
-    effective_wavelength_of_filter_observing_solar_flux,
-    pivot_wavelength_of_filter,
 )
 
 
@@ -189,55 +182,56 @@ def first_with_build_status(
     )
 
 
-def build_product_reference(scp: Products, ref: ProductReference) -> None:
-
-    # print(f"Building {ref}")
-    ts = build_toposorter(scp=scp, target_product=ref)
-    stat_dict = calculate_statuses(scp=scp, ts=ts)
-
-    # show_pipeline_status_for_product(scp=scp, ref=ref)
-
-    first_ready = first_with_build_status(
-        stat_dict=stat_dict, status=ProductBuildStatus.ready
-    )
-    first_regen = first_with_build_status(
-        stat_dict=stat_dict, status=ProductBuildStatus.need_regen
-    )
-    first_stale = first_with_build_status(
-        stat_dict=stat_dict, status=ProductBuildStatus.stale
-    )
-
-    first_build = None
-    first_build = first_ready or first_regen or first_stale
-    if first_build is None:
-        print("Everything seems to be ready! Skipping build.")
-        print("")
-        return
-
-    # print("")
-    # print(f"Ready to build: {first_build}")
-    do_build(scp=scp, ref=first_build)
-    scp.regenerate()
-    # TODO: instead of one-shot, loop until we are done
+# def build_product_reference(
+#     scp: Products, ref: ProductReference, verbose: bool = False, force: bool = False
+# ) -> None:
+#
+#     if verbose:
+#         print(f"Calculating dependencies for {ref.kind} --> {ref.key}")
+#
+#     if force:
+#         print(f"Building {ref.kind} --> {ref.key}")
+#         do_build(scp=scp, ref=ref)
+#         return
+#
+#     ts = build_toposorter(scp=scp, target_product=ref)
+#     stat_dict = calculate_statuses(scp=scp, ts=ts)
+#
+#     # show_pipeline_status_for_product(scp=scp, ref=ref)
+#
+#     first_ready = first_with_build_status(
+#         stat_dict=stat_dict, status=ProductBuildStatus.ready
+#     )
+#     first_regen = first_with_build_status(
+#         stat_dict=stat_dict, status=ProductBuildStatus.need_regen
+#     )
+#     first_stale = first_with_build_status(
+#         stat_dict=stat_dict, status=ProductBuildStatus.stale
+#     )
+#
+#     first_build = None
+#     first_build = first_ready or first_regen or first_stale
+#     if first_build is None:
+#         print("Everything seems to be ready! Skipping build.")
+#         print("")
+#         return
+#
+#     if verbose:
+#         print(f"Building {first_build.kind} --> {first_build.key}")
+#     do_build(scp=scp, ref=first_build)
+#     scp.regenerate()
 
 
 def build_product_reference_loop(
     scp: Products, ref: ProductReference, verbose: bool = False
 ) -> None:
 
-    # console = Console()
-
     if verbose:
-        print(f"Building {ref.kind} --> {ref.key}")
+        print(f"Calculating dependencies for {ref.kind} --> {ref.key}")
 
     while True:
         ts = build_toposorter(scp=scp, target_product=ref)
         stat_dict = calculate_statuses(scp=scp, ts=ts)
-        # print("")
-        # print("------- build status ---------")
-        # for ref, stat in stat_dict.items():
-        #     console.print(f"{ref} --> ", end="")
-        #     console.print(stat)
 
         show_pipeline_status_for_product(scp=scp, ref=ref)
 
@@ -297,7 +291,6 @@ def test_epoch_index_loading(scp: Products) -> None:
 
     for epoch in epoch_index:
         print("----")
-        # print(epoch)
         print(
             epoch.epoch_id,
             "\t",
@@ -308,10 +301,8 @@ def test_epoch_index_loading(scp: Products) -> None:
             epoch.observation_time,
         )
 
-    # epoch_index_sorted = sorted(epoch_index, key=lambda x: x.epoch_id, reverse=True)
-    # print(epoch_index_sorted)
 
-
+# TODO: make this take arguments
 def test_fits_loading(scp: Products) -> None:
 
     target_ref = ProductReference(
@@ -342,6 +333,7 @@ def test_fits_loading(scp: Products) -> None:
     plot_images_multi(images=[fits_sum.data, fits_median.data], comet_centers=None)
 
 
+# TODO: make this take arguments
 def test_background_result_loading(scp: Products) -> None:
     target_ref = ProductReference(
         kind=ProductKind.background_determination,
@@ -377,25 +369,6 @@ def test_aperture_analysis_loading(
     pkey = awp_prefs[0].key
     assert isinstance(pkey, EpochSubpipelineKey)
 
-    # target_ref = ProductReference(
-    #     kind=ProductKind.annular_aperture_photometry_analysis,
-    #     key=EpochSubpipelineKey(
-    #         # epoch_id="000_2014_Aug_14",
-    #         # epoch_id="001_2014_Nov_05",
-    #         # epoch_id="003_2015_Apr_28",
-    #         # epoch_id="005_2015_Aug_11",
-    #         epoch_id="008_2016_Mar_14",
-    #         # epoch_id="009_2016_Apr_10",
-    #         filter_type=UvotFilter.uw2,
-    #         stacking_method=StackingMethod.summation,
-    #     ),
-    # )
-    # pkey = target_ref.key
-    # assert isinstance(pkey, EpochSubpipelineKey)
-
-    # aaa_df = scp.load_annular_aperture_analysis(key=pkey)
-    # assert aaa_df is not None
-
     aapa_load_res = scp.load_annular_aperture_analysis(key=pkey)
     assert aapa_load_res is not None
     aapa, metadata = aapa_load_res
@@ -409,31 +382,12 @@ def test_aperture_analysis_loading(
         aapa_df.cumulative_area_scaled_median, window_length=20, polyorder=2
     )
 
-    # plt.scatter(x=aaa_df.aperture_r_km, y=aaa_df.cumulative_sum, color="#688894")
-    # plt.scatter(
-    #     x=aaa_df.aperture_r_km, y=aaa_df.cumulative_area_scaled_median, color="#688894"
-    # )
-
     plt.plot(
         aapa_df.aperture_r_km, smoothed_total, label="smooth total", color="#688894"
     )
     plt.plot(
         aapa_df.aperture_r_km, smoothed_median, label="smooth median", color="#afac7c"
     )
-
-    # plt.errorbar(
-    #     aaa_df.aperture_r_km,
-    #     aaa_df.cumulative_sum,
-    #     yerr=aaa_df.cumulative_sum_err,
-    #     label="total",
-    # )
-    #
-    # plt.errorbar(
-    #     aaa_df.aperture_r_km,
-    #     aaa_df.cumulative_area_scaled_median,
-    #     yerr=aaa_df.cumulative_area_scaled_median_err,
-    #     label="total median",
-    # )
 
     for i in range(4):
         plt.fill_between(
@@ -462,23 +416,16 @@ def test_aperture_analysis_loading(
     plt.show()
 
 
-def test_radial_profile_smoothing(scp: Products) -> None:
+def test_radial_profile_smoothing(
+    scp: Products,
+    eid: EpochIndexEntry,
+    filter_type: UvotFilter,
+    stacking_method: StackingMethod = StackingMethod.summation,
+) -> None:
 
-    target_ref = ProductReference(
-        kind=ProductKind.annular_aperture_photometry_analysis,
-        key=EpochSubpipelineKey(
-            # epoch_id="003_2015_Apr_28",
-            # epoch_id="001_2014_Nov_05",
-            # epoch_id="004_2015_Jun_19",
-            # epoch_id="005_2015_Aug_11",
-            epoch_id="006_2015_Sep_01",
-            filter_type=UvotFilter.uw1,
-            stacking_method=StackingMethod.summation,
-        ),
+    pkey = EpochSubpipelineKey(
+        epoch_id=eid.epoch_id, filter_type=filter_type, stacking_method=stacking_method
     )
-    pkey = target_ref.key
-    assert isinstance(pkey, EpochSubpipelineKey)
-
     crpfc = scp.load_extracted_radial_profile(key=pkey)
 
     xs = crpfc.profile_axis_rs
@@ -489,6 +436,7 @@ def test_radial_profile_smoothing(scp: Products) -> None:
     plt.plot(xs, smoothed_ys, label="smoothed")
     plt.plot(crpfc.profile_axis_rs, crpfc.pixel_values, label="raw")
     # plt.plot(xs, crpfc.pixel_values / smoothed_ys, label="raw to smooth")
+
     plt.legend()
     plt.show()
 
@@ -833,17 +781,18 @@ def get_pipeline_status_for_product(
     return stat_dict[ref].build_status
 
 
-def show_pipeline_status_for_product(scp: Products, ref: ProductReference) -> None:
+def show_pipeline_status_for_product(
+    scp: Products, ref: ProductReference, silent_if_complete: bool = True
+) -> None:
     console = Console()
     ts = build_toposorter(scp=scp, target_product=ref)
     stat_dict = calculate_statuses(scp=scp, ts=ts)
     for ref, stat in stat_dict.items():
-        if stat.build_status == ProductBuildStatus.complete:
+        if stat.build_status == ProductBuildStatus.complete and silent_if_complete:
             continue
-        console.print(f"{ref} --> ", end="")
+        console.print(ref)
+        console.print(" -->  ", end="")
         console.print(stat)
-        # console.print(scp.path_for(ref=ref))
-        # console.print()
 
 
 def build_all_data_ingestion_products(scp: Products) -> None:
@@ -851,11 +800,14 @@ def build_all_data_ingestion_products(scp: Products) -> None:
     print("Checking data ingestion ...")
     epoch_index_ref = ProductReference(kind=ProductKind.epoch_index)
     build_product_reference_loop(scp=scp, ref=epoch_index_ref)
-    # show_pipeline_status_for_product(scp=scp, ref=epoch_index_ref)
+    show_pipeline_status_for_product(
+        scp=scp, ref=epoch_index_ref, silent_if_complete=False
+    )
 
 
 def stack_all_images(scp: Products, epoch_index: EpochIndex) -> None:
 
+    print(f"Stacking all images...")
     stackable_image_p_refs = enumerate_all_products_of(
         kind=ProductKind.stacked_image_with_background,
         epochs=epoch_index,
@@ -871,8 +823,9 @@ def stack_all_images(scp: Products, epoch_index: EpochIndex) -> None:
 
 def background_all_images(scp: Products, epoch_index: EpochIndex) -> None:
 
+    print(f"Determining background of all images...")
     bg_refs = enumerate_all_products_of(
-        kind=ProductKind.stacked_image_with_background,
+        kind=ProductKind.background_determination,
         epochs=epoch_index,
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
@@ -884,12 +837,28 @@ def background_all_images(scp: Products, epoch_index: EpochIndex) -> None:
         build_product_reference_loop(scp=scp, ref=bg)
 
 
+def background_subtract_all_images(scp: Products, epoch_index: EpochIndex) -> None:
+
+    print("Background subtracting all images...")
+    bg_sub_refs = enumerate_all_products_of(
+        kind=ProductKind.bg_subtracted_stacked_image,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+    )
+    for bg_sub in bg_sub_refs:
+        assert isinstance(bg_sub.key, EpochSubpipelineKey)
+        show_pipeline_status_for_product(scp=scp, ref=bg_sub)
+        build_product_reference_loop(scp=scp, ref=bg_sub)
+
+
 def all_aperture_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:
 
     print(f"Performing all aperture water analysis for:")
     for eid in epoch_index:
         print(
-            f"{eid.epoch_id} --> {eid.observation_time} | {eid.rh_au} AU | T-Tp: {eid.time_from_perihelion.to_value(u.day)} days"
+            f"{eid.epoch_id} --> {eid.observation_time} | {eid.rh_au} AU | T-Tp: {eid.time_from_perihelion.to_value(u.day)} days"  # type: ignore
         )
 
     # aperture analysis water production
@@ -910,7 +879,7 @@ def all_aperture_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:
     )
     for awp in incomplete_awp_prefs:
         assert isinstance(awp.key, ContinuumSubtractionKey)
-        # show_pipeline_status_for_product(scp=scp, ref=awp)
+        show_pipeline_status_for_product(scp=scp, ref=awp)
         build_product_reference_loop(scp=scp, ref=awp)
         # test_aperture_water_analysis_loading(scp=scp, ref=awp)
 
@@ -968,27 +937,69 @@ def main():
     epoch_index = scp.load_epoch_index()
     assert epoch_index is not None
 
-    # stack_all_images(scp=scp, epoch_index=epoch_index)
-    # background_all_images(scp=scp, epoch_index=epoch_index)
+    # ---------
 
-    all_aperture_water_analysis(scp=scp, epoch_index=[epoch_index[9]])
+    # TODO: batch mode: stack all, background all, radial profile all
+    # non-interactive
+    stack_all_images(scp=scp, epoch_index=epoch_index)
 
+    # interactive
+    background_all_images(scp=scp, epoch_index=epoch_index)
+
+    # non-interactive
+    background_subtract_all_images(scp=scp, epoch_index=epoch_index)
+
+    # TODO: aperture analyze all
+    # radial profile all
+    # aperture water production all
+    # radial water production all
+
+    # all_aperture_water_analysis(scp=scp, epoch_index=[epoch_index[7]])
+
+    # ---------
     # TODO: Jorda 2008 empirical water production rates for V-band
     # TODO: function for selecting epoch by date --> return closest observation epoch index entry
     # selected_epoch = np.argmin(t - [x.observation_time for x in epoch_index])
 
     # TODO: water production builders need to convert the redness given in config to their own values for the filters being used
+    # aperture is done - do the radial !!!!
+
+    # TODO: manual water calculation: show aperture vs r for oh/dust filters and allow picking windows to average over for counts to use for continuum subtraction
+    # Then either take a redness --> Q or use an expectation value for Q based on redness distribution
+    # Since this has counts we can calculate mag/flux etc. manually as well
 
     # TODO: blue spot detection, Q expectation value
+    # TODO: aperture photometry on asymmetric leftover after profile subtraction
 
+    # TODO: latex table generation from epoch index
+    # ---------
+
+    eid = epoch_index[7]
+
+    # ---------
+    # Radial profile extraction testing
+    pref = ProductReference(
+        kind=ProductKind.radial_profile_from_cone,
+        key=EpochSubpipelineKey(
+            epoch_id=eid.epoch_id,
+            filter_type=UvotFilter.ugrism,
+            stacking_method=StackingMethod.summation,
+        ),
+    )
+    # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
+    build_product_reference_loop(scp=scp, ref=pref, verbose=True)
+    # ---------
+
+    # ---------
+    # Aperture water analysis plotting
     # eid = epoch_index[4]
-    # test_aperture_water_analysis_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
+    test_aperture_water_analysis_plotting(
+        scp=scp,
+        eid=eid,
+        oh_filter=UvotFilter.uw1,
+        dust_filter=UvotFilter.uvv,
+        dust_redness=DustReddeningPercent(30.0),
+    )
     # test_aperture_water_analysis_plotting(
     #     scp=scp,
     #     eid=eid,
@@ -1003,23 +1014,23 @@ def main():
     #     dust_filter=UvotFilter.uvv,
     #     dust_redness=DustReddeningPercent(30.0),
     # )
-
-    eid = epoch_index[7]
+    # # ---------
 
     # test_radial_water_production_plotting(
     #     scp=scp,
     #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
+    #     oh_filter=UvotFilter.ugrism,
+    #     dust_filter=UvotFilter.uvv,
+    #     dust_redness=DustReddeningPercent(40.0),
+    # )
+
+    # test_radial_water_production_plotting(
+    #     scp=scp,
+    #     eid=eid,
+    #     oh_filter=UvotFilter.uw2,
     #     dust_filter=UvotFilter.uvv,
     #     dust_redness=DustReddeningPercent(30.0),
     # )
-    # # test_radial_water_production_plotting(
-    # #     scp=scp,
-    # #     eid=eid,
-    # #     oh_filter=UvotFilter.uw2,
-    # #     dust_filter=UvotFilter.uvv,
-    # #     dust_redness=DustReddeningPercent(30.0),
-    # # )
     # test_radial_water_production_plotting(
     #     scp=scp,
     #     eid=eid,
@@ -1053,57 +1064,11 @@ def main():
 
     # test_radial_profile_smoothing(scp=scp)
 
-    eid = epoch_index[11]
+    # eid = epoch_index[11]
     # test_aperture_analysis_loading(scp=scp, eid=eid, filter_type=UvotFilter.uw1)
     # test_aperture_analysis_loading(scp=scp, eid=eid, filter_type=UvotFilter.uvv)
 
-    x = DustReddeningPercent(15.00)
-
-    # new_redness = recalculate_redness_under_filter_swap(
-    #     known_redness=x,
-    #     filter_to_drop=UvotFilter.uw1,
-    #     filter_to_swap=UvotFilter.uuu,
-    #     use_pivot=False,
-    # )
-    # print(f"Redness: {x}% -->  {new_redness}%")
-    #
-    # new_redness = recalculate_redness_under_filter_swap(
-    #     known_redness=x,
-    #     filter_to_drop=UvotFilter.uw1,
-    #     filter_to_swap=UvotFilter.uuu,
-    #     use_pivot=True,
-    # )
-    # print(f"Redness: {x}% -->  {new_redness}%")
-    #
-    # r1 = recalculate_redness_under_filter_swap(
-    #     known_redness=x,
-    #     filter_to_drop=UvotFilter.uw1,
-    #     filter_to_swap=UvotFilter.uuu,
-    #     use_pivot=False,
-    # )
-    # print(f"Redness: {x}% -->  {r1}%")
-    #
-    # r2 = recalculate_redness_under_filter_swap(
-    #     known_redness=r1,
-    #     filter_to_drop=UvotFilter.uvv,
-    #     filter_to_swap=UvotFilter.ubb,
-    #     use_pivot=False,
-    # )
-    # print(f"Redness: {r1}% -->  {r2}%")
-    #
-    # uw1_uvv_mid_wave = (
-    #     effective_wavelength_of_filter_observing_solar_flux(UvotFilter.uvv)
-    #     + effective_wavelength_of_filter_observing_solar_flux(UvotFilter.uw1)
-    # ) / 2
-    # for d in np.linspace(2000, 9000, num=10):
-    #     r3 = recalculate_redness_under_new_filter_pair(
-    #         known_redness=x,
-    #         old_mid_wave_angstrom=d,
-    #         new_mid_wave_angstrom=uw1_uvv_mid_wave.to_value(u.angstrom),
-    #     )
-    #     print(f"Redness: {x}% at mid wave {d} -->  {r3}% at {uw1_uvv_mid_wave}")
-
-    demo_reddening_recalculation()
+    # demo_reddening_recalculation()
 
     # test_background_result_loading(scp=scp)
     # test_fits_loading(scp=scp)

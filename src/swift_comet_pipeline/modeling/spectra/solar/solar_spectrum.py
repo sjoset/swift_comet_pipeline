@@ -10,7 +10,8 @@ from swift_comet_pipeline.scp_types.primitive import *
 
 @cache
 def get_solar_spectrum() -> SolarSpectrum:
-    sun = Sun.from_default()
+    # sun = Sun.from_default()
+    sun = Sun.from_builtin("E490_2014")
 
     solar_lambdas_nm = sun.wave.to_value(u.nm)  # type: ignore
     spectral_irradiances_Wm2_nm = sun.fluxd.to_value(u.Watt / (u.m**2 * u.nm))  # type: ignore

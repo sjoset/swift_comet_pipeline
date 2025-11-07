@@ -27,7 +27,12 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 
 
 def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> None:
+    """
+    Build concentric annuli around the comet and take photometry for each, building a radial profile from the sum or median values in each aperture
+    See type AnnularAperturePhotometryAnalysis for complete list of what is calculated here
+    """
 
+    # TODO: magic numbers: take from config or calculate, but needs to be fixed across all epochs
     # parameters of analysis
     max_aperture_radius = 8e5 * u.km  # type: ignore
     num_concentric_apertures = 400

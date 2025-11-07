@@ -62,7 +62,11 @@ def extract_comet_radial_median_profile_from_cone(
     theta: float,
     cone_size: float,
 ) -> CometRadialProfileFromConicalRegion:
-    """Take a profile of radius r at angle theta, and use profiles from theta +/- cone_size to calculate a median pixel value at each radius"""
+    """
+    Take a profile of radius r at angle theta, and use profiles from theta +/- cone_size to calculate a median pixel value at each radius
+
+    Angles are given in radians, cone_size is angular size in radians from the center, so that the whole angular cone size is 2*cone_size
+    """
     extraction_cone_mid_angle = theta
     extraction_cone_min_angle = extraction_cone_mid_angle - cone_size
     extraction_cone_max_angle = extraction_cone_mid_angle + cone_size

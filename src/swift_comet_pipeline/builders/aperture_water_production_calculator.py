@@ -15,6 +15,9 @@ from swift_comet_pipeline.modeling.water_production.num_OH_to_Q import (
     num_oh_within_r_to_q_h2o_vectorial,
 )
 from swift_comet_pipeline.photometry.dust.beta_parameter import beta_parameter
+from swift_comet_pipeline.photometry.dust.reddening_translate import (
+    recalculate_redness_with_new_filter_pair,
+)
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     EpochSubpipelineKey,
     ProductReference,
@@ -27,6 +30,9 @@ from swift_comet_pipeline.scp_types.primitive.annular_aperture_photometry_analys
 )
 from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
     aperture_water_production_analysis_from_dataframe,
+)
+from swift_comet_pipeline.swift.filters.filter_wavelengths import (
+    calculate_mid_wavelength_nm,
 )
 
 
@@ -71,6 +77,7 @@ from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis
 def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     assert isinstance(ref.key, ContinuumSubtractionKey)
 
+    # gather the photometry results from the filters we are using as dust/oh
     oh_subpipe_key = EpochSubpipelineKey(
         epoch_id=ref.key.epoch_id,
         filter_type=ref.key.oh_filter,
@@ -93,6 +100,27 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     oh_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=oh_aapa)
     dust_aapa_df = dataframe_from_annular_aperture_photometry_analysis(aapa=dust_aapa)
 
+    # The product key holds the redness at a certain reference mid wavelength - convert the redness to the proper value
+    # for the filters in use while we do the calculations
+    # All of the products are stored on disk referring to the dust redness relative to redness_mid_wavelength_nm in the config file
+    untransformed_redness = ref.key.dust_redness_pct_per_hundred_nm
+    from_mid_wavelength = scp.cfg.redness_mid_wavelength_nm
+    to_mid_wavelength = calculate_mid_wavelength_nm(
+        filter_one=oh_subpipe_key.filter_type, filter_two=dust_subpipe_key.filter_type
+    )
+    transformed_dust_redness = np.round(
+        recalculate_redness_with_new_filter_pair(
+            known_redness=untransformed_redness,
+            old_mid_wave_nm=from_mid_wavelength,
+            new_filter_one=oh_subpipe_key.filter_type,
+            new_filter_two=dust_subpipe_key.filter_type,
+        )
+    )
+    print(
+        f"Transforming given redness of {untransformed_redness} at mid wave {from_mid_wavelength} to {transformed_dust_redness} at mid wave {to_mid_wavelength}."
+    )
+
+    # check that the annular apertures are all the same size
     # TODO: rewrite using an aperture metadata dataclass
     assert (
         oh_metadata["max_aperture_radius_km"] == dust_metadata["max_aperture_radius_km"]
@@ -104,7 +132,8 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
     assert np.sum(oh_aapa_df.aperture_r_km - dust_aapa_df.aperture_r_km) == 0.0
 
     beta = beta_parameter(
-        dust_redness=ref.key.dust_redness_pct_per_hundred_nm,
+        # dust_redness=ref.key.dust_redness_pct_per_hundred_nm_,
+        dust_redness=transformed_dust_redness,
         oh_filter=ref.key.oh_filter,
         dust_filter=ref.key.dust_filter,
     )
