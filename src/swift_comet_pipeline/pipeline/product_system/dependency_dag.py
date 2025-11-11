@@ -99,6 +99,11 @@ class ProductStatus:
         yield t
 
 
+def get_mtime_tolerance_threshold() -> u.Quantity:
+    return 30 * u.day  # type: ignore
+    # return 24 * u.hour
+
+
 def safe_mtime(scp: Products, ref: ProductReference) -> float | None:
     p = scp.path_for(ref=ref)
     if p is None:
@@ -125,7 +130,7 @@ def calculate_statuses(
     # a product can be newer than a parent by amount of seconds below - this allows the subpipelines to be run within this timeframe and be considered consistent
     # because of the inconsistent way that the dependency graph is built - it can change the order of products from subpipelines, which causes false staleness
     # this happens for water production calculations because they pull from a dust and oh subpipeline
-    mtime_tolerance_threshold_s = (24 * u.hour).to_value(u.s)
+    mtime_tolerance_threshold_s = float(get_mtime_tolerance_threshold().to_value(u.s))  # type: ignore
 
     statuses = {}
     # fill in the status of each product, from first to be built in dep tree to last
@@ -239,3 +244,22 @@ def calculate_statuses(
         statuses[ref] = status_factory(build_status=ProductBuildStatus.complete)
 
     return statuses
+
+
+def first_with_build_status(
+    stat_dict: dict[ProductReference, ProductStatus], status: ProductBuildStatus
+) -> ProductReference | None:
+
+    return next(
+        (ref for ref, stat in stat_dict.items() if stat.build_status == status),
+        None,
+    )
+
+
+def get_pipeline_status_for_product(
+    scp: Products, ref: ProductReference
+) -> ProductBuildStatus:
+
+    ts = build_toposorter(scp=scp, target_product=ref)
+    stat_dict = calculate_statuses(scp=scp, ts=ts)
+    return stat_dict[ref].build_status

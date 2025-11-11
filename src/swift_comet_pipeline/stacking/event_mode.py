@@ -38,7 +38,6 @@ from swift_comet_pipeline.swift.coincidence_correct.coincidence_correct_map impo
     coincidence_correction_factor_map,
 )
 from swift_comet_pipeline.swift.mission.time_conversion import uvot_time_to_astropy_time
-from swift_comet_pipeline.tui.tui_common import wait_for_key
 
 
 # TODO: add method for summation event-mode stacking that tracks the pixel offset as a function of time,
@@ -182,7 +181,7 @@ def event_mode_fits_to_time_binned_image(
         )
         print(f"{type(precursor_img.img)=}")
         print("Press any key to continue")
-        wait_for_key()
+        exit(1)
 
     # the data stored in the FITS is read into '.img' - in event mode case, this is a BinTableHDU and not a numpy image array
     ev_table: fits.FITS_rec = precursor_img.img  # type: ignore
