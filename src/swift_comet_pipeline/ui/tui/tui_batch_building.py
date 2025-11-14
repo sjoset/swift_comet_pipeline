@@ -109,6 +109,23 @@ def all_radial_profile_extraction(scp: Products, epoch_index: EpochIndex) -> Non
         build_product_reference_loop(scp=scp, ref=rp_ref)
 
 
+def all_radial_profile_subtracted_images(
+    scp: Products, epoch_index: EpochIndex
+) -> None:
+    print("Generating all radial profile subtraction images...")
+    rp_refs = enumerate_all_products_of(
+        kind=ProductKind.radial_profile_subtracted,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+    )
+    for rp_ref in rp_refs:
+        assert isinstance(rp_ref.key, EpochSubpipelineKey)
+        show_pipeline_status_for_product(scp=scp, ref=rp_ref)
+        build_product_reference_loop(scp=scp, ref=rp_ref)
+
+
 def all_afrho_from_apertures(scp: Products, epoch_index: EpochIndex) -> None:
     print("Calculating afrho from aperture photometry...")
     afrho_refs = enumerate_all_products_of(

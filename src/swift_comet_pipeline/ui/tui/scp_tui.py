@@ -21,8 +21,13 @@ from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_conf
 from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
+from swift_comet_pipeline.scp_types.compound.epoch_index import (
+    EpochIndex,
+    EpochIndexEntry,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+    ContinuumSubtractionKey,
     EpochSubpipelineKey,
     ProductKind,
     ProductReference,
@@ -30,6 +35,7 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
 )
 from swift_comet_pipeline.tests.common.pipeline_tests import (
     test_aperture_water_analysis_plotting,
+    test_fits_loading,
 )
 from swift_comet_pipeline.ui.tui.tui_batch_building import (
     all_afrho_from_apertures,
@@ -37,6 +43,7 @@ from swift_comet_pipeline.ui.tui.tui_batch_building import (
     all_aperture_analysis,
     all_aperture_water_analysis,
     all_radial_profile_extraction,
+    all_radial_profile_subtracted_images,
     all_radial_profile_water_analysis,
     background_all_images,
     background_subtract_all_images,
@@ -161,6 +168,38 @@ def read_or_create_project_config(
 #     )
 
 
+def fixed_aperture_results(
+    scp: Products,
+    key: ContinuumSubtractionKey,
+    fixed_aperture_radius_km: float,
+    fixed_aperture_window_km: float,
+) -> pd.DataFrame:
+    """
+    Takes the aperture water production results from the given ContinuumSubtractionKey
+    and returns the same dataframe, but limited to radial distances between
+    (fixed_r - window) and (fixed_r + window)
+    """
+
+    awpa = scp.load_aperture_water_production_analysis(key=key)
+    awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
+
+    df = awpa_df[
+        (awpa_df.aperture_r_km < (fixed_aperture_radius_km + fixed_aperture_window_km))
+        & (
+            awpa_df.aperture_r_km
+            > (fixed_aperture_radius_km - fixed_aperture_window_km)
+        )
+    ]
+
+    assert isinstance(df, pd.DataFrame)
+    return df
+
+
+def assemble_aperture_results(scp: Products, epoch_index: EpochIndex) -> None:
+
+    pass
+
+
 def main():
     # we don't care about these particular warnings
     warnings.resetwarnings()
@@ -193,6 +232,8 @@ def main():
 
     # ---------
 
+    # TODO: EpochIndexEntry should have rh_au tagged with negative for pre-perihelion
+
     # TODO: batch mode: stack all, background all, radial profile all
     # non-interactive
     stack_all_images(scp=scp, epoch_index=epoch_index)
@@ -207,6 +248,8 @@ def main():
 
     all_radial_profile_extraction(scp=scp, epoch_index=epoch_index)
 
+    all_radial_profile_subtracted_images(scp=scp, epoch_index=epoch_index)
+
     all_afrho_from_apertures(scp=scp, epoch_index=epoch_index)
 
     all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
@@ -219,9 +262,6 @@ def main():
     # TODO: Jorda 2008 empirical water production rates for V-band
     # TODO: function for selecting epoch by date --> return closest observation epoch index entry
     # selected_epoch = np.argmin(t - [x.observation_time for x in epoch_index])
-
-    # TODO: water production builders need to convert the redness given in config to their own values for the filters being used
-    # aperture is done - do the radial !!!!
 
     # TODO: manual water calculation: show aperture vs r for oh/dust filters and allow picking windows to average over for counts to use for continuum subtraction
     # Then either take a redness --> Q or use an expectation value for Q based on redness distribution
@@ -241,7 +281,7 @@ def main():
         kind=ProductKind.radial_profile_from_cone,
         key=EpochSubpipelineKey(
             epoch_id=eid.epoch_id,
-            filter_type=UvotFilter.ugrism,
+            filter_type=UvotFilter.uw1,
             stacking_method=StackingMethod.summation,
         ),
     )
@@ -257,6 +297,7 @@ def main():
         eid=eid,
         oh_filter=UvotFilter.uw1,
         dust_filter=UvotFilter.uvv,
+        stacking_method=StackingMethod.summation,
         dust_redness=DustReddeningPercent(30.0),
     )
     # test_aperture_water_analysis_plotting(

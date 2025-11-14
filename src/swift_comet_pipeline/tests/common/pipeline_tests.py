@@ -185,15 +185,16 @@ def test_aperture_water_analysis_plotting(
     eid: EpochIndexEntry,
     oh_filter: UvotFilter,
     dust_filter: UvotFilter,
+    stacking_method: StackingMethod,
     dust_redness: DustReddeningPercent,
-) -> None:
+):
 
     awp_prefs = enumerate_all_products_of(
         kind=ProductKind.aperture_water_production,
         epochs=[eid],
         oh_filters=[oh_filter],
         dust_filters=[dust_filter],
-        stacking_methods=[StackingMethod.summation],
+        stacking_methods=[stacking_method],
         dust_rednesses=[dust_redness],
     )
     if not scp.exists(awp_prefs[0]):
@@ -258,14 +259,14 @@ def test_aperture_water_analysis_plotting(
             color="#afac7c",
         )
 
-    # for i in range(4):
-    #     plt.fill_between(
-    #         water_df.aperture_r_km,
-    #         water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
-    #         water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
-    #         alpha=0.2,
-    #         color="#688894",
-    #     )
+    for i in range(4):
+        plt.fill_between(
+            water_df.aperture_r_km,
+            water_df.equivalent_q_h2o_sum + i * water_df.equivalent_q_h2o_sum_err,
+            water_df.equivalent_q_h2o_sum - i * water_df.equivalent_q_h2o_sum_err,
+            alpha=0.2,
+            color="#301e2a",
+        )
 
     # for i in range(4):
     #     plt.fill_between(
@@ -358,11 +359,12 @@ def test_aperture_water_analysis_plotting(
     # plt.xscale("log")
 
     # plt.xlim(0, 500000)
-    plt.ylim(
-        1e26,
-    )
+    # plt.ylim(
+    #     1e26,
+    # )
     plt.title(f"OH filter: {str(oh_filter)}  Dust filter: {str(dust_filter)}")
-    plt.show()
+    # plt.show()
+    return plt.gcf()
 
 
 def test_radial_profile_smoothing(
@@ -501,7 +503,8 @@ def test_fits_loading(scp: Products) -> None:
         print(f"fits image of {target_ref} failed to load!")
         return
 
-    plot_images_multi(images=[fits_sum.data, fits_median.data], comet_centers=None)
+    _ = plot_images_multi(images=[fits_sum.data, fits_median.data], comet_centers=None)
+    plt.show()
 
 
 def test_obs_log_metadata(scp: Products) -> None:

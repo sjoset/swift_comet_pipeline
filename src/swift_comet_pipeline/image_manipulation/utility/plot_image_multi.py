@@ -5,7 +5,10 @@ from astropy.visualization import ZScaleInterval
 from swift_comet_pipeline.scp_types.primitive import *
 
 
-def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None):
+def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None = None):
+    """
+    Returns a figure to make things like marimo happy
+    """
 
     zscale = ZScaleInterval()
 
@@ -13,7 +16,7 @@ def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None):
 
     num_images = len(images)
 
-    _, axs = plt.subplots(1, num_images, figsize=(12 * num_images, 12))
+    fig, axs = plt.subplots(1, num_images, figsize=(12 * num_images, 12))
 
     if len(images) == 1:
         axs = [axs]
@@ -39,5 +42,7 @@ def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None):
         ax.axvline(comet_center.x, color="b", alpha=0.15)
         ax.axhline(comet_center.y, color="b", alpha=0.15)
 
-    plt.show()
-    plt.close()
+    # plt.show()
+    # plt.close()
+
+    return fig

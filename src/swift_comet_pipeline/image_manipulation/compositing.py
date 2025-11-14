@@ -9,7 +9,8 @@ def build_composite_image(
 ) -> np.ndarray:
     # takes list of sprites of equal height and paste them into a canvas at positive x_offsets with sprite_key for transparency
     # the z-ordering is from first image to last: an image is overwritten by later images in the list
-    # if blend_images is True, then the pixels are pasted in as successive averages in their z-order
+    # blend_images decides whether each image is pasted in directly (blend=False), or blended by averaging with the pixels
+    #   that are already present (blend=True)
 
     if blend_images is None:
         blend_images = [False] * len(x_offsets)

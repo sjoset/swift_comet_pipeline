@@ -12,6 +12,9 @@ from swift_comet_pipeline.builders.orbit_downloader import (
 from swift_comet_pipeline.builders.radial_profile_extractor import (
     do_radial_profile_from_cone,
 )
+from swift_comet_pipeline.builders.radial_profile_subtractor import (
+    do_radial_profile_subtraction,
+)
 from swift_comet_pipeline.builders.radial_profile_water_production import (
     do_radial_profile_water_production,
 )
@@ -82,6 +85,9 @@ def do_build(scp: Products, ref: ProductReference) -> None:
 
     if ref.kind == ProductKind.radial_profile_from_cone:
         do_radial_profile_from_cone(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.radial_profile_subtracted:
+        do_radial_profile_subtraction(scp=scp, ref=ref)
 
     if ref.kind == ProductKind.aperture_water_production:
         do_aperture_water_production(scp=scp, ref=ref)

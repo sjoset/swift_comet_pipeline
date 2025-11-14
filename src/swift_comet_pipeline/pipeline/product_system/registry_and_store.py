@@ -90,6 +90,9 @@ class ProductKind(StrEnum):
     annular_aperture_photometry_analysis = "annular aperture photometry"
     radial_profile_from_cone = "radial profile from cone"
 
+    # radial profile subtracted image
+    radial_profile_subtracted = "image with radial profile subtracted"
+
     # afrho
     afrho_from_aperture_photometry_analysis = "Afrho from aperture photometry"
     afrho_from_radial_profile = "Afrho from radial profiles"
@@ -611,6 +614,22 @@ def add_epoch_subpipelines_to_registry(
                     deps=lambda p_ref: [
                         ProductReference(
                             kind=ProductKind.bg_subtracted_stacked_image, key=p_ref.key
+                        )
+                    ],
+                )
+            )
+
+            prof_sub_ref = ProductReference(
+                ProductKind.radial_profile_subtracted, key=epoch_subpipe_key
+            )
+            reg.register(
+                spec=ProductSpecification(
+                    ref=prof_sub_ref,
+                    filename_stem_template="radial_profile_subtracted",
+                    codec=InternalFITSImageCodec(),
+                    deps=lambda p_ref: [
+                        ProductReference(
+                            kind=ProductKind.radial_profile_from_cone, key=p_ref.key
                         )
                     ],
                 )
