@@ -102,6 +102,7 @@ class ProductStatus:
 def get_mtime_tolerance_threshold() -> u.Quantity:
     return 30 * u.day  # type: ignore
     # return 24 * u.hour
+    # return 1 * u.min
 
 
 def safe_mtime(scp: Products, ref: ProductReference) -> float | None:

@@ -86,7 +86,7 @@ def do_build(scp: Products, ref: ProductReference) -> None:
     if ref.kind == ProductKind.radial_profile_from_cone:
         do_radial_profile_from_cone(scp=scp, ref=ref)
 
-    if ref.kind == ProductKind.radial_profile_subtracted:
+    if ref.kind == ProductKind.radial_profile_subtracted_image:
         do_radial_profile_subtraction(scp=scp, ref=ref)
 
     if ref.kind == ProductKind.aperture_water_production:

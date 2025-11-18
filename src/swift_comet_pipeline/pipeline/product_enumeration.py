@@ -123,7 +123,7 @@ def _is_epoch_subpipeline_product(kind: ProductKind) -> bool:
         ProductKind.bg_subtracted_stacked_image,
         ProductKind.annular_aperture_photometry_analysis,
         ProductKind.radial_profile_from_cone,
-        ProductKind.radial_profile_subtracted,
+        ProductKind.radial_profile_subtracted_image,
         ProductKind.afrho_from_aperture_photometry_analysis,
         ProductKind.afrho_from_radial_profile,
     ]

@@ -51,6 +51,7 @@ from swift_comet_pipeline.ui.tui.tui_batch_building import (
     stack_all_images,
 )
 from swift_comet_pipeline.ui.tui.tui_common import (
+    build_product_reference,
     build_product_reference_loop,
 )
 
@@ -254,7 +255,7 @@ def main():
 
     all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
 
-    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index)
+    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, force=True)
 
     all_radial_profile_water_analysis(scp=scp, epoch_index=epoch_index)
 
@@ -273,7 +274,7 @@ def main():
     # TODO: latex table generation from epoch index
     # ---------
 
-    eid = epoch_index[7]
+    eid = epoch_index[8]
 
     # ---------
     # Radial profile extraction testing
@@ -281,7 +282,21 @@ def main():
         kind=ProductKind.radial_profile_from_cone,
         key=EpochSubpipelineKey(
             epoch_id=eid.epoch_id,
-            filter_type=UvotFilter.uw1,
+            filter_type=UvotFilter.uvv,
+            stacking_method=StackingMethod.summation,
+        ),
+    )
+    # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
+    build_product_reference_loop(scp=scp, ref=pref, verbose=True)
+    # ---------
+
+    # ---------
+    # Radial profile subtraction testing
+    pref = ProductReference(
+        kind=ProductKind.radial_profile_subtracted_image,
+        key=EpochSubpipelineKey(
+            epoch_id=eid.epoch_id,
+            filter_type=UvotFilter.uvv,
             stacking_method=StackingMethod.summation,
         ),
     )

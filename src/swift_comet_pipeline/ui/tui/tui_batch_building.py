@@ -114,7 +114,7 @@ def all_radial_profile_subtracted_images(
 ) -> None:
     print("Generating all radial profile subtraction images...")
     rp_refs = enumerate_all_products_of(
-        kind=ProductKind.radial_profile_subtracted,
+        kind=ProductKind.radial_profile_subtracted_image,
         epochs=epoch_index,
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
@@ -156,7 +156,10 @@ def all_afrho_from_radial_profiles(scp: Products, epoch_index: EpochIndex) -> No
         build_product_reference_loop(scp=scp, ref=afrho_ref)
 
 
-def all_aperture_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:
+# TODO: add forcing to the other functions
+def all_aperture_water_analysis(
+    scp: Products, epoch_index: EpochIndex, force: bool = False
+) -> None:
 
     print(f"Performing all aperture water analysis for:")
     for eid in epoch_index:
@@ -173,6 +176,7 @@ def all_aperture_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:
         stacking_methods=[StackingMethod.summation, StackingMethod.median],
         dust_rednesses=scp.dust_rednesses,
     )
+
     incomplete_awp_prefs = list(
         filter(
             lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
@@ -180,10 +184,17 @@ def all_aperture_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:
             awp_prefs,
         )
     )
-    for awp in incomplete_awp_prefs:
+
+    if force:
+        product_build_list = awp_prefs
+    else:
+        product_build_list = incomplete_awp_prefs
+
+    print(f"We have {len(product_build_list)} items to build.  Force is set to {force}")
+    for awp in product_build_list:
         assert isinstance(awp.key, ContinuumSubtractionKey)
         show_pipeline_status_for_product(scp=scp, ref=awp)
-        build_product_reference_loop(scp=scp, ref=awp)
+        build_product_reference_loop(scp=scp, ref=awp, force=force)
         # test_aperture_water_analysis_loading(scp=scp, ref=awp)
 
 

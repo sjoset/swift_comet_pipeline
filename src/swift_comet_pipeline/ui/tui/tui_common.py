@@ -29,48 +29,48 @@ def show_pipeline_status_for_product(
 
 
 # TODO: rewrite this to take bool for looping until the indicated product is built
-# def build_product_reference(
-#     scp: Products, ref: ProductReference, verbose: bool = False, force: bool = False
-# ) -> None:
-#
-#     if verbose:
-#         print(f"Calculating dependencies for {ref.kind} --> {ref.key}")
-#
-#     if force:
-#         print(f"Building {ref.kind} --> {ref.key}")
-#         do_build(scp=scp, ref=ref)
-#         return
-#
-#     ts = build_toposorter(scp=scp, target_product=ref)
-#     stat_dict = calculate_statuses(scp=scp, ts=ts)
-#
-#     # show_pipeline_status_for_product(scp=scp, ref=ref)
-#
-#     first_ready = first_with_build_status(
-#         stat_dict=stat_dict, status=ProductBuildStatus.ready
-#     )
-#     first_regen = first_with_build_status(
-#         stat_dict=stat_dict, status=ProductBuildStatus.need_regen
-#     )
-#     first_stale = first_with_build_status(
-#         stat_dict=stat_dict, status=ProductBuildStatus.stale
-#     )
-#
-#     first_build = None
-#     first_build = first_ready or first_regen or first_stale
-#     if first_build is None:
-#         print("Everything seems to be ready! Skipping build.")
-#         print("")
-#         return
-#
-#     if verbose:
-#         print(f"Building {first_build.kind} --> {first_build.key}")
-#     do_build(scp=scp, ref=first_build)
-#     scp.regenerate()
+def build_product_reference(
+    scp: Products, ref: ProductReference, verbose: bool = False, force: bool = False
+) -> None:
+
+    if verbose:
+        print(f"Calculating dependencies for {ref.kind} --> {ref.key}")
+
+    if force:
+        print(f"Building {ref.kind} --> {ref.key}")
+        do_build(scp=scp, ref=ref)
+        return
+
+    ts = build_toposorter(scp=scp, target_product=ref)
+    stat_dict = calculate_statuses(scp=scp, ts=ts)
+
+    # show_pipeline_status_for_product(scp=scp, ref=ref)
+
+    first_ready = first_with_build_status(
+        stat_dict=stat_dict, status=ProductBuildStatus.ready
+    )
+    first_regen = first_with_build_status(
+        stat_dict=stat_dict, status=ProductBuildStatus.need_regen
+    )
+    first_stale = first_with_build_status(
+        stat_dict=stat_dict, status=ProductBuildStatus.stale
+    )
+
+    first_build = None
+    first_build = first_ready or first_regen or first_stale
+    if first_build is None:
+        print("Everything seems to be ready! Skipping build.")
+        print("")
+        return
+
+    if verbose:
+        print(f"Building {first_build.kind} --> {first_build.key}")
+    do_build(scp=scp, ref=first_build)
+    scp.regenerate()
 
 
 def build_product_reference_loop(
-    scp: Products, ref: ProductReference, verbose: bool = False
+    scp: Products, ref: ProductReference, verbose: bool = False, force: bool = False
 ) -> None:
 
     if verbose:
@@ -83,8 +83,12 @@ def build_product_reference_loop(
         show_pipeline_status_for_product(scp=scp, ref=ref)
 
         if stat_dict[ref].build_status == ProductBuildStatus.complete:
-            # print(f"Product built!")
-            break
+            if force:
+                do_build(scp=scp, ref=ref)
+                break
+            else:
+                # print(f"Product built!")
+                break
 
         first_ready = first_with_build_status(
             stat_dict=stat_dict, status=ProductBuildStatus.ready

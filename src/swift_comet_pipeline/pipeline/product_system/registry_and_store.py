@@ -91,7 +91,7 @@ class ProductKind(StrEnum):
     radial_profile_from_cone = "radial profile from cone"
 
     # radial profile subtracted image
-    radial_profile_subtracted = "image with radial profile subtracted"
+    radial_profile_subtracted_image = "image with radial profile subtracted"
 
     # afrho
     afrho_from_aperture_photometry_analysis = "Afrho from aperture photometry"
@@ -620,7 +620,7 @@ def add_epoch_subpipelines_to_registry(
             )
 
             prof_sub_ref = ProductReference(
-                ProductKind.radial_profile_subtracted, key=epoch_subpipe_key
+                ProductKind.radial_profile_subtracted_image, key=epoch_subpipe_key
             )
             reg.register(
                 spec=ProductSpecification(

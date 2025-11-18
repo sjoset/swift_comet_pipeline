@@ -45,6 +45,6 @@ def do_radial_profile_subtraction(scp: Products, ref: ProductReference):
     rad_sub_fits.header["radial_profile_subtracted"] = True
 
     rad_sub_ref = ProductReference(
-        kind=ProductKind.radial_profile_subtracted, key=ref.key
+        kind=ProductKind.radial_profile_subtracted_image, key=ref.key
     )
     scp.save_fits_image(img=rad_sub_fits, ref=rad_sub_ref)

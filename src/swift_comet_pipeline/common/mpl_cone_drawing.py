@@ -59,8 +59,8 @@ def draw_extraction_cone(
         theta1=np.rad2deg(left_edge_rad),
         theta2=np.rad2deg(right_edge_rad),
         lw=2,
-        edgecolor="black",
-        alpha=0.2,
+        edgecolor="white",
+        alpha=0.3,
         linestyle="--",
     )
     ax.add_patch(arc)
