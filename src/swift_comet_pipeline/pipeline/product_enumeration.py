@@ -103,6 +103,7 @@ from swift_comet_pipeline.scp_types.primitive import *
 #     return stackable_list
 
 
+# TODO: we could possibly roll this into ProductKind as a property or hidden member and set it on init
 def _is_data_ingestion_product(kind: ProductKind) -> bool:
     data_ingestion_products = [
         ProductKind.observation_log_raw,
@@ -141,16 +142,12 @@ def _is_continuum_subtraction_product(kind: ProductKind) -> bool:
 def enumerate_subpipeline_product(
     kind: ProductKind,
     epochs: EpochIndex,
-    # oh_filters: list[UvotFilter],
-    # dust_filters: list[UvotFilter],
     filter_types: list[UvotFilter],
     stacking_methods: list[StackingMethod],
 ) -> list[ProductReference]:
     """
     Returns a list of product references of the given kind from all 'epochs' based on exposure times available for each filter
     """
-
-    # all_filters = list(set(oh_filters + dust_filters))
 
     # remove duplicate filters
     all_filters = list(set(filter_types))

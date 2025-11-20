@@ -1,6 +1,15 @@
+from functools import partial
+
+from joblib import Parallel, delayed
 import astropy.units as u
 from tqdm import tqdm
 
+from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
+    vectorial_model_settings_init,
+)
+from swift_comet_pipeline.modeling.vectorial.vectorial_model_cache import (
+    vectorial_model_cache_init,
+)
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
 from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
     ProductBuildStatus,
@@ -156,6 +165,11 @@ def all_afrho_from_radial_profiles(scp: Products, epoch_index: EpochIndex) -> No
         build_product_reference_loop(scp=scp, ref=afrho_ref)
 
 
+def parallel_loop_builder(scp: Products, ref: ProductReference, force: bool) -> None:
+    vectorial_model_settings_init(comet_project_config=scp.cfg)
+    build_product_reference_loop(scp=scp, ref=ref, force=force)
+
+
 # TODO: add forcing to the other functions
 def all_aperture_water_analysis(
     scp: Products, epoch_index: EpochIndex, force: bool = False
@@ -190,12 +204,18 @@ def all_aperture_water_analysis(
     else:
         product_build_list = incomplete_awp_prefs
 
-    print(f"We have {len(product_build_list)} items to build.  Force is set to {force}")
-    for awp in product_build_list:
-        assert isinstance(awp.key, ContinuumSubtractionKey)
-        show_pipeline_status_for_product(scp=scp, ref=awp)
-        build_product_reference_loop(scp=scp, ref=awp, force=force)
-        # test_aperture_water_analysis_loading(scp=scp, ref=awp)
+    # print(f"We have {len(product_build_list)} items to build.  Force is set to {force}")
+    # for awp in product_build_list:
+    #     assert isinstance(awp.key, ContinuumSubtractionKey)
+    #     show_pipeline_status_for_product(scp=scp, ref=awp)
+    #     build_product_reference_loop(scp=scp, ref=awp, force=force)
+    #     # test_aperture_water_analysis_loading(scp=scp, ref=awp)
+
+    # builder_func = partial(build_product_reference_loop, scp=scp, force=force)
+    builder_func = partial(parallel_loop_builder, scp=scp, force=force)
+    Parallel(n_jobs=-1, backend="loky")(
+        delayed(builder_func)(ref=x) for x in product_build_list
+    )
 
 
 def all_radial_profile_water_analysis(scp: Products, epoch_index: EpochIndex) -> None:

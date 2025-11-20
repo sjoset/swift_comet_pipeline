@@ -117,6 +117,9 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
         )
     )
     print(
+        f"Epoch ID: {ref.key.epoch_id}\t{ref.key.oh_filter} || {ref.key.dust_filter} || {ref.key.stacking_method}"
+    )
+    print(
         f"Transforming given redness of {untransformed_redness} at mid wave {from_mid_wavelength} to {transformed_dust_redness} at mid wave {to_mid_wavelength}."
     )
 

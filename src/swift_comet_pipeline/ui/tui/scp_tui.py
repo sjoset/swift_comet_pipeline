@@ -169,38 +169,6 @@ def read_or_create_project_config(
 #     )
 
 
-def fixed_aperture_results(
-    scp: Products,
-    key: ContinuumSubtractionKey,
-    fixed_aperture_radius_km: float,
-    fixed_aperture_window_km: float,
-) -> pd.DataFrame:
-    """
-    Takes the aperture water production results from the given ContinuumSubtractionKey
-    and returns the same dataframe, but limited to radial distances between
-    (fixed_r - window) and (fixed_r + window)
-    """
-
-    awpa = scp.load_aperture_water_production_analysis(key=key)
-    awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
-
-    df = awpa_df[
-        (awpa_df.aperture_r_km < (fixed_aperture_radius_km + fixed_aperture_window_km))
-        & (
-            awpa_df.aperture_r_km
-            > (fixed_aperture_radius_km - fixed_aperture_window_km)
-        )
-    ]
-
-    assert isinstance(df, pd.DataFrame)
-    return df
-
-
-def assemble_aperture_results(scp: Products, epoch_index: EpochIndex) -> None:
-
-    pass
-
-
 def main():
     # we don't care about these particular warnings
     warnings.resetwarnings()
@@ -255,7 +223,7 @@ def main():
 
     all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
 
-    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, force=True)
+    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index)
 
     all_radial_profile_water_analysis(scp=scp, epoch_index=epoch_index)
 
@@ -274,62 +242,62 @@ def main():
     # TODO: latex table generation from epoch index
     # ---------
 
-    eid = epoch_index[8]
-
-    # ---------
-    # Radial profile extraction testing
-    pref = ProductReference(
-        kind=ProductKind.radial_profile_from_cone,
-        key=EpochSubpipelineKey(
-            epoch_id=eid.epoch_id,
-            filter_type=UvotFilter.uvv,
-            stacking_method=StackingMethod.summation,
-        ),
-    )
-    # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
-    build_product_reference_loop(scp=scp, ref=pref, verbose=True)
-    # ---------
-
-    # ---------
-    # Radial profile subtraction testing
-    pref = ProductReference(
-        kind=ProductKind.radial_profile_subtracted_image,
-        key=EpochSubpipelineKey(
-            epoch_id=eid.epoch_id,
-            filter_type=UvotFilter.uvv,
-            stacking_method=StackingMethod.summation,
-        ),
-    )
-    # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
-    build_product_reference_loop(scp=scp, ref=pref, verbose=True)
-    # ---------
-
-    # ---------
-    # Aperture water analysis plotting
-    # eid = epoch_index[4]
-    test_aperture_water_analysis_plotting(
-        scp=scp,
-        eid=eid,
-        oh_filter=UvotFilter.uw1,
-        dust_filter=UvotFilter.uvv,
-        stacking_method=StackingMethod.summation,
-        dust_redness=DustReddeningPercent(30.0),
-    )
-    # test_aperture_water_analysis_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw2,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
-    # test_aperture_water_analysis_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uuu,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
+    # eid = epoch_index[8]
+    #
     # # ---------
+    # # Radial profile extraction testing
+    # pref = ProductReference(
+    #     kind=ProductKind.radial_profile_from_cone,
+    #     key=EpochSubpipelineKey(
+    #         epoch_id=eid.epoch_id,
+    #         filter_type=UvotFilter.uvv,
+    #         stacking_method=StackingMethod.summation,
+    #     ),
+    # )
+    # # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
+    # build_product_reference_loop(scp=scp, ref=pref, verbose=True)
+    # # ---------
+    #
+    # # ---------
+    # # Radial profile subtraction testing
+    # pref = ProductReference(
+    #     kind=ProductKind.radial_profile_subtracted_image,
+    #     key=EpochSubpipelineKey(
+    #         epoch_id=eid.epoch_id,
+    #         filter_type=UvotFilter.uvv,
+    #         stacking_method=StackingMethod.summation,
+    #     ),
+    # )
+    # # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
+    # build_product_reference_loop(scp=scp, ref=pref, verbose=True)
+    # # ---------
+    #
+    # # ---------
+    # # Aperture water analysis plotting
+    # # eid = epoch_index[4]
+    # test_aperture_water_analysis_plotting(
+    #     scp=scp,
+    #     eid=eid,
+    #     oh_filter=UvotFilter.uw1,
+    #     dust_filter=UvotFilter.uvv,
+    #     stacking_method=StackingMethod.summation,
+    #     dust_redness=DustReddeningPercent(30.0),
+    # )
+    # # test_aperture_water_analysis_plotting(
+    # #     scp=scp,
+    # #     eid=eid,
+    # #     oh_filter=UvotFilter.uw2,
+    # #     dust_filter=UvotFilter.uvv,
+    # #     dust_redness=DustReddeningPercent(30.0),
+    # # )
+    # # test_aperture_water_analysis_plotting(
+    # #     scp=scp,
+    # #     eid=eid,
+    # #     oh_filter=UvotFilter.uuu,
+    # #     dust_filter=UvotFilter.uvv,
+    # #     dust_redness=DustReddeningPercent(30.0),
+    # # )
+    # # # ---------
 
     # test_radial_water_production_plotting(
     #     scp=scp,
