@@ -73,7 +73,7 @@ _solar_colors_by_filter_pair = {
     ColorMagnitudeFilterPair.V_R: 0.356,
     ColorMagnitudeFilterPair.V_I: 0.701,
     # R_I = V_R - V_I
-    ColorMagnitudeFilterPair.R_I: 0.356 - 0.701,
+    ColorMagnitudeFilterPair.R_I: 0.701 - 0.356,
     ColorMagnitudeFilterPair.B_R: 1.005,
     # B_I = B_V + V_I
     ColorMagnitudeFilterPair.B_I: 0.653 + 0.701,

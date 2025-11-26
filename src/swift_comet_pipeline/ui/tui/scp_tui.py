@@ -223,7 +223,7 @@ def main():
 
     all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
 
-    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index)
+    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, n_jobs=4)
 
     all_radial_profile_water_analysis(scp=scp, epoch_index=epoch_index)
 

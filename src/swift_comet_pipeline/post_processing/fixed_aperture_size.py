@@ -27,37 +27,6 @@ from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
 )
 
 
-# def fixed_aperture_results_old(
-#     scp: Products,
-#     key: ContinuumSubtractionKey,
-#     fixed_aperture_radius_km: float,
-#     fixed_aperture_window_upper_km: float,
-#     fixed_aperture_window_lower_km: float,
-# ) -> pd.DataFrame:
-#     """
-#     Takes the aperture water production results from the given ContinuumSubtractionKey
-#     and returns the same dataframe, but limited to radial distances between
-#     (fixed_r - window) and (fixed_r + window)
-#     """
-#
-#     awpa = scp.load_aperture_water_production_analysis(key=key)
-#     awpa_df = dataframe_from_aperture_water_production_analysis(awpa=awpa)
-#
-#     df = awpa_df[
-#         (
-#             awpa_df.aperture_r_km
-#             < (fixed_aperture_radius_km + fixed_aperture_window_upper_km)
-#         )
-#         & (
-#             awpa_df.aperture_r_km
-#             > (fixed_aperture_radius_km - fixed_aperture_window_lower_km)
-#         )
-#     ]
-#
-#     assert isinstance(df, pd.DataFrame)
-#     return df
-
-
 def add_q_oh_columns(df: pd.DataFrame, oh_lifetime: float) -> pd.DataFrame:
     """
     Takes a dataframe with columns like ApertureWaterProductionAnalysisEntry and adds two columns,

@@ -7,9 +7,6 @@ from tqdm import tqdm
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     vectorial_model_settings_init,
 )
-from swift_comet_pipeline.modeling.vectorial.vectorial_model_cache import (
-    vectorial_model_cache_init,
-)
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
 from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
     ProductBuildStatus,
@@ -28,6 +25,11 @@ from swift_comet_pipeline.ui.tui.tui_common import (
     build_product_reference_loop,
     show_pipeline_status_for_product,
 )
+
+
+def parallel_loop_builder(scp: Products, ref: ProductReference, force: bool) -> None:
+    vectorial_model_settings_init(comet_project_config=scp.cfg)
+    build_product_reference_loop(scp=scp, ref=ref, force=force)
 
 
 def build_all_data_ingestion_products(scp: Products) -> None:
@@ -165,14 +167,9 @@ def all_afrho_from_radial_profiles(scp: Products, epoch_index: EpochIndex) -> No
         build_product_reference_loop(scp=scp, ref=afrho_ref)
 
 
-def parallel_loop_builder(scp: Products, ref: ProductReference, force: bool) -> None:
-    vectorial_model_settings_init(comet_project_config=scp.cfg)
-    build_product_reference_loop(scp=scp, ref=ref, force=force)
-
-
 # TODO: add forcing to the other functions
 def all_aperture_water_analysis(
-    scp: Products, epoch_index: EpochIndex, force: bool = False
+    scp: Products, epoch_index: EpochIndex, force: bool = False, n_jobs: int = -1
 ) -> None:
 
     print(f"Performing all aperture water analysis for:")
@@ -213,7 +210,7 @@ def all_aperture_water_analysis(
 
     # builder_func = partial(build_product_reference_loop, scp=scp, force=force)
     builder_func = partial(parallel_loop_builder, scp=scp, force=force)
-    Parallel(n_jobs=-1, backend="loky")(
+    Parallel(n_jobs=n_jobs, backend="loky")(
         delayed(builder_func)(ref=x) for x in product_build_list
     )
 
@@ -226,7 +223,8 @@ def all_radial_profile_water_analysis(scp: Products, epoch_index: EpochIndex) ->
         epochs=epoch_index,
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
-        stacking_methods=[StackingMethod.summation],
+        stacking_methods=scp.cfg.stacking_methods,
+        # stacking_methods=[StackingMethod.summation],
         dust_rednesses=scp.dust_rednesses,
     )
     incomplete_rwp_prefs = list(
