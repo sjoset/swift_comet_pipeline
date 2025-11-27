@@ -1,6 +1,7 @@
 from functools import cache
 
 import astropy.units as u
+import numpy as np
 
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     num_oh_from_vectorial_model_result,
@@ -74,10 +75,13 @@ def num_oh_within_r_to_q_h2o_vectorial(
         rh_au=rh_au, num_oh=num_oh.value, within_r=within_r
     )
 
-    sig_lower = abs(q - lower_Q)
-    sig_upper = abs(upper_Q - q)
+    var_lower = (q - lower_Q) ** 2
+    var_upper = (upper_Q - q) ** 2
+    total_sig = np.sqrt(var_lower + var_upper)
+    # sig_lower = abs(q - lower_Q)
+    # sig_upper = abs(upper_Q - q)
 
-    return ValueAndStandardDev(value=q, sigma=(sig_lower + sig_upper) / 2)
+    return ValueAndStandardDev(value=q, sigma=total_sig)
 
 
 # @u.quantity_input
