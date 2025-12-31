@@ -38,10 +38,15 @@ class CometProjectConfig:
     )
 
     oh_filters: list[UvotFilter] = field(
-        default_factory=lambda: [UvotFilter.uw1, UvotFilter.uw2]
+        default_factory=lambda: [UvotFilter.uw1, UvotFilter.uw2, UvotFilter.uuu]
     )
     dust_filters: list[UvotFilter] = field(
-        default_factory=lambda: [UvotFilter.uvv, UvotFilter.uuu, UvotFilter.ubb]
+        default_factory=lambda: [
+            UvotFilter.uvv,
+            UvotFilter.uuu,
+            UvotFilter.ubb,
+            UvotFilter.um2,
+        ]
     )
 
     # which dust rednesses do we use for computation?
