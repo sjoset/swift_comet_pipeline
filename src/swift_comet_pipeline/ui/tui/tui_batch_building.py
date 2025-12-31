@@ -20,14 +20,15 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     Products,
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndex
-from swift_comet_pipeline.scp_types.primitive.stacking_method import StackingMethod
 from swift_comet_pipeline.ui.tui.tui_common import (
     build_product_reference_loop,
     show_pipeline_status_for_product,
 )
 
 
-def parallel_loop_builder(scp: Products, ref: ProductReference, force: bool) -> None:
+def parallel_loop_builder(
+    scp: Products, ref: ProductReference, force: bool = False
+) -> None:
     vectorial_model_settings_init(comet_project_config=scp.cfg)
     build_product_reference_loop(scp=scp, ref=ref, force=force)
 
@@ -90,19 +91,36 @@ def background_subtract_all_images(scp: Products, epoch_index: EpochIndex) -> No
         build_product_reference_loop(scp=scp, ref=bg_sub)
 
 
-def all_aperture_analysis(scp: Products, epoch_index: EpochIndex) -> None:
+def all_aperture_analysis(
+    scp: Products, epoch_index: EpochIndex, n_jobs: int = -1
+) -> None:
+    # TODO: clean up the output from this now that the products are built in parallel
     print("Performing all aperture analysis...")
-    aa_refs = enumerate_all_products_of(
+    aa_prefs = enumerate_all_products_of(
         kind=ProductKind.annular_aperture_photometry_analysis,
         epochs=epoch_index,
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
         stacking_methods=scp.cfg.stacking_methods,
     )
-    for aa_ref in aa_refs:
-        assert isinstance(aa_ref.key, EpochSubpipelineKey)
-        show_pipeline_status_for_product(scp=scp, ref=aa_ref)
-        build_product_reference_loop(scp=scp, ref=aa_ref)
+    # for aa_ref in aa_refs:
+    #     assert isinstance(aa_ref.key, EpochSubpipelineKey)
+    #     show_pipeline_status_for_product(scp=scp, ref=aa_ref)
+    #     build_product_reference_loop(scp=scp, ref=aa_ref)
+
+    incomplete_aa_prefs = list(
+        filter(
+            lambda p: get_pipeline_status_for_product(scp=scp, ref=p)
+            != ProductBuildStatus.complete,
+            aa_prefs,
+        )
+    )
+
+    # builder_func = partial(build_product_reference_loop, scp=scp, force=force)
+    builder_func = partial(parallel_loop_builder, scp=scp)
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(builder_func)(ref=x) for x in incomplete_aa_prefs
+    )
 
 
 def all_radial_profile_extraction(scp: Products, epoch_index: EpochIndex) -> None:
@@ -184,7 +202,7 @@ def all_aperture_water_analysis(
         epochs=epoch_index,
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
-        stacking_methods=[StackingMethod.summation, StackingMethod.median],
+        stacking_methods=scp.cfg.stacking_methods,
         dust_rednesses=scp.dust_rednesses,
     )
 
@@ -224,7 +242,6 @@ def all_radial_profile_water_analysis(scp: Products, epoch_index: EpochIndex) ->
         oh_filters=scp.cfg.oh_filters,
         dust_filters=scp.cfg.dust_filters,
         stacking_methods=scp.cfg.stacking_methods,
-        # stacking_methods=[StackingMethod.summation],
         dust_rednesses=scp.dust_rednesses,
     )
     incomplete_rwp_prefs = list(
