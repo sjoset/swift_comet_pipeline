@@ -215,24 +215,27 @@ def main():
     # non-interactive
     background_subtract_all_images(scp=scp, epoch_index=epoch_index)
 
-    all_aperture_analysis(scp=scp, epoch_index=epoch_index)
-
+    # interactive
     all_radial_profile_extraction(scp=scp, epoch_index=epoch_index)
 
+    # non-interactive
     all_radial_profile_subtracted_images(scp=scp, epoch_index=epoch_index)
+
+    all_aperture_analysis(scp=scp, epoch_index=epoch_index)
 
     all_afrho_from_apertures(scp=scp, epoch_index=epoch_index)
 
-    all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
-
     all_radial_profile_water_analysis(scp=scp, epoch_index=epoch_index)
+
+    all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
 
     # if this is run first, we have vectorial models running in parallel trying to write to the cache in parallel and fail,
     # since all but the first will not be unique!
     # TODO: write a cache_all_vectorial_models() function so this doesn't happen, and we don't have to care about doing
     # radial water production before aperture
     # The other option is to run a vectorial model for the epoch before we start the parallel calculations, over in the builder
-    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, n_jobs=4)
+    # all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, n_jobs=4)
+    all_aperture_water_analysis(scp=scp, epoch_index=epoch_index)
 
     # ---------
     # TODO: Jorda 2008 empirical water production rates for V-band
