@@ -24,6 +24,8 @@ _count_rates_to_flux_factor = {
     UvotFilter.uw2: 5 * 1.2750906353215913e-12 * _flux_units,
     # TODO: obtain OH spectrum and do convolution vs filter response for uuu for something better than '1/6': it is ~6 times more sensitive at 308 nm
     UvotFilter.uuu: (1 / 6) * 1.2750906353215913e-12 * _flux_units,
+    # TODO: obtain OH spectrum and do convolution vs filter response for um2 for something better than 0.013: it is 1.3% as sensitive at 308 nm compared to uw1
+    UvotFilter.um2: (0.013) * 1.2750906353215913e-12 * _flux_units,
 }
 
 
