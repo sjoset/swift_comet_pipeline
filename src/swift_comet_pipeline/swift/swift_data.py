@@ -8,6 +8,9 @@ from itertools import product
 
 from astropy.io import fits
 
+# from swift_comet_pipeline.data_ingestion.observation_log.fits_header_extraction import (
+#     event_mode_header_to_WCS,
+# )
 from swift_comet_pipeline.scp_types import *
 from swift_comet_pipeline.scp_types.compound.swift_dataset import SwiftDataset
 from swift_comet_pipeline.scp_types.compound.swift_level_2_fits import (
