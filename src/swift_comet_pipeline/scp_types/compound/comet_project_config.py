@@ -38,14 +38,18 @@ class CometProjectConfig:
     )
 
     oh_filters: list[UvotFilter] = field(
-        default_factory=lambda: [UvotFilter.uw1, UvotFilter.uw2, UvotFilter.uuu]
+        default_factory=lambda: [
+            UvotFilter.uw1,
+            UvotFilter.uw2,
+            UvotFilter.uuu,
+            UvotFilter.um2,
+        ]
     )
     dust_filters: list[UvotFilter] = field(
         default_factory=lambda: [
             UvotFilter.uvv,
             UvotFilter.uuu,
             UvotFilter.ubb,
-            UvotFilter.um2,
         ]
     )
 

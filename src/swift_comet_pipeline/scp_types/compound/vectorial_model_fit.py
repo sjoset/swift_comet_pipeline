@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import astropy.units as u
-
 from swift_comet_pipeline.scp_types.primitive.column_density import ColumnDensity
 
 
