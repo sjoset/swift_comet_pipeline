@@ -1,4 +1,5 @@
 from typing import Callable
+import numpy as np
 import pandas as pd
 import astropy.units as u
 from scipy.stats import norm
@@ -9,11 +10,18 @@ from swift_comet_pipeline.common.bayesian_expectation import (
 )
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     ContinuumSubtractionKey,
+    EpochSubpipelineKey,
     ProductKind,
     ProductReference,
     Products,
 )
+from swift_comet_pipeline.post_processing.add_epoch_index_entry_to_dataframe import (
+    add_epoch_index_entry_to_dataframe,
+)
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
+from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry import (
+    dataframe_from_afrho_aperture_photometry_analysis,
+)
 from swift_comet_pipeline.scp_types.primitive.aperture_water_production_analysis import (
     dataframe_from_aperture_water_production_analysis,
 )
@@ -35,7 +43,9 @@ def add_q_oh_columns(df: pd.DataFrame, oh_lifetime: float) -> pd.DataFrame:
 
     new_df = df.copy()
     new_df["q_oh_sum"] = new_df.num_oh_sum / oh_lifetime
+    new_df["q_oh_sum_err"] = new_df.num_oh_sum_err / oh_lifetime
     new_df["q_oh_median"] = new_df.num_oh_median / oh_lifetime
+    new_df["q_oh_median_err"] = new_df.num_oh_median_err / oh_lifetime
     return new_df
 
 
@@ -155,7 +165,6 @@ def bayesian_expectation_of_assembled_fixed_aperture_results(
         value_columns=all_other_columns,
         pdf=dust_prior.pdf,  # type: ignore
         physical_lambda=constraint_function,
-        # physical_lambda=lambda x: x[water_production_column] > 0,
     )
 
     df = pd.DataFrame(pbev.expectations, index=[0])  # type: ignore
@@ -165,3 +174,47 @@ def bayesian_expectation_of_assembled_fixed_aperture_results(
     df["percent_nonphysical"] = pbev.percent_nonphysical
 
     return df
+
+
+def assemble_afrho_fixed_aperture_results(
+    scp: Products,
+    eid: EpochIndexEntry,
+    filter_type: UvotFilter,
+    stacking_method: StackingMethod,
+    fixed_aperture_radius: u.Quantity,
+    fixed_aperture_window_upper: u.Quantity,
+    fixed_aperture_window_lower: u.Quantity,
+) -> pd.DataFrame:
+    """
+    Returns a dataframe with columns like AfrhoFromAperturePhotometryAnalysisEntry, averaged around the given radius
+    """
+
+    afrho_key = EpochSubpipelineKey(
+        epoch_id=eid.epoch_id, filter_type=filter_type, stacking_method=stacking_method
+    )
+    afapa = scp.load_afrho_from_aperture_photometry(key=afrho_key)
+    afapa_df = dataframe_from_afrho_aperture_photometry_analysis(afapa=afapa)
+
+    fixed_aperture_radius_km = float(fixed_aperture_radius.to_value(u.km))  # type: ignore
+    fixed_aperture_window_upper_km = float(fixed_aperture_window_upper.to_value(u.km))  # type: ignore
+    fixed_aperture_window_lower_km = float(fixed_aperture_window_lower.to_value(u.km))  # type: ignore
+
+    # average values over the radius range specified
+    radius_mask = (
+        afapa_df.aperture_r_km
+        < (fixed_aperture_radius_km + fixed_aperture_window_upper_km)
+    ) & (
+        afapa_df.aperture_r_km
+        > (fixed_aperture_radius_km - fixed_aperture_window_lower_km)
+    )
+    avg_over_radii_df = afapa_df.loc[radius_mask].mean(numeric_only=True).to_frame().T
+
+    avg_over_radii_df = add_epoch_index_entry_to_dataframe(
+        df=avg_over_radii_df, eid=eid
+    )
+
+    avg_over_radii_df["rh_au"] = eid.rh_au * np.sign(  # type: ignore
+        eid.time_from_perihelion.to_value(u.day)  # type: ignore
+    )
+
+    return avg_over_radii_df
