@@ -16,6 +16,7 @@ from photutils.aperture import CircularAperture
 from swift_comet_pipeline.data_ingestion.observation_log.comet_center_tracking import (
     get_comet_center_prefer_user_coords,
     get_horizons_comet_center,
+    get_user_specified_comet_center,
 )
 from swift_comet_pipeline.photometry.comet.comet_center_finding import find_comet_center
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
@@ -243,6 +244,7 @@ class EpochImagePlot(object):
                 horizons_coords.y / 2,
             )
         self.current_horizons_coords = horizons_coords
+        # print(f"{self.current_horizons_coords=}")
 
         # mark the comet using horizons coordinates, or user-input coordinates
         self.current_comet_coords = get_comet_center_prefer_user_coords(
@@ -250,9 +252,20 @@ class EpochImagePlot(object):
         )
         if self.current_data_mode == UvotImageMode.event_mode:
             # event mode images are downsampled by a factor of 2: adjust accordingly
-            self.current_comet_coords = PixelCoord(
-                x=self.current_comet_coords.x / 2, y=self.current_comet_coords.y / 2
+            # check if the comet has a user selection - if it does, we don't scale - they selected those pixels at our current scale
+            user_comet_center = get_user_specified_comet_center(
+                row=self.current_obs_log_row
             )
+            # print(f"{user_comet_center=}")
+            if user_comet_center is None:
+                user_comet_pixel_scaling = 2
+            else:
+                user_comet_pixel_scaling = 1
+            self.current_comet_coords = PixelCoord(
+                x=self.current_comet_coords.x / user_comet_pixel_scaling,
+                y=self.current_comet_coords.y / user_comet_pixel_scaling,
+            )
+        # print(f"{self.current_comet_coords=}")
 
         # get colormap to use for this based on veto status
         self.current_cmap = self.veto_to_cmap[self.current_obs_log_row.manual_veto]
@@ -458,6 +471,7 @@ class EpochImagePlot(object):
             return
         rounded_x = int(np.round(event.xdata))
         rounded_y = int(np.round(event.ydata))
+        # print(f"Updating comet center to {rounded_x=}, {rounded_y=}")
         self.update_comet_center(x=rounded_x, y=rounded_y)
         self.update_plot()
 

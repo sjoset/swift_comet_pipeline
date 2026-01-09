@@ -256,7 +256,7 @@ def do_aperture_water_production(scp: Products, ref: ProductReference) -> None:
         water_df.aperture_matched_q_h2o_median_val.apply(lambda x: x.sigma)
     )
 
-    # oh-equivalent production rates
+    # OH mass-loss equivalent production rates
     equivalent_q_vals_sum = [
         num_oh_to_q_h2o_vectorial(rh_au=eid.rh_au, num_oh=n)
         for n in water_df.num_oh_sum_val
