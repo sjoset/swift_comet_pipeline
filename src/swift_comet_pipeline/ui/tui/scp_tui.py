@@ -29,6 +29,7 @@ from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
+    GlobalKey,
     ProductKind,
     ProductReference,
     Products,

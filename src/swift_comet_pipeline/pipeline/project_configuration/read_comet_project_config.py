@@ -33,6 +33,9 @@ def read_comet_project_config(
         return None
 
     project_config = cattrs.structure(obj=config_yaml, cl=CometProjectConfig)
+
+    # TODO: do validation here, including checking the maximum/minimum dust values fall within the range that the filters allow
+    # that keeps beta finite
     return project_config
 
     # swift_data_path = _path_from_yaml(config_yaml, "swift_data_path")

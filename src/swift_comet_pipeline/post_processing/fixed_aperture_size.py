@@ -143,16 +143,26 @@ def assemble_fixed_aperture_averaged_results(
 
 def bayesian_expectation_of_assembled_fixed_aperture_results(
     df: pd.DataFrame,
-    water_production_column: str,
     dust_redness_mean: DustReddeningPercent,
     dust_redness_sigma: DustReddeningPercent,
     constraint_function: Callable[[pd.DataFrame], pd.Series],
-):
+    water_production_column: str = "",
+) -> pd.DataFrame:
     """
     Expects a dataframe with entries like ApertureWaterProductionAnalysisEntry
 
-    Takes the expectation value of the columns while only using data with rows where 'water_production_column' is positive
+    Uses constraint_function to determine whether or not points (rows) get included in the expectation values
+
+    Adds 'dust_redness_mean', 'dust_redness_sigma', and 'percent_nonphysical' as columns
+
+    'water_production_column' is unused in this version but old code wants to pass it in and I don't want to fix that
     """
+    # TODO: remove 'water_production_column' and fix the code/notebooks that rely on passing it in
+
+    if water_production_column != "":
+        print(
+            f"Warning: argument water_production_column is not used anymore - update code that passes it in to this function"
+        )
 
     dust_prior = norm(loc=dust_redness_mean, scale=dust_redness_sigma)
 
@@ -167,8 +177,10 @@ def bayesian_expectation_of_assembled_fixed_aperture_results(
         physical_lambda=constraint_function,
     )
 
+    # TODO: the domain column should be the dust redness column: change it and test the marimo notebooks that rely on this function
     df = pd.DataFrame(pbev.expectations, index=[0])  # type: ignore
-    df["bayesian_expectation_domain_column"] = water_production_column
+    # df["bayesian_expectation_domain_column"] = water_production_column
+    df["bayesian_expectation_domain_column"] = dust_redness_column
     df["dust_redness_mean"] = dust_redness_mean
     df["dust_redness_sigma"] = dust_redness_sigma
     df["percent_nonphysical"] = pbev.percent_nonphysical

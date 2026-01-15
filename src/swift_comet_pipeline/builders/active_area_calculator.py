@@ -13,6 +13,8 @@ from swift_comet_pipeline.scp_types.primitive.dataframe_column_and_error_set imp
 # TODO: rewrite this to use ApertureActiveAnalysisEntry?
 # TODO: decide if we drop this entirely
 
+# TODO: we could instead just take a Q and rh and return a value +/- 1 sigma for use in post-processing
+
 
 @dataclass
 class _ActiveAreaDataframeCalculation:

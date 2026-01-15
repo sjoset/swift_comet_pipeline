@@ -15,6 +15,10 @@ def add_epoch_index_entry_to_dataframe(
     eid: EpochIndexEntry,
     include_exposure_times: list[UvotFilter] | None = None,
 ) -> pd.DataFrame:
+    """
+    Take the given dataframe and add the epoch information in eid as columns, with optional exposure times
+    given by the filter list in 'include_exposure_times'.
+    """
 
     if include_exposure_times is None:
         include_exposure_times = []
