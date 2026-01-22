@@ -17,9 +17,13 @@ def calculate_blue_spot_from_column_densities(
     Takes the column densities of the vectorial predictions 'vectorial_oh_cds' on the radial grid rs_km,
     along with the actual column density derived from data 'data_derived_oh_cds' and calculates the excess
     number of OH molecules beyond the vectorial model prediction
-    Column densities given as float in units of 1/cm**2
+    Column densities are expected to be floats in units of 1/cm**2
     """
     bs_cds_raw = data_derived_oh_cds - vectorial_oh_cds
+
+    # check if we even have enough data to do this
+    if len(rs_km) < 2:
+        return 0.0
 
     rs_cm = rs_km * 1e5
     bs_cds_times_rho = bs_cds_raw * rs_cm
@@ -35,7 +39,12 @@ def compute_blue_spot_num_oh_single_row(
     # savgol_window_length: int,
     # savgol_window_polyorder: int,
 ) -> float:
-    # cur_redness = row.dust_redness_pct_per_hundred_nm
+    """
+    Expects a row of a dataframe with columns like that produced by assemble_vectorial_model_results()
+
+    Computes the number of excess OH molecules near the nucleus.
+    """
+
     fit_rs_all = row.far_fit.vectorial_column_density.rs_km
     data_rs_all = row.oh_column_density.rs_km
     assert np.sum(fit_rs_all - data_rs_all) == 0
@@ -63,6 +72,11 @@ def compute_blue_spot_num_oh_single_row(
 def blue_spot_df_from_vectorial_df(
     df: pd.DataFrame, scaled_oh_lifetime: float, blue_spot_extent_km: float
 ) -> pd.DataFrame:
+    """
+    Takes a dataframe like that produced by assemble_vectorial_model_results(), strips some columns, and adds
+    blue spot OH count and blue spot OH production rate
+    This dataframe will be a function of dust redness
+    """
 
     blue_spot_func = partial(
         compute_blue_spot_num_oh_single_row, blue_spot_extent_km=blue_spot_extent_km
@@ -113,7 +127,7 @@ def bayes_blue_spot_df_from_blue_spot_df(
             df=df,
             domain_column="dust_redness_pct_per_hundred_nm",
             value_columns=blue_spot_source_columns,
-            pdf=dust_prior.pdf,
+            pdf=dust_prior.pdf,  # type: ignore
         )
 
         for bayes_result in bayes_result_list:
