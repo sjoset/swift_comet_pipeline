@@ -11,14 +11,11 @@ def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None = Non
     """
 
     zscale = ZScaleInterval()
-
-    # scale_limits = [zscale.get_limits(images[0]), zscale.get_limits(images[0]), zscale.get_limits(images[2]), zscale.get_limits(images[2]), zscale.get_limits(images[4]), zscale.get_limits(images[4])]
-
     num_images = len(images)
 
     fig, axs = plt.subplots(1, num_images, figsize=(12 * num_images, 12))
 
-    if len(images) == 1:
+    if num_images == 1:
         axs = [axs]
 
     if comet_centers is None:
@@ -31,7 +28,6 @@ def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None = Non
 
         vmin, vmax = zscale.get_limits(img)
 
-        # vmin, vmax = sl
         ax.imshow(img, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
 
         # norm = ImageNormalize(
@@ -41,8 +37,5 @@ def plot_images_multi(images: list, comet_centers: list[PixelCoord] | None = Non
 
         ax.axvline(comet_center.x, color="b", alpha=0.15)
         ax.axhline(comet_center.y, color="b", alpha=0.15)
-
-    # plt.show()
-    # plt.close()
 
     return fig
