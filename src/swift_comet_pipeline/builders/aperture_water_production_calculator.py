@@ -18,11 +18,13 @@ from swift_comet_pipeline.photometry.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.photometry.dust.reddening_translate import (
     recalculate_redness_with_new_filter_pair,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    ProductReference,
-    Products,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
     ContinuumSubtractionKey,
+    EpochSubpipelineKey,
+)
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
+    ProductReference,
 )
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.primitive.annular_aperture_photometry_analysis import (

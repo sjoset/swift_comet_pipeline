@@ -21,11 +21,11 @@ from swift_comet_pipeline.photometry.comet.extract_comet_radial_profile import (
     radial_profile_to_image,
 )
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    ProductKind,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.scp_types.compound.background_result import BackgroundResult
 from swift_comet_pipeline.scp_types.compound.comet_profile import (

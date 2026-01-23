@@ -6,12 +6,14 @@ from swift_comet_pipeline.image_manipulation.utility.plot_image_multi import (
     plot_images_multi,
 )
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
-    ProductKind,
+)
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
 from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry import (

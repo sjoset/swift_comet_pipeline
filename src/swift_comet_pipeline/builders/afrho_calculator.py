@@ -12,10 +12,10 @@ from swift_comet_pipeline.photometry.dust.afrho import calculate_afrho_in_cm
 from swift_comet_pipeline.photometry.dust.halley_marcus import (
     halley_marcus_curve_interpolation,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.compound.magnitude import Magnitude

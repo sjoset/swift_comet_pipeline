@@ -10,7 +10,7 @@ from swift_comet_pipeline.scp_types.serialization.structure_unstructure import (
 )
 
 
-# TODO: add position angles for velocity/dust and sun/ion tail
+# TODO: add position angles for velocity/dust and sun/ion tail instead of looking them up later
 @dataclass(frozen=True)
 class EpochIndexEntry:
     epoch_id: EpochID

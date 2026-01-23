@@ -4,7 +4,7 @@ from swift_comet_pipeline.data_ingestion.epoch_index.build_epoch_index import (
 from swift_comet_pipeline.data_ingestion.orbit_data.find_perihelion import (
     find_perihelia,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 
 
 def do_epoch_index(scp: Products) -> None:

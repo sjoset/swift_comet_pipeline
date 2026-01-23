@@ -1,7 +1,7 @@
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.ui.mpl_ui.mpl_ui_radial_profile_from_cone import (
     profile_extraction_from_cone,

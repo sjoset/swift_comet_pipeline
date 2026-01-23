@@ -9,9 +9,9 @@ import astropy.units as u
 from rich.console import RenderResult
 from rich.text import Text
 
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     ProductReference,
-    Products,
 )
 
 

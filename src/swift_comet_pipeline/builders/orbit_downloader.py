@@ -3,7 +3,7 @@ import logging as log
 from swift_comet_pipeline.data_ingestion.orbit_data.orbit_data_download import (
     orbit_data_download,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 
 
 def do_earth_orbit_download(scp: Products) -> None:

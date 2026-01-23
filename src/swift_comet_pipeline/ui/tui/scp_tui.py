@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from itertools import product
 import os
 import pathlib
 import sys
@@ -15,29 +16,29 @@ from pandas.errors import SettingWithCopyWarning
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     vectorial_model_settings_init,
 )
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
+    BayesianPriorBlueSpotLightcurveKey,
+    BayesianPriorLightcurveKey,
+    BlueSpotLightcurveKey,
+    LightcurveKey,
+)
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
+    ProductReference,
+)
 from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_config import (
     read_comet_project_config,
 )
 from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
-from swift_comet_pipeline.scp_types.compound.epoch_index import (
-    EpochIndex,
-    EpochIndexEntry,
+from swift_comet_pipeline.scp_types.compound.lightcurve import (
+    bayesian_prior_blue_spot_lightcurve_to_dataframe,
+    blue_spot_lightcurve_to_dataframe,
+    lightcurve_to_dataframe,
 )
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    ContinuumSubtractionKey,
-    EpochSubpipelineKey,
-    GlobalKey,
-    ProductKind,
-    ProductReference,
-    Products,
-)
-from swift_comet_pipeline.tests.common.pipeline_tests import (
-    test_aperture_water_analysis_plotting,
-    test_fits_loading,
-)
 from swift_comet_pipeline.ui.tui.tui_batch_building import (
     all_afrho_from_apertures,
     all_afrho_from_radial_profiles,
@@ -248,121 +249,89 @@ def main():
     # TODO: latex table generation from epoch index
     # ---------
 
-    # eid = epoch_index[8]
-    #
-    # # ---------
-    # # Radial profile extraction testing
-    # pref = ProductReference(
-    #     kind=ProductKind.radial_profile_from_cone,
-    #     key=EpochSubpipelineKey(
-    #         epoch_id=eid.epoch_id,
-    #         filter_type=UvotFilter.uvv,
+    # TODO: build all lightcurves: each valid oh/dust/stacking method
+    # regular lightcurve
+
+    # lc_ref = ProductReference(
+    #     kind=ProductKind.water_production_lightcurve,
+    #     key=LightcurveKey(
+    #         oh_filter=UvotFilter.uw1,
+    #         dust_filter=UvotFilter.uvv,
     #         stacking_method=StackingMethod.summation,
     #     ),
     # )
-    # # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
-    # build_product_reference_loop(scp=scp, ref=pref, verbose=True)
-    # # ---------
+    # build_product_reference(scp=scp, ref=lc_ref)
     #
-    # # ---------
-    # # Radial profile subtraction testing
-    # pref = ProductReference(
-    #     kind=ProductKind.radial_profile_subtracted_image,
-    #     key=EpochSubpipelineKey(
-    #         epoch_id=eid.epoch_id,
-    #         filter_type=UvotFilter.uvv,
+    # assert isinstance(lc_ref.key, LightcurveKey)
+    # lc = scp.load_water_production_lightcurve(key=lc_ref.key)
+    # print(f"lightcurve:")
+    # print(lc[0], lc[1])
+    # df = lightcurve_to_dataframe(lc=lc)
+    # print("Converted regular lightcurve to dataframe without errors!")
+    # print(f"Columns: {df.columns}")
+
+    # TODO: build all lightcurves: each valid oh/dust/stacking method, every sigma in config
+    # bayesian lightcurve
+
+    # blc_ref = ProductReference(
+    #     kind=ProductKind.bayesian_water_production_lightcurve,
+    #     key=BayesianPriorLightcurveKey(
+    #         oh_filter=UvotFilter.uw1,
+    #         dust_filter=UvotFilter.uvv,
     #         stacking_method=StackingMethod.summation,
+    #         dust_redness_sigma_pct_per_hundred_nm=DustReddeningPercent(3.0),
     #     ),
     # )
-    # # build_product_reference(scp=scp, ref=pref, verbose=True, force=True)
-    # build_product_reference_loop(scp=scp, ref=pref, verbose=True)
-    # # ---------
+    # build_product_reference(scp=scp, ref=blc_ref)
     #
-    # # ---------
-    # # Aperture water analysis plotting
-    # # eid = epoch_index[4]
-    # test_aperture_water_analysis_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
-    #     dust_filter=UvotFilter.uvv,
-    #     stacking_method=StackingMethod.summation,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
-    # # test_aperture_water_analysis_plotting(
-    # #     scp=scp,
-    # #     eid=eid,
-    # #     oh_filter=UvotFilter.uw2,
-    # #     dust_filter=UvotFilter.uvv,
-    # #     dust_redness=DustReddeningPercent(30.0),
-    # # )
-    # # test_aperture_water_analysis_plotting(
-    # #     scp=scp,
-    # #     eid=eid,
-    # #     oh_filter=UvotFilter.uuu,
-    # #     dust_filter=UvotFilter.uvv,
-    # #     dust_redness=DustReddeningPercent(30.0),
-    # # )
-    # # # ---------
+    # assert isinstance(blc_ref.key, BayesianPriorLightcurveKey)
+    # blc = scp.load_bayesian_water_production_lightcurve(key=blc_ref.key)
+    # print(blc[0])
+    # bdf = lightcurve_to_dataframe(lc=blc)
+    # print(f"Dataframe columns: {bdf.columns}")
 
-    # test_radial_water_production_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.ugrism,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(40.0),
-    # )
+    # TODO: build all lightcurves: each valid oh/dust/stacking method, every blue spot size in config
+    # blue spot lightcurve
 
-    # test_radial_water_production_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw2,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(30.0),
+    # bs_ref = ProductReference(
+    #     kind=ProductKind.blue_spot_lightcurve,
+    #     key=BlueSpotLightcurveKey(
+    #         oh_filter=UvotFilter.uw1,
+    #         dust_filter=UvotFilter.uvv,
+    #         stacking_method=StackingMethod.summation,
+    #         blue_spot_extent_km=20000,
+    #     ),
     # )
-    # test_radial_water_production_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uuu,
-    #     dust_filter=UvotFilter.uvv,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
-    # test_radial_water_production_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
-    #     dust_filter=UvotFilter.uuu,
-    #     dust_redness=DustReddeningPercent(30.0),
-    # )
-
-    # test_afrho_aperture_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
-    #     dust_filter=UvotFilter.uuu,
-    #     dust_redness=DustReddeningPercent(31.0),
-    # )
+    # assert isinstance(bs_ref.key, BlueSpotLightcurveKey)
     #
-    # test_afrho_profile_plotting(
-    #     scp=scp,
-    #     eid=eid,
-    #     oh_filter=UvotFilter.uw1,
-    #     dust_filter=UvotFilter.uuu,
-    #     dust_redness=DustReddeningPercent(31.0),
-    # )
+    # build_product_reference(scp=scp, ref=bs_ref)
+    #
+    # bslc = scp.load_blue_spot_lightcurve(key=bs_ref.key)
+    # # print(bslc)
+    # bsdf = blue_spot_lightcurve_to_dataframe(lc=bslc)
+    # print(bsdf.columns)
 
-    # test_radial_profile_smoothing(scp=scp)
+    # blue spot bayesian lightcurve
 
-    # eid = epoch_index[11]
-    # test_aperture_analysis_loading(scp=scp, eid=eid, filter_type=UvotFilter.uw1)
-    # test_aperture_analysis_loading(scp=scp, eid=eid, filter_type=UvotFilter.uvv)
+    for bse, sig in product(scp.blue_spot_extents_km, scp.cfg.bayesian_prior_sigmas):
+        bpbs_ref = ProductReference(
+            kind=ProductKind.bayesian_blue_spot_lightcurve,
+            key=BayesianPriorBlueSpotLightcurveKey(
+                oh_filter=UvotFilter.uw1,
+                dust_filter=UvotFilter.uvv,
+                stacking_method=StackingMethod.summation,
+                blue_spot_extent_km=bse,
+                dust_redness_sigma_pct_per_hundred_nm=sig,
+            ),
+        )
+        assert isinstance(bpbs_ref.key, BayesianPriorBlueSpotLightcurveKey)
 
-    # demo_reddening_recalculation()
+        build_product_reference(scp=scp, ref=bpbs_ref)
 
-    # test_background_result_loading(scp=scp)
-    # test_fits_loading(scp=scp)
-    # test_epoch_index_loading(scp=scp)
-    # test_obs_log_metadata(scp=scp)
+    # bslc = scp.load_bayesian_blue_spot_lightcurve(key=bpbs_ref.key)
+    # print(bslc)
+    # bsdf = bayesian_prior_blue_spot_lightcurve_to_dataframe(lc=bslc)
+    # print(bsdf.columns)
 
 
 if __name__ == "__main__":

@@ -10,14 +10,14 @@ from swift_comet_pipeline.photometry.dust.beta_parameter import beta_parameter
 from swift_comet_pipeline.photometry.dust.reddening_translate import (
     recalculate_redness_with_new_filter_pair,
 )
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
+    ContinuumSubtractionKey,
+)
 from swift_comet_pipeline.post_processing.add_epoch_index_entry_to_dataframe import (
     add_epoch_index_entry_to_dataframe,
 )
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    ContinuumSubtractionKey,
-    Products,
-)
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
 from swift_comet_pipeline.scp_types.compound.radial_profile_water_production import (
     RadialProfileWaterProductionAnalysis,
@@ -171,7 +171,8 @@ def assemble_vectorial_model_bayesian_production_rates(
     dfc = df.copy()
 
     if calculate_for_dust_rednesses is None:
-        dust_rednesses = df.dust_redness_pct_per_hundred_nm.to_numpy()
+        # dust_rednesses = df.dust_redness_pct_per_hundred_nm.to_numpy()
+        dust_rednesses = df.dust_redness_pct_per_hundred_nm
     else:
         dust_rednesses = calculate_for_dust_rednesses
 
@@ -179,6 +180,7 @@ def assemble_vectorial_model_bayesian_production_rates(
     vectorial_source_columns = ["far_fit_q", "far_fit_q_err", "far_fit_q_rel_err"]
     # where to store each result
     bayes_destination_columns = ["bayes_" + x for x in vectorial_source_columns]
+    # TODO: add percent non-physical to bayes_destination_columns to keep track of that if we want
 
     vec_to_bayes_dict = {
         v: b for v, b in zip(vectorial_source_columns, bayes_destination_columns)

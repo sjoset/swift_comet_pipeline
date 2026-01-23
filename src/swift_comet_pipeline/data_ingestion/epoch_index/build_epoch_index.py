@@ -4,7 +4,7 @@ from astropy.time import Time, TimeDelta
 from swift_comet_pipeline.data_ingestion.orbit_data.find_perihelion import (
     find_perihelia,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 from swift_comet_pipeline.scp_types.compound.epoch_index import (
     EpochIndex,
     EpochIndexEntry,

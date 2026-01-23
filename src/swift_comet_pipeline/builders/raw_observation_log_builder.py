@@ -1,7 +1,7 @@
 from swift_comet_pipeline.data_ingestion.observation_log.build_observation_log import (
     build_observation_log,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 from swift_comet_pipeline.swift.swift_data import SwiftData
 
 

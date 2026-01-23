@@ -6,10 +6,8 @@ import pandas as pd
 from astropy.io import fits
 from tqdm import tqdm
 
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    Products,
-)
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
 from swift_comet_pipeline.scp_types.primitive import *
 
 from swift_comet_pipeline.image_manipulation.event_mode_downsample import (

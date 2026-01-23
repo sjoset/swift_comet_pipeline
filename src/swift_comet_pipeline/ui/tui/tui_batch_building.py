@@ -12,12 +12,14 @@ from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
     ProductBuildStatus,
     get_pipeline_status_for_product,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
-    ProductKind,
+)
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndex
 from swift_comet_pipeline.ui.tui.tui_common import (

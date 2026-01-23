@@ -2,6 +2,10 @@ from swift_comet_pipeline.builders.afrho_calculator import (
     do_afrho_from_aperture_photometry_analysis,
     do_afrho_from_radial_profile,
 )
+from swift_comet_pipeline.builders.blue_spot_lightcurve_builder import (
+    do_bayesian_prior_blue_spot_lightcurve,
+    do_blue_spot_lightcurve,
+)
 from swift_comet_pipeline.builders.epoch_identifier import do_epoch_identification
 from swift_comet_pipeline.builders.epoch_indexer import do_epoch_index
 from swift_comet_pipeline.builders.image_vetoer import do_image_veto
@@ -36,10 +40,14 @@ from swift_comet_pipeline.builders.background_subtractor import (
 )
 
 
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    ProductKind,
+from swift_comet_pipeline.builders.water_production_lightcurve_builder import (
+    do_bayesian_water_production_lightcurve,
+    do_water_production_lightcurve,
+)
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 
 
@@ -100,3 +108,15 @@ def do_build(scp: Products, ref: ProductReference) -> None:
 
     if ref.kind == ProductKind.afrho_from_radial_profile:
         do_afrho_from_radial_profile(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.water_production_lightcurve:
+        do_water_production_lightcurve(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.bayesian_water_production_lightcurve:
+        do_bayesian_water_production_lightcurve(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.blue_spot_lightcurve:
+        do_blue_spot_lightcurve(scp=scp, ref=ref)
+
+    if ref.kind == ProductKind.bayesian_blue_spot_lightcurve:
+        do_bayesian_prior_blue_spot_lightcurve(scp=scp, ref=ref)

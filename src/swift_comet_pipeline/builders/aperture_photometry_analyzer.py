@@ -12,18 +12,18 @@ from swift_comet_pipeline.photometry.aperture.aperture_count_rate import (
 from swift_comet_pipeline.photometry.aperture.concentric_annuli import (
     make_concentric_annular_apertures,
 )
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
+    ProductReference,
+)
 from swift_comet_pipeline.scp_types.compound.annular_aperture_profile import (
     AnnularApertureProfileEntry,
     dataframe_from_annular_aperture_profile,
 )
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    ProductKind,
-    ProductReference,
-    Products,
-)
 
 
 def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> None:

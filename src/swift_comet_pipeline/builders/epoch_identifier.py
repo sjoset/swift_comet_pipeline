@@ -3,7 +3,7 @@ import astropy.units as u
 from swift_comet_pipeline.data_ingestion.observation_log.slice_observation_log_into_epochs import (
     add_epoch_ids_by_time_window,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 from swift_comet_pipeline.ui.mpl_ui.mpl_ui_observation_log_slicing import (
     gui_select_epoch_time_window,
 )

@@ -4,7 +4,7 @@ import pandas as pd
 from astropy.time import Time
 import astropy.units as u
 
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 
 
 def orbit_data_download(

@@ -8,12 +8,14 @@ from scipy.stats import norm
 from swift_comet_pipeline.common.bayesian_expectation import (
     bayesian_expectation_over_distribution_physical_only,
 )
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import (
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
-    ProductKind,
+)
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.post_processing.add_epoch_index_entry_to_dataframe import (
     add_epoch_index_entry_to_dataframe,
@@ -100,7 +102,7 @@ def assemble_fixed_aperture_averaged_results(
 ) -> pd.DataFrame:
     """
     Returns a dataframe with columns like ApertureWaterProductionAnalysisEntry, but with one row per dust redness from the epoch.
-    Also computes new columns q_oh_sum and q_oh_median
+    Also computes new columns q_oh_sum and q_oh_median and associated error columns
     """
 
     continuum_keys = [
@@ -143,49 +145,104 @@ def assemble_fixed_aperture_averaged_results(
 
 def bayesian_expectation_of_assembled_fixed_aperture_results(
     df: pd.DataFrame,
-    dust_redness_mean: DustReddeningPercent,
+    # dust_redness_mean: DustReddeningPercent,
     dust_redness_sigma: DustReddeningPercent,
     constraint_function: Callable[[pd.DataFrame], pd.Series],
-    water_production_column: str = "",
+    calculate_for_dust_rednesses: list[DustReddeningPercent] | None = None,
 ) -> pd.DataFrame:
     """
     Expects a dataframe with entries like ApertureWaterProductionAnalysisEntry
 
     Uses constraint_function to determine whether or not points (rows) get included in the expectation values
-
-    Adds 'dust_redness_mean', 'dust_redness_sigma', and 'percent_nonphysical' as columns
-
-    'water_production_column' is unused in this version but old code wants to pass it in and I don't want to fix that
     """
-    # TODO: remove 'water_production_column' and fix the code/notebooks that rely on passing it in
 
-    if water_production_column != "":
-        print(
-            f"Warning: argument water_production_column is not used anymore - update code that passes it in to this function"
-        )
+    dfc = df.copy()
 
-    dust_prior = norm(loc=dust_redness_mean, scale=dust_redness_sigma)
+    if calculate_for_dust_rednesses is None:
+        # dust_rednesses = df.dust_redness_pct_per_hundred_nm.to_numpy()
+        dust_rednesses = df.dust_redness_pct_per_hundred_nm
+    else:
+        dust_rednesses = calculate_for_dust_rednesses
+
+    # dust_prior = norm(loc=dust_redness_mean, scale=dust_redness_sigma)
 
     dust_redness_column = "dust_redness_pct_per_hundred_nm"
-    all_other_columns = list(set(df.columns) - set(dust_redness_column))
+    all_other_columns = list(set(dfc.columns) - set(dust_redness_column))
 
-    pbev = bayesian_expectation_over_distribution_physical_only(
-        df=df,
-        domain_column=dust_redness_column,
-        value_columns=all_other_columns,
-        pdf=dust_prior.pdf,  # type: ignore
-        physical_lambda=constraint_function,
-    )
+    redness_sub_dfs = []
+    for dust_redness in dust_rednesses:
+        # build Bayesian prior
+        dust_prior = norm(loc=dust_redness, scale=dust_redness_sigma)
 
-    # TODO: the domain column should be the dust redness column: change it and test the marimo notebooks that rely on this function
-    df = pd.DataFrame(pbev.expectations, index=[0])  # type: ignore
-    # df["bayesian_expectation_domain_column"] = water_production_column
-    df["bayesian_expectation_domain_column"] = dust_redness_column
-    df["dust_redness_mean"] = dust_redness_mean
-    df["dust_redness_sigma"] = dust_redness_sigma
-    df["percent_nonphysical"] = pbev.percent_nonphysical
+        # do the calculation for each of our columns
+        pbev = bayesian_expectation_over_distribution_physical_only(
+            df=dfc,
+            domain_column=dust_redness_column,
+            value_columns=all_other_columns,
+            pdf=dust_prior.pdf,  # type: ignore
+            physical_lambda=constraint_function,
+        )
 
-    return df
+        sub_df = pd.DataFrame(pbev.expectations, index=[0])  # type: ignore
+        sub_df[dust_redness_column] = dust_redness
+        sub_df["dust_redness_mean"] = dust_redness
+        sub_df["percent_nonphysical"] = pbev.percent_nonphysical
+        # sub_df["dust_redness_sigma"] = dust_redness_sigma
+        # sub_df["bayesian_expectation_domain_column"] = dust_redness_column
+
+        redness_sub_dfs.append(sub_df)
+
+    all_redness_df = pd.concat(redness_sub_dfs)
+    all_redness_df["dust_redness_sigma"] = dust_redness_sigma
+
+    return all_redness_df
+
+
+# def bayesian_expectation_of_assembled_fixed_aperture_results_old(
+#     df: pd.DataFrame,
+#     dust_redness_mean: DustReddeningPercent,
+#     dust_redness_sigma: DustReddeningPercent,
+#     constraint_function: Callable[[pd.DataFrame], pd.Series],
+#     water_production_column: str = "",
+# ) -> pd.DataFrame:
+#     """
+#     Expects a dataframe with entries like ApertureWaterProductionAnalysisEntry
+#
+#     Uses constraint_function to determine whether or not points (rows) get included in the expectation values
+#
+#     Adds 'dust_redness_mean', 'dust_redness_sigma', and 'percent_nonphysical' as columns
+#
+#     'water_production_column' is unused in this version but old code wants to pass it in and I don't want to fix that
+#     """
+#     # TODO: remove 'water_production_column' and fix the code/notebooks that rely on passing it in
+#
+#     if water_production_column != "":
+#         print(
+#             f"Warning: argument water_production_column is not used anymore - update code that passes it in to this function"
+#         )
+#
+#     dust_prior = norm(loc=dust_redness_mean, scale=dust_redness_sigma)
+#
+#     dust_redness_column = "dust_redness_pct_per_hundred_nm"
+#     all_other_columns = list(set(df.columns) - set(dust_redness_column))
+#
+#     pbev = bayesian_expectation_over_distribution_physical_only(
+#         df=df,
+#         domain_column=dust_redness_column,
+#         value_columns=all_other_columns,
+#         pdf=dust_prior.pdf,  # type: ignore
+#         physical_lambda=constraint_function,
+#     )
+#
+#     # TODO: the domain column should be the dust redness column: change it and test the marimo notebooks that rely on this function
+#     df = pd.DataFrame(pbev.expectations, index=[0])  # type: ignore
+#     # df["bayesian_expectation_domain_column"] = water_production_column
+#     df["bayesian_expectation_domain_column"] = dust_redness_column
+#     df["dust_redness_mean"] = dust_redness_mean
+#     df["dust_redness_sigma"] = dust_redness_sigma
+#     df["percent_nonphysical"] = pbev.percent_nonphysical
+#
+#     return df
 
 
 def assemble_afrho_fixed_aperture_results(

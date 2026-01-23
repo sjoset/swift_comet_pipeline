@@ -1,5 +1,5 @@
 from swift_comet_pipeline.data_ingestion.veto.gui_manual_veto import manual_veto
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import Products
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 
 
 def do_image_veto(scp: Products) -> None:

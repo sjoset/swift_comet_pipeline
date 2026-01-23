@@ -1,10 +1,10 @@
-from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    EpochSubpipelineKey,
-    ProductKind,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import EpochSubpipelineKey
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
+from swift_comet_pipeline.scp_types.primitive import *
 
 
 def do_background_subtraction(scp: Products, ref: ProductReference) -> None:

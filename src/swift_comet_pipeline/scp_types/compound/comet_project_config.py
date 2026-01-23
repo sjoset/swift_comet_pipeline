@@ -58,7 +58,18 @@ class CometProjectConfig:
     dust_redness_max: DustReddeningPercent = 40.0
     dust_redness_step: float = 1.0
 
-    # TODO: add entries to specify dust redness mean and sigma for q expectation values?
-
     # midpoint of the uw1 and uvv filters as the default for redness context
     redness_mid_wavelength_nm: float = 438.181
+
+    # bayesian analysis: across color range, use these sigmas for Gaussian priors
+    bayesian_prior_sigmas: list[DustReddeningPercent] = field(
+        default_factory=lambda: [DustReddeningPercent(3.0)]
+    )
+
+    # blue spot analysis: radial extent of blue spot for calculations
+    # blue_spot_extents_km: list[float] = field(
+    #     default_factory=lambda: [10000, 20000, 30000, 40000, 50000, 100000]
+    # )
+    blue_spot_extent_km_min: float = 5000
+    blue_spot_extent_km_max: float = 100000
+    blue_spot_extent_km_step: float = 5000

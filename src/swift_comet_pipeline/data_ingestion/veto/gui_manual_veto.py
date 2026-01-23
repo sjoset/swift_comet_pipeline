@@ -19,11 +19,11 @@ from swift_comet_pipeline.data_ingestion.observation_log.comet_center_tracking i
     get_user_specified_comet_center,
 )
 from swift_comet_pipeline.photometry.comet.comet_center_finding import find_comet_center
-from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
-    GlobalKey,
-    ProductKind,
+from swift_comet_pipeline.pipeline.product_system.product_facade import Products
+from swift_comet_pipeline.pipeline.product_system.product_key import GlobalKey
+from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
+from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
-    Products,
 )
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.swift.swift_data import SwiftData
