@@ -19,6 +19,9 @@ def calculate_blue_spot_from_column_densities(
     number of OH molecules beyond the vectorial model prediction
     Column densities are expected to be floats in units of 1/cm**2
     """
+
+    # TODO: re-sample along radius and linearly interpolate both column densities
+    # NOTE: don't filter for only positive contributions to excess OH
     bs_cds_raw = data_derived_oh_cds - vectorial_oh_cds
 
     # check if we even have enough data to do this
