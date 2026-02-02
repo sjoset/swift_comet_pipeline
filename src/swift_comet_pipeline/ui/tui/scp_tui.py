@@ -240,7 +240,8 @@ def main():
     # ---------
     # TODO: Jorda 2008 empirical water production rates for V-band
     # TODO: function for selecting epoch by date --> return closest observation epoch index entry
-    # selected_epoch = np.argmin(t - [x.observation_time for x in epoch_index])
+    # epoch_i = np.argmin(t - [x.observation_time for x in epoch_index])
+    # selected_epoch = epoch_index[epoch_i]
 
     # TODO: manual water calculation: show aperture vs r for oh/dust filters and allow picking windows to average over for counts to use for continuum subtraction
     # Then either take a redness --> Q or use an expectation value for Q based on redness distribution
@@ -286,7 +287,7 @@ def main():
     #     ),
     # )
     # build_product_reference(scp=scp, ref=blc_ref)
-    #
+
     # assert isinstance(blc_ref.key, BayesianPriorLightcurveKey)
     # blc = scp.load_bayesian_water_production_lightcurve(key=blc_ref.key)
     # print(blc[0])
@@ -308,28 +309,29 @@ def main():
     # assert isinstance(bs_ref.key, BlueSpotLightcurveKey)
     #
     # build_product_reference(scp=scp, ref=bs_ref)
-    #
+
     # bslc = scp.load_blue_spot_lightcurve(key=bs_ref.key)
     # # print(bslc)
     # bsdf = blue_spot_lightcurve_to_dataframe(lc=bslc)
     # print(bsdf.columns)
 
+    # TODO: each valid oh/dust/stacking method, every blue spot size
     # blue spot bayesian lightcurve
 
-    for bse, sig in product(scp.blue_spot_extents_km, scp.cfg.bayesian_prior_sigmas):
-        bpbs_ref = ProductReference(
-            kind=ProductKind.bayesian_blue_spot_lightcurve,
-            key=BayesianPriorBlueSpotLightcurveKey(
-                oh_filter=UvotFilter.uw1,
-                dust_filter=UvotFilter.uvv,
-                stacking_method=StackingMethod.summation,
-                blue_spot_extent_km=bse,
-                dust_redness_sigma_pct_per_hundred_nm=sig,
-            ),
-        )
-        assert isinstance(bpbs_ref.key, BayesianPriorBlueSpotLightcurveKey)
-
-        build_product_reference(scp=scp, ref=bpbs_ref)
+    # for bse, sig in product(scp.blue_spot_extents_km, scp.cfg.bayesian_prior_sigmas):
+    #     bpbs_ref = ProductReference(
+    #         kind=ProductKind.bayesian_blue_spot_lightcurve,
+    #         key=BayesianPriorBlueSpotLightcurveKey(
+    #             oh_filter=UvotFilter.uw1,
+    #             dust_filter=UvotFilter.uvv,
+    #             stacking_method=StackingMethod.summation,
+    #             blue_spot_extent_km=bse,
+    #             dust_redness_sigma_pct_per_hundred_nm=sig,
+    #         ),
+    #     )
+    #     assert isinstance(bpbs_ref.key, BayesianPriorBlueSpotLightcurveKey)
+    #
+    #     build_product_reference(scp=scp, ref=bpbs_ref)
 
     # bslc = scp.load_bayesian_blue_spot_lightcurve(key=bpbs_ref.key)
     # print(bslc)

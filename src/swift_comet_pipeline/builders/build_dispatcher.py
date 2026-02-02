@@ -53,6 +53,7 @@ from swift_comet_pipeline.pipeline.product_system.product_reference import (
 
 # TODO: all builders should look for existing products and attempt to use those same parameters to re-build
 # TODO: all builders should ask to replace existing products
+# TODO: replace this with a dictionary of {ProductKind: function}
 def do_build(scp: Products, ref: ProductReference) -> None:
 
     # TODO: use log to record which ProductReference we are attempting to build

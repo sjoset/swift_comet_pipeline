@@ -30,6 +30,10 @@ from swift_comet_pipeline.scp_types.compound.lightcurve import (
 from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 
 
+# TODO: move this somewhere else
+blue_spot_analysis_max_rh = 3.5 * u.au
+
+
 # non-bayesian version
 def build_blue_spot_lightcurve(
     scp: Products,
@@ -55,7 +59,8 @@ def build_blue_spot_lightcurve(
 
     for eid in eids:
 
-        if eid.rh_au > 3.0:
+        # if eid.rh_au > 3.0:
+        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):
             print(
                 f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
             )
@@ -151,7 +156,8 @@ def build_bayesian_prior_blue_spot_lightcurve(
 
     for eid in eids:
 
-        if eid.rh_au > 3.0:
+        # if eid.rh_au > 3.0:
+        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):
             print(
                 f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
             )
