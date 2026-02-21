@@ -59,7 +59,7 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
     annular_apertures = make_concentric_annular_apertures(
         ap_center=comet_center,
         min_radius=0.0,
-        max_radius=r_max_pix,
+        max_radius=r_max_pix,  # type: ignore
         num_concentric_apertures=num_concentric_apertures,
     )
     aperture_r_pix = [float(annular_apertures[0].r)] + [  # type: ignore

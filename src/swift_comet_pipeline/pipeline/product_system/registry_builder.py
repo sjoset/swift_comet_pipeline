@@ -43,7 +43,7 @@ def data_ingestion_registry() -> ProductRegistry:
     )
     reg.subdir_resolver().register_template(
         BlueSpotLightcurveKey,
-        subdir_template="lightcurves/blue_spot_oh_{key.oh_filter}_dust_{key.dust_filter}_{key.stacking_method}",
+        subdir_template="lightcurves/blue_spot_oh_{key.oh_filter}_dust_{key.dust_filter}_{key.stacking_method}_{key.blue_spot_extent_km:06.2f}",
     )
     reg.subdir_resolver().register_template(
         BayesianPriorBlueSpotLightcurveKey,

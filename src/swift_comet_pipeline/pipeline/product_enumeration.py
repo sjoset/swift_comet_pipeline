@@ -1,7 +1,11 @@
 from itertools import product
 from swift_comet_pipeline.pipeline.product_system.product_key import (
+    BayesianPriorBlueSpotLightcurveKey,
+    BayesianPriorLightcurveKey,
+    BlueSpotLightcurveKey,
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
+    LightcurveKey,
 )
 from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
 from swift_comet_pipeline.pipeline.product_system.product_reference import (
@@ -51,6 +55,34 @@ def _is_continuum_subtraction_product(kind: ProductKind) -> bool:
         ProductKind.radial_profile_water_production,
     ]
     return kind in continuum_subtraction_products
+
+
+def _is_lightcurve_product(kind: ProductKind) -> bool:
+    lc_products = [
+        ProductKind.water_production_lightcurve,
+    ]
+    return kind in lc_products
+
+
+def _is_bayesian_lightcurve_product(kind: ProductKind) -> bool:
+    blc_products = [
+        ProductKind.bayesian_water_production_lightcurve,
+    ]
+    return kind in blc_products
+
+
+def _is_blue_spot_lightcurve_product(kind: ProductKind) -> bool:
+    lc_products = [
+        ProductKind.blue_spot_lightcurve,
+    ]
+    return kind in lc_products
+
+
+def _is_bayesian_blue_spot_lightcurve_product(kind: ProductKind) -> bool:
+    blc_products = [
+        ProductKind.bayesian_blue_spot_lightcurve,
+    ]
+    return kind in blc_products
 
 
 def enumerate_subpipeline_product(
@@ -117,6 +149,144 @@ def enumerate_continuum_subtraction_products(
     return available_products
 
 
+def enumerate_lightcurve_products(
+    kind: ProductKind,
+    oh_filters: list[UvotFilter],
+    dust_filters: list[UvotFilter],
+    stacking_methods: list[StackingMethod],
+) -> list[ProductReference]:
+    """
+    For listing all water production lightcurves
+    """
+
+    available_products: list[ProductReference] = []
+
+    for oh_filter, dust_filter, stacking_method in product(
+        oh_filters, dust_filters, stacking_methods
+    ):
+        if oh_filter == dust_filter:
+            continue
+        pref = ProductReference(
+            kind=kind,
+            key=LightcurveKey(
+                oh_filter=oh_filter,
+                dust_filter=dust_filter,
+                stacking_method=stacking_method,
+            ),
+        )
+        available_products.append(pref)
+
+    return available_products
+
+
+def enumerate_bayesian_lightcurve_products(
+    kind: ProductKind,
+    oh_filters: list[UvotFilter],
+    dust_filters: list[UvotFilter],
+    stacking_methods: list[StackingMethod],
+    dust_redness_sigmas: list[DustReddeningPercent],
+) -> list[ProductReference]:
+    """
+    For listing all water production lightcurves with bayesian color analysis applied
+    """
+
+    available_products: list[ProductReference] = []
+
+    for oh_filter, dust_filter, stacking_method, dust_redness_sigma in product(
+        oh_filters, dust_filters, stacking_methods, dust_redness_sigmas
+    ):
+        if oh_filter == dust_filter:
+            continue
+        pref = ProductReference(
+            kind=kind,
+            key=BayesianPriorLightcurveKey(
+                oh_filter=oh_filter,
+                dust_filter=dust_filter,
+                stacking_method=stacking_method,
+                dust_redness_sigma_pct_per_hundred_nm=dust_redness_sigma,
+            ),
+        )
+        available_products.append(pref)
+
+    return available_products
+
+
+def enumerate_blue_spot_lightcurve_products(
+    kind: ProductKind,
+    oh_filters: list[UvotFilter],
+    dust_filters: list[UvotFilter],
+    stacking_methods: list[StackingMethod],
+    blue_spot_extents_km: list[DustReddeningPercent],
+) -> list[ProductReference]:
+    """
+    For listing all blue spot production lightcurves
+    """
+
+    available_products: list[ProductReference] = []
+
+    for oh_filter, dust_filter, stacking_method, blue_spot_extent_km in product(
+        oh_filters, dust_filters, stacking_methods, blue_spot_extents_km
+    ):
+        if oh_filter == dust_filter:
+            continue
+        pref = ProductReference(
+            kind=kind,
+            key=BlueSpotLightcurveKey(
+                oh_filter=oh_filter,
+                dust_filter=dust_filter,
+                stacking_method=stacking_method,
+                blue_spot_extent_km=blue_spot_extent_km,
+            ),
+        )
+        available_products.append(pref)
+
+    return available_products
+
+
+def enumerate_bayesian_blue_spot_lightcurve_products(
+    kind: ProductKind,
+    oh_filters: list[UvotFilter],
+    dust_filters: list[UvotFilter],
+    stacking_methods: list[StackingMethod],
+    dust_redness_sigmas: list[DustReddeningPercent],
+    blue_spot_extents_km: list[DustReddeningPercent],
+) -> list[ProductReference]:
+    """
+    For listing all blue spot production lightcurves
+    """
+
+    available_products: list[ProductReference] = []
+
+    for (
+        oh_filter,
+        dust_filter,
+        stacking_method,
+        dust_redness_sigma,
+        blue_spot_extent_km,
+    ) in product(
+        oh_filters,
+        dust_filters,
+        stacking_methods,
+        dust_redness_sigmas,
+        blue_spot_extents_km,
+    ):
+        if oh_filter == dust_filter:
+            continue
+        pref = ProductReference(
+            kind=kind,
+            key=BayesianPriorBlueSpotLightcurveKey(
+                oh_filter=oh_filter,
+                dust_filter=dust_filter,
+                stacking_method=stacking_method,
+                dust_redness_sigma_pct_per_hundred_nm=dust_redness_sigma,
+                blue_spot_extent_km=blue_spot_extent_km,
+            ),
+        )
+        available_products.append(pref)
+
+    return available_products
+
+
 def enumerate_all_products_of(
     kind: ProductKind,
     epochs: EpochIndex,
@@ -124,6 +294,8 @@ def enumerate_all_products_of(
     dust_filters: list[UvotFilter] | None = None,
     stacking_methods: list[StackingMethod] | None = None,
     dust_rednesses: list[DustReddeningPercent] | None = None,
+    dust_redness_sigmas: list[DustReddeningPercent] | None = None,
+    blue_spot_extents_km: list[float] | None = None,
 ) -> list[ProductReference]:
     """
     Take these parameters and build a list of ProductReferences that the EpochIndex says should exist,
@@ -173,6 +345,80 @@ def enumerate_all_products_of(
                 dust_filters=dust_filters,
                 stacking_methods=stacking_methods,
                 dust_rednesses=dust_rednesses,
+            )
+    elif _is_lightcurve_product(kind=kind):
+        if oh_filters is None or dust_filters is None or stacking_methods is None:
+            print("Missing arguments for enumerate_all_products_of!")
+            print(f"{oh_filters=}\t{dust_filters=}\t{stacking_methods=}")
+            return []
+        else:
+            return enumerate_lightcurve_products(
+                kind=kind,
+                oh_filters=oh_filters,
+                dust_filters=dust_filters,
+                stacking_methods=stacking_methods,
+            )
+    elif _is_bayesian_lightcurve_product(kind=kind):
+        if (
+            oh_filters is None
+            or dust_filters is None
+            or stacking_methods is None
+            or dust_redness_sigmas is None
+        ):
+            print("Missing arguments for enumerate_all_products_of!")
+            print(
+                f"{oh_filters=}\t{dust_filters=}\t{stacking_methods=}\t{dust_redness_sigmas=}"
+            )
+            return []
+        else:
+            return enumerate_bayesian_lightcurve_products(
+                kind=kind,
+                oh_filters=oh_filters,
+                dust_filters=dust_filters,
+                stacking_methods=stacking_methods,
+                dust_redness_sigmas=dust_redness_sigmas,
+            )
+    elif _is_blue_spot_lightcurve_product(kind=kind):
+        if (
+            oh_filters is None
+            or dust_filters is None
+            or stacking_methods is None
+            or blue_spot_extents_km is None
+        ):
+            print("Missing arguments for enumerate_all_products_of!")
+            print(
+                f"{oh_filters=}\t{dust_filters=}\t{stacking_methods=}\t{blue_spot_extents_km=}"
+            )
+            return []
+        else:
+            return enumerate_blue_spot_lightcurve_products(
+                kind=kind,
+                oh_filters=oh_filters,
+                dust_filters=dust_filters,
+                stacking_methods=stacking_methods,
+                blue_spot_extents_km=blue_spot_extents_km,
+            )
+    elif _is_bayesian_blue_spot_lightcurve_product(kind=kind):
+        if (
+            oh_filters is None
+            or dust_filters is None
+            or stacking_methods is None
+            or dust_redness_sigmas is None
+            or blue_spot_extents_km is None
+        ):
+            print("Missing arguments for enumerate_all_products_of!")
+            print(
+                f"{oh_filters=}\t{dust_filters=}\t{stacking_methods=}\t{dust_redness_sigmas=}\t{blue_spot_extents_km=}"
+            )
+            return []
+        else:
+            return enumerate_bayesian_blue_spot_lightcurve_products(
+                kind=kind,
+                oh_filters=oh_filters,
+                dust_filters=dust_filters,
+                stacking_methods=stacking_methods,
+                dust_redness_sigmas=dust_redness_sigmas,
+                blue_spot_extents_km=blue_spot_extents_km,
             )
     else:
         # should be inaccessible

@@ -1,5 +1,3 @@
-from functools import cache
-
 import numpy as np
 
 from swift_comet_pipeline.scp_types.compound.count_rate import CountRate

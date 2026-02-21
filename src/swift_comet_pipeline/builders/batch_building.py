@@ -4,9 +4,7 @@ from joblib import Parallel, delayed
 import astropy.units as u
 from tqdm import tqdm
 
-from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
-    vectorial_model_settings_init,
-)
+from swift_comet_pipeline.common.parallel_compute import parallel_loop_builder
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
 from swift_comet_pipeline.pipeline.product_system.dependency_dag import (
     ProductBuildStatus,
@@ -26,13 +24,6 @@ from swift_comet_pipeline.ui.tui.tui_common import (
     build_product_reference_loop,
     show_pipeline_status_for_product,
 )
-
-
-def parallel_loop_builder(
-    scp: Products, ref: ProductReference, force: bool = False
-) -> None:
-    vectorial_model_settings_init(comet_project_config=scp.cfg)
-    build_product_reference_loop(scp=scp, ref=ref, force=force)
 
 
 def build_all_data_ingestion_products(scp: Products) -> None:
@@ -105,10 +96,6 @@ def all_aperture_analysis(
         dust_filters=scp.cfg.dust_filters,
         stacking_methods=scp.cfg.stacking_methods,
     )
-    # for aa_ref in aa_refs:
-    #     assert isinstance(aa_ref.key, EpochSubpipelineKey)
-    #     show_pipeline_status_for_product(scp=scp, ref=aa_ref)
-    #     build_product_reference_loop(scp=scp, ref=aa_ref)
 
     incomplete_aa_prefs = list(
         filter(
@@ -256,3 +243,85 @@ def all_radial_profile_water_analysis(scp: Products, epoch_index: EpochIndex) ->
     for rwp in tqdm(incomplete_rwp_prefs, total=len(incomplete_rwp_prefs)):
         assert isinstance(rwp.key, ContinuumSubtractionKey)
         build_product_reference_loop(scp=scp, ref=rwp)
+
+
+def all_water_production_lightcurves(
+    scp: Products, epoch_index: EpochIndex, force: bool = False, n_jobs: int = -1
+) -> None:
+
+    lc_prefs = enumerate_all_products_of(
+        kind=ProductKind.water_production_lightcurve,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+    )
+    print(f"Building {len(lc_prefs)} lightcurves of kind {lc_prefs[0].kind}:")
+
+    builder_func = partial(parallel_loop_builder, scp=scp, force=force)
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(builder_func)(ref=x) for x in lc_prefs
+    )
+
+
+def all_bayesian_water_production_lightcurves(
+    scp: Products, epoch_index: EpochIndex, force: bool = False, n_jobs: int = -1
+) -> None:
+
+    lc_prefs = enumerate_all_products_of(
+        kind=ProductKind.bayesian_water_production_lightcurve,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+        dust_redness_sigmas=scp.cfg.bayesian_prior_sigmas,
+    )
+    print(f"Building {len(lc_prefs)} bayesian lightcurves of kind {lc_prefs[0].kind}:")
+
+    builder_func = partial(parallel_loop_builder, scp=scp, force=force)
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(builder_func)(ref=x) for x in lc_prefs
+    )
+
+
+def all_blue_spot_lightcurves(
+    scp: Products, epoch_index: EpochIndex, force: bool = False, n_jobs: int = -1
+) -> None:
+
+    lc_prefs = enumerate_all_products_of(
+        kind=ProductKind.blue_spot_lightcurve,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+        blue_spot_extents_km=scp.blue_spot_extents_km,
+    )
+    print(f"Building {len(lc_prefs)} blue spot lightcurves of kind {lc_prefs[0].kind}:")
+
+    builder_func = partial(parallel_loop_builder, scp=scp, force=force)
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(builder_func)(ref=x) for x in lc_prefs
+    )
+
+
+def all_bayesian_blue_spot_lightcurves(
+    scp: Products, epoch_index: EpochIndex, force: bool = False, n_jobs: int = -1
+) -> None:
+
+    lc_prefs = enumerate_all_products_of(
+        kind=ProductKind.bayesian_blue_spot_lightcurve,
+        epochs=epoch_index,
+        oh_filters=scp.cfg.oh_filters,
+        dust_filters=scp.cfg.dust_filters,
+        stacking_methods=scp.cfg.stacking_methods,
+        dust_redness_sigmas=scp.cfg.bayesian_prior_sigmas,
+        blue_spot_extents_km=scp.blue_spot_extents_km,
+    )
+    print(
+        f"Building {len(lc_prefs)} bayesian blue spot lightcurves of kind {lc_prefs[0].kind}:"
+    )
+
+    builder_func = partial(parallel_loop_builder, scp=scp, force=force)
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(builder_func)(ref=x) for x in lc_prefs
+    )

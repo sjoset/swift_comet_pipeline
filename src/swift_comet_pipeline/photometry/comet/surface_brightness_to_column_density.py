@@ -18,7 +18,7 @@ def surface_brightness_profile_to_oh_column_density(
 ) -> np.ndarray:
     # return type has Quantity attached - num oh per cm^2
 
-    delta_cm = (eid.delta_au * u.AU).to_value(u.cm)  # type: ignore
+    delta_cm: float = (eid.delta_au * u.AU).to_value(u.cm)  # type: ignore
     alpha = oh_count_rates_to_flux_factor(filter_type=oh_filter).to_value(
         u.erg / (u.cm**2 * u.s)  # type: ignore
     )

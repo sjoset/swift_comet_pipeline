@@ -9,6 +9,9 @@ from swift_comet_pipeline.pipeline.product_system.product_key import (
 from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
 )
+from swift_comet_pipeline.pipeline.water_production_filter_pairs import (
+    get_valid_water_production_filter_pairs,
+)
 from swift_comet_pipeline.post_processing.fixed_aperture_size import (
     assemble_fixed_aperture_averaged_results,
     bayesian_expectation_of_assembled_fixed_aperture_results,
@@ -24,10 +27,13 @@ from swift_comet_pipeline.scp_types.compound.lightcurve import (
     LightCurveEntry,
     LightCurveEntrySource,
 )
+from swift_comet_pipeline.scp_types.compound.water_production_filter_pair import (
+    WaterProductionFilterPair,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 
 
-# TODO: move these somewhere else
+# TODO: priority 1: move these somewhere else - into the project config?
 _fixed_aperture_radius = 100000 * u.km  # type: ignore
 _fixed_aperture_window = 10000 * u.km  # type: ignore
 
@@ -56,9 +62,23 @@ def build_water_production_lightcurve(
         eids = epochs_to_include
     assert eids is not None
 
+    current_filter_pair = WaterProductionFilterPair(
+        oh_filter=oh_filter, dust_filter=dust_filter
+    )
     water_production_lightcurve: LightCurve = []
 
     for eid in eids:
+
+        # do we have observations in the filter pair for this epoch?
+        valid_filter_pairs = get_valid_water_production_filter_pairs(
+            eid=eid, oh_filters=[oh_filter], dust_filters=[dust_filter]
+        )
+        if current_filter_pair not in valid_filter_pairs:
+            # TODO: log this instead
+            # print(
+            #     f"Filter pair OH={oh_filter}, dust={dust_filter} not found in epoch {eid.epoch_id} - skipping lightcurve entry for aperture and vectorial water production."
+            # )
+            continue
 
         lightcurve_constructor = partial(
             LightCurveEntry,
@@ -99,7 +119,6 @@ def build_water_production_lightcurve(
 
         water_production_lightcurve.extend(vec_lc_entries_fixed)
 
-        print(f"Assembling aperture results for {eid.epoch_id} ...")
         apdf = assemble_fixed_aperture_averaged_results(
             scp=scp,
             eid=eid,
@@ -147,6 +166,8 @@ def build_water_production_lightcurve(
 
         water_production_lightcurve.extend(ap_lc_entries_fixed)
 
+    # print(f"Constructed lightcurve:")
+    # print(water_production_lightcurve)
     return water_production_lightcurve
 
 
@@ -154,6 +175,10 @@ def do_water_production_lightcurve(scp: Products, ref: ProductReference) -> None
 
     pkey = ref.key
     assert isinstance(pkey, LightcurveKey)
+
+    print(
+        f"Building lightcurve for filter pair OH={pkey.oh_filter} dust={pkey.dust_filter}"
+    )
 
     wp_lc = build_water_production_lightcurve(
         scp=scp,
@@ -163,8 +188,9 @@ def do_water_production_lightcurve(scp: Products, ref: ProductReference) -> None
     )
 
     scp.save_water_production_lightcurve(water_lc=wp_lc, key=pkey)
-
-    print(f"Finished building {pkey}!")
+    print(
+        f"Finished building lightcurve for filter pair OH={pkey.oh_filter} dust={pkey.dust_filter}"
+    )
 
 
 def build_bayesian_water_production_lightcurve(
@@ -187,9 +213,23 @@ def build_bayesian_water_production_lightcurve(
         eids = epochs_to_include
     assert eids is not None
 
+    current_filter_pair = WaterProductionFilterPair(
+        oh_filter=oh_filter, dust_filter=dust_filter
+    )
     water_production_lightcurve: LightCurve = []
 
     for eid in eids:
+
+        # do we have observations in the filter pair for this epoch?
+        valid_filter_pairs = get_valid_water_production_filter_pairs(
+            eid=eid, oh_filters=[oh_filter], dust_filters=[dust_filter]
+        )
+        if current_filter_pair not in valid_filter_pairs:
+            # TODO: log this instead
+            # print(
+            #     f"Filter pair OH={oh_filter}, dust={dust_filter} not found in epoch {eid.epoch_id} - skipping lightcurve entry for aperture and vectorial water production."
+            # )
+            continue
 
         lightcurve_constructor = partial(
             LightCurveEntry,
@@ -236,7 +276,6 @@ def build_bayesian_water_production_lightcurve(
 
         water_production_lightcurve.extend(vec_lc_entries_fixed)
 
-        print(f"Assembling aperture results for {eid.epoch_id} ...")
         aperture_water_production_column = "aperture_matched_q_h2o_median"
         aperture_water_production_err_column = "aperture_matched_q_h2o_median_err"
         aperture_hydroxyl_production_column = "q_oh_median"

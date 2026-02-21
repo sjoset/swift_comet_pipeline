@@ -20,8 +20,8 @@ def oh_flux_to_num_oh(
     # flux_OH given in ergs/cm**2/second
 
     # g factors given in terms of ergs, so we need to use cm while calculating luminescence
-    delta = (delta_au * u.AU).to_value(u.cm)  # type: ignore
-    luminescence = 4 * np.pi * flux_oh * delta**2
+    delta_cm: float = (delta_au * u.AU).to_value(u.cm)  # type: ignore
+    luminescence = 4 * np.pi * flux_oh * delta_cm**2
 
     g_factor = hydroxyl_gfactor_1au(helio_v_kms=helio_v_kms) / (rh_au**2)
 

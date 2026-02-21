@@ -1,3 +1,4 @@
+from itertools import product
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
@@ -8,14 +9,23 @@ from swift_comet_pipeline.image_manipulation.utility.plot_image_multi import (
 from swift_comet_pipeline.pipeline.product_enumeration import enumerate_all_products_of
 from swift_comet_pipeline.pipeline.product_system.product_facade import Products
 from swift_comet_pipeline.pipeline.product_system.product_key import (
+    BayesianPriorBlueSpotLightcurveKey,
+    BayesianPriorLightcurveKey,
+    BlueSpotLightcurveKey,
     ContinuumSubtractionKey,
     EpochSubpipelineKey,
+    LightcurveKey,
 )
 from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
 from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
 )
 from swift_comet_pipeline.scp_types.compound.epoch_index import EpochIndexEntry
+from swift_comet_pipeline.scp_types.compound.lightcurve import (
+    bayesian_prior_blue_spot_lightcurve_to_dataframe,
+    blue_spot_lightcurve_to_dataframe,
+    lightcurve_to_dataframe,
+)
 from swift_comet_pipeline.scp_types.primitive.afrho_from_aperture_photometry import (
     dataframe_from_afrho_aperture_photometry_analysis,
 )
@@ -386,7 +396,7 @@ def test_radial_profile_smoothing(
 
     smoothed_ys = savgol_filter(ys, window_length=10, polyorder=2)
 
-    plt.plot(xs, smoothed_ys, label="smoothed")
+    plt.plot(xs, smoothed_ys, label="smoothed")  # type: ignore
     plt.plot(crpfc.profile_axis_rs, crpfc.pixel_values, label="raw")
     # plt.plot(xs, crpfc.pixel_values / smoothed_ys, label="raw to smooth")
 
@@ -427,10 +437,10 @@ def test_aperture_analysis_loading(
     )
 
     plt.plot(
-        aapa_df.aperture_r_km, smoothed_total, label="smooth total", color="#688894"
+        aapa_df.aperture_r_km, smoothed_total, label="smooth total", color="#688894"  # type: ignore
     )
     plt.plot(
-        aapa_df.aperture_r_km, smoothed_median, label="smooth median", color="#afac7c"
+        aapa_df.aperture_r_km, smoothed_median, label="smooth median", color="#afac7c"  # type: ignore
     )
 
     for i in range(4):
@@ -543,3 +553,81 @@ def test_epoch_index_loading(scp: Products) -> None:
             "\t",
             epoch.observation_time,
         )
+
+
+def test_lightcurve_loading(scp: Products):
+    lc_ref = ProductReference(
+        kind=ProductKind.water_production_lightcurve,
+        key=LightcurveKey(
+            oh_filter=UvotFilter.uw1,
+            dust_filter=UvotFilter.uvv,
+            stacking_method=StackingMethod.summation,
+        ),
+    )
+
+    assert isinstance(lc_ref.key, LightcurveKey)
+    lc = scp.load_water_production_lightcurve(key=lc_ref.key)
+    print(f"lightcurve:")
+    print(lc[0], lc[1])
+    df = lightcurve_to_dataframe(lc=lc)
+    print("Converted regular lightcurve to dataframe without errors!")
+    print(f"Columns: {df.columns}")
+
+
+def test_bayesian_lightcurve_loading(scp: Products) -> None:
+    blc_ref = ProductReference(
+        kind=ProductKind.bayesian_water_production_lightcurve,
+        key=BayesianPriorLightcurveKey(
+            oh_filter=UvotFilter.uw1,
+            dust_filter=UvotFilter.uvv,
+            stacking_method=StackingMethod.summation,
+            dust_redness_sigma_pct_per_hundred_nm=DustReddeningPercent(3.0),
+        ),
+    )
+
+    assert isinstance(blc_ref.key, BayesianPriorLightcurveKey)
+    blc = scp.load_bayesian_water_production_lightcurve(key=blc_ref.key)
+    print(blc[0])
+    bdf = lightcurve_to_dataframe(lc=blc)
+    print(f"Dataframe columns: {bdf.columns}")
+
+
+def test_blue_spot_lightcurve_loading(scp: Products) -> None:
+
+    # TODO: fix these up to take arguments
+    bs_ref = ProductReference(
+        kind=ProductKind.blue_spot_lightcurve,
+        key=BlueSpotLightcurveKey(
+            oh_filter=UvotFilter.uw1,
+            dust_filter=UvotFilter.uvv,
+            stacking_method=StackingMethod.summation,
+            blue_spot_extent_km=20000,
+        ),
+    )
+    assert isinstance(bs_ref.key, BlueSpotLightcurveKey)
+
+    bslc = scp.load_blue_spot_lightcurve(key=bs_ref.key)
+    # print(bslc)
+    bsdf = blue_spot_lightcurve_to_dataframe(lc=bslc)
+    print(bsdf.columns)
+
+
+def test_bayesian_blue_spot_lightcurve(scp: Products) -> None:
+
+    for bse, sig in product(scp.blue_spot_extents_km, scp.cfg.bayesian_prior_sigmas):
+        bpbs_ref = ProductReference(
+            kind=ProductKind.bayesian_blue_spot_lightcurve,
+            key=BayesianPriorBlueSpotLightcurveKey(
+                oh_filter=UvotFilter.uw1,
+                dust_filter=UvotFilter.uvv,
+                stacking_method=StackingMethod.summation,
+                blue_spot_extent_km=bse,
+                dust_redness_sigma_pct_per_hundred_nm=sig,
+            ),
+        )
+        assert isinstance(bpbs_ref.key, BayesianPriorBlueSpotLightcurveKey)
+
+        bslc = scp.load_bayesian_blue_spot_lightcurve(key=bpbs_ref.key)
+        # print(bslc)
+        bsdf = bayesian_prior_blue_spot_lightcurve_to_dataframe(lc=bslc)
+        print(bsdf.columns)

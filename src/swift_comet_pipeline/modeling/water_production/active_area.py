@@ -43,29 +43,6 @@ def estimate_active_area(
     return aa_km2
 
 
-# TODO: remove old code
-# @cache
-# def estimate_active_area(
-#     q: u.Quantity, rh: u.Quantity, sub_solar_latitude: u.Quantity
-# ) -> u.Quantity:
-#     """
-#     Runs sublimation model based on Cowan & A'Hearn 1979
-#     """
-#
-#     if q < 0.0 / u.s:
-#         return 0.0 * u.cm**2
-#
-#     smi = make_sublimation_model_input(
-#         rh_au=rh.to_value(u.AU),  # type: ignore
-#         sub_solar_latitude=sub_solar_latitude.to_value(u.degree),  # type: ignore
-#     )
-#
-#     smr: SublimationModelResult = run_sublimation_model(smi=smi)
-#
-#     # output z_bar is in mol/cm^2/sec
-#     return q / (smr.z_bar / (u.cm**2 * u.s))  # type: ignore
-
-
 def estimate_active_area_km2(
     q_per_s: float, rh_au: float, sub_solar_latitude_deg: float
 ) -> float:

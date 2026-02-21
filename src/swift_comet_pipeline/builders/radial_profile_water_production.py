@@ -1,6 +1,9 @@
 import astropy.units as u
 import numpy as np
 
+from swift_comet_pipeline.builders.vectorial_model_cacher import (
+    get_vectorial_model_cache_Q,
+)
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     water_vectorial_model,
 )
@@ -85,7 +88,9 @@ def do_radial_profile_water_production(scp: Products, ref: ProductReference) -> 
         dust_filter=dust_key.filter_type,
     )
 
-    model_Q = 1e28 / u.s
+    # TODO: magic number - this should be centralized somewhere, and has to match the value in vectorial_model_cacher.py
+    # model_Q = 1e28 / u.s
+    model_Q = get_vectorial_model_cache_Q()
     rh = eid.rh_au * u.AU  # type: ignore
     # run vectorial model
     vmr = water_vectorial_model(base_q=model_Q, helio_r=rh)

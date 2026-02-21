@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from itertools import product
 import os
 import pathlib
 import sys
@@ -13,48 +12,36 @@ from astropy.io.fits.card import VerifyWarning
 from astropy.wcs.wcs import FITSFixedWarning
 from pandas.errors import SettingWithCopyWarning
 
+from swift_comet_pipeline.builders.vectorial_model_cacher import (
+    cache_all_vectorial_models,
+)
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     vectorial_model_settings_init,
 )
 from swift_comet_pipeline.pipeline.product_system.product_facade import Products
-from swift_comet_pipeline.pipeline.product_system.product_key import (
-    BayesianPriorBlueSpotLightcurveKey,
-    BayesianPriorLightcurveKey,
-    BlueSpotLightcurveKey,
-    LightcurveKey,
-)
-from swift_comet_pipeline.pipeline.product_system.product_kind import ProductKind
-from swift_comet_pipeline.pipeline.product_system.product_reference import (
-    ProductReference,
-)
 from swift_comet_pipeline.pipeline.project_configuration.read_comet_project_config import (
     read_comet_project_config,
 )
 from swift_comet_pipeline.scp_types.compound.comet_project_config import (
     CometProjectConfig,
 )
-from swift_comet_pipeline.scp_types.compound.lightcurve import (
-    bayesian_prior_blue_spot_lightcurve_to_dataframe,
-    blue_spot_lightcurve_to_dataframe,
-    lightcurve_to_dataframe,
-)
 from swift_comet_pipeline.scp_types.primitive import *
-from swift_comet_pipeline.ui.tui.tui_batch_building import (
+from swift_comet_pipeline.builders.batch_building import (
     all_afrho_from_apertures,
     all_afrho_from_radial_profiles,
     all_aperture_analysis,
     all_aperture_water_analysis,
+    all_bayesian_blue_spot_lightcurves,
+    all_bayesian_water_production_lightcurves,
+    all_blue_spot_lightcurves,
     all_radial_profile_extraction,
     all_radial_profile_subtracted_images,
     all_radial_profile_water_analysis,
+    all_water_production_lightcurves,
     background_all_images,
     background_subtract_all_images,
     build_all_data_ingestion_products,
     stack_all_images,
-)
-from swift_comet_pipeline.ui.tui.tui_common import (
-    build_product_reference,
-    build_product_reference_loop,
 )
 
 
@@ -205,7 +192,6 @@ def main():
 
     # TODO: EpochIndexEntry should have rh_au tagged with negative for pre-perihelion
 
-    # TODO: batch mode: stack all, background all, radial profile all
     # non-interactive
     stack_all_images(scp=scp, epoch_index=epoch_index)
 
@@ -229,11 +215,6 @@ def main():
 
     all_afrho_from_radial_profiles(scp=scp, epoch_index=epoch_index)
 
-    # if this is run first, we have vectorial models running in parallel trying to write to the cache in parallel and fail,
-    # since all but the first will not be unique!
-    # TODO: write a cache_all_vectorial_models() function so this doesn't happen, and we don't have to care about doing
-    # radial water production before aperture
-    # The other option is to run a vectorial model for the epoch before we start the parallel calculations, over in the builder
     # all_aperture_water_analysis(scp=scp, epoch_index=epoch_index, n_jobs=4)
     all_aperture_water_analysis(scp=scp, epoch_index=epoch_index)
 
@@ -253,90 +234,19 @@ def main():
     # TODO: latex table generation from epoch index
     # ---------
 
-    # TODO: build all lightcurves: each valid oh/dust/stacking method
     # regular lightcurve
+    all_water_production_lightcurves(scp=scp, epoch_index=epoch_index)
 
-    # lc_ref = ProductReference(
-    #     kind=ProductKind.water_production_lightcurve,
-    #     key=LightcurveKey(
-    #         oh_filter=UvotFilter.uw1,
-    #         dust_filter=UvotFilter.uvv,
-    #         stacking_method=StackingMethod.summation,
-    #     ),
-    # )
-    # build_product_reference(scp=scp, ref=lc_ref)
-    #
-    # assert isinstance(lc_ref.key, LightcurveKey)
-    # lc = scp.load_water_production_lightcurve(key=lc_ref.key)
-    # print(f"lightcurve:")
-    # print(lc[0], lc[1])
-    # df = lightcurve_to_dataframe(lc=lc)
-    # print("Converted regular lightcurve to dataframe without errors!")
-    # print(f"Columns: {df.columns}")
-
-    # TODO: build all lightcurves: each valid oh/dust/stacking method, every sigma in config
     # bayesian lightcurve
+    all_bayesian_water_production_lightcurves(scp=scp, epoch_index=epoch_index)
 
-    # blc_ref = ProductReference(
-    #     kind=ProductKind.bayesian_water_production_lightcurve,
-    #     key=BayesianPriorLightcurveKey(
-    #         oh_filter=UvotFilter.uw1,
-    #         dust_filter=UvotFilter.uvv,
-    #         stacking_method=StackingMethod.summation,
-    #         dust_redness_sigma_pct_per_hundred_nm=DustReddeningPercent(3.0),
-    #     ),
-    # )
-    # build_product_reference(scp=scp, ref=blc_ref)
-
-    # assert isinstance(blc_ref.key, BayesianPriorLightcurveKey)
-    # blc = scp.load_bayesian_water_production_lightcurve(key=blc_ref.key)
-    # print(blc[0])
-    # bdf = lightcurve_to_dataframe(lc=blc)
-    # print(f"Dataframe columns: {bdf.columns}")
-
-    # TODO: build all lightcurves: each valid oh/dust/stacking method, every blue spot size in config
     # blue spot lightcurve
+    all_blue_spot_lightcurves(scp=scp, epoch_index=epoch_index)
 
-    # bs_ref = ProductReference(
-    #     kind=ProductKind.blue_spot_lightcurve,
-    #     key=BlueSpotLightcurveKey(
-    #         oh_filter=UvotFilter.uw1,
-    #         dust_filter=UvotFilter.uvv,
-    #         stacking_method=StackingMethod.summation,
-    #         blue_spot_extent_km=20000,
-    #     ),
-    # )
-    # assert isinstance(bs_ref.key, BlueSpotLightcurveKey)
-    #
-    # build_product_reference(scp=scp, ref=bs_ref)
-
-    # bslc = scp.load_blue_spot_lightcurve(key=bs_ref.key)
-    # # print(bslc)
-    # bsdf = blue_spot_lightcurve_to_dataframe(lc=bslc)
-    # print(bsdf.columns)
-
-    # TODO: each valid oh/dust/stacking method, every blue spot size
     # blue spot bayesian lightcurve
+    all_bayesian_blue_spot_lightcurves(scp=scp, epoch_index=epoch_index)
 
-    # for bse, sig in product(scp.blue_spot_extents_km, scp.cfg.bayesian_prior_sigmas):
-    #     bpbs_ref = ProductReference(
-    #         kind=ProductKind.bayesian_blue_spot_lightcurve,
-    #         key=BayesianPriorBlueSpotLightcurveKey(
-    #             oh_filter=UvotFilter.uw1,
-    #             dust_filter=UvotFilter.uvv,
-    #             stacking_method=StackingMethod.summation,
-    #             blue_spot_extent_km=bse,
-    #             dust_redness_sigma_pct_per_hundred_nm=sig,
-    #         ),
-    #     )
-    #     assert isinstance(bpbs_ref.key, BayesianPriorBlueSpotLightcurveKey)
-    #
-    #     build_product_reference(scp=scp, ref=bpbs_ref)
-
-    # bslc = scp.load_bayesian_blue_spot_lightcurve(key=bpbs_ref.key)
-    # print(bslc)
-    # bsdf = bayesian_prior_blue_spot_lightcurve_to_dataframe(lc=bslc)
-    # print(bsdf.columns)
+    # TODO: active areas
 
 
 if __name__ == "__main__":

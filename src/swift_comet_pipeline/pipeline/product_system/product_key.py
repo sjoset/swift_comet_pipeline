@@ -26,7 +26,7 @@ class EpochSubpipelineKey(KeyLike):
     stacking_method: StackingMethod
 
     def __str__(self):
-        return f"{self.epoch_id}  {self.filter_type} {self.stacking_method}"
+        return f"epoch id: {self.epoch_id}  filter: {self.filter_type} stacking: {self.stacking_method}"
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class ContinuumSubtractionKey(KeyLike):
     dust_redness_pct_per_hundred_nm: float
 
     def __str__(self):
-        return f"{self.epoch_id} oh: {self.oh_filter} dust: {self.dust_filter} redness: {self.dust_redness_pct_per_hundred_nm} {self.stacking_method}"
+        return f"{self.epoch_id} oh: {self.oh_filter} dust: {self.dust_filter} redness: {self.dust_redness_pct_per_hundred_nm} stacking: {self.stacking_method}"
 
 
 # contains results for every redness and every epoch
@@ -49,7 +49,7 @@ class LightcurveKey(KeyLike):
     stacking_method: StackingMethod
 
     def __str__(self):
-        return f"lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} {self.stacking_method}"
+        return f"lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} stacking: {self.stacking_method}"
 
 
 # contains blue spot results for every redness and every epoch
@@ -61,7 +61,7 @@ class BlueSpotLightcurveKey(KeyLike):
     blue_spot_extent_km: float
 
     def __str__(self):
-        return f"blue spot lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} {self.stacking_method}"
+        return f"blue spot lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} stacking: {self.stacking_method} extent: {self.blue_spot_extent_km} km"
 
 
 # contains results for one dust prior sigma, over all dust rednesses

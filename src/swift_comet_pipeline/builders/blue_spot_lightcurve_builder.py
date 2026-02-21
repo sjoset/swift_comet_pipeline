@@ -8,6 +8,12 @@ from swift_comet_pipeline.pipeline.product_system.product_key import (
 from swift_comet_pipeline.pipeline.product_system.product_reference import (
     ProductReference,
 )
+from swift_comet_pipeline.pipeline.water_production_filter_pairs import (
+    get_valid_water_production_filter_pairs,
+)
+from swift_comet_pipeline.scp_types.compound.water_production_filter_pair import (
+    WaterProductionFilterPair,
+)
 from swift_comet_pipeline.scp_types.primitive import *
 from swift_comet_pipeline.modeling.vectorial.molecular_parameters import (
     make_hydroxyl_fragment,
@@ -55,15 +61,30 @@ def build_blue_spot_lightcurve(
         eids = epochs_to_include
     assert eids is not None
 
+    current_filter_pair = WaterProductionFilterPair(
+        oh_filter=oh_filter, dust_filter=dust_filter
+    )
     blue_spot_lightcurve: BlueSpotLightCurve = []
 
     for eid in eids:
 
+        # do we have observations in the filter pair for this epoch?
+        valid_filter_pairs = get_valid_water_production_filter_pairs(
+            eid=eid, oh_filters=[oh_filter], dust_filters=[dust_filter]
+        )
+        if current_filter_pair not in valid_filter_pairs:
+            # TODO: log this instead
+            # print(
+            #     f"Filter pair OH={oh_filter}, dust={dust_filter} not found in epoch {eid.epoch_id} - skipping lightcurve entry for aperture and vectorial water production."
+            # )
+            continue
+
         # if eid.rh_au > 3.0:
-        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):
-            print(
-                f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
-            )
+        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):  # type: ignore
+            # TODO: log this instead
+            # print(
+            #     f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
+            # )
             continue
 
         oh_fragment = make_hydroxyl_fragment()
@@ -152,15 +173,30 @@ def build_bayesian_prior_blue_spot_lightcurve(
         eids = epochs_to_include
     assert eids is not None
 
+    current_filter_pair = WaterProductionFilterPair(
+        oh_filter=oh_filter, dust_filter=dust_filter
+    )
     blue_spot_lightcurve: BayesianPriorBlueSpotLightCurve = []
 
     for eid in eids:
 
+        # do we have observations in the filter pair for this epoch?
+        valid_filter_pairs = get_valid_water_production_filter_pairs(
+            eid=eid, oh_filters=[oh_filter], dust_filters=[dust_filter]
+        )
+        if current_filter_pair not in valid_filter_pairs:
+            # TODO: log this instead
+            # print(
+            #     f"Filter pair OH={oh_filter}, dust={dust_filter} not found in epoch {eid.epoch_id} - skipping lightcurve entry for aperture and vectorial water production."
+            # )
+            continue
+
         # if eid.rh_au > 3.0:
-        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):
-            print(
-                f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
-            )
+        if eid.rh_au > blue_spot_analysis_max_rh.to_value(u.au):  # type: ignore
+            # TODO: log this instead
+            # print(
+            #     f"Skipping {eid.epoch_id}: rh of {eid.rh_au} is too large for blue spot analysis."
+            # )
             continue
 
         oh_fragment = make_hydroxyl_fragment()

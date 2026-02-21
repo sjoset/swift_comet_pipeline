@@ -32,7 +32,7 @@ from swift_comet_pipeline.scp_types.primitive.dust_reddening_percent import (
 )
 from swift_comet_pipeline.scp_types.primitive import *
 
-# TODO: remove old code
+# TODO: priority 1 remove old code
 
 # # TODO: move these somewhere else
 # _fixed_aperture_radius = 100000 * u.km  # type: ignore
