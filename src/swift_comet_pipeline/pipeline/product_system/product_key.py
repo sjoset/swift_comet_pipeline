@@ -74,11 +74,10 @@ class BayesianPriorLightcurveKey(KeyLike):
     dust_redness_sigma_pct_per_hundred_nm: float
 
     def __str__(self):
-        # return f"bayesian lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} prior mean redness: {self.dust_redness_mean_pct_per_hundred_nm} prior sigma: {self.dust_redness_sigma_pct_per_hundred_nm} {self.stacking_method}"
         return f"bayesian lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} prior sigma: {self.dust_redness_sigma_pct_per_hundred_nm} {self.stacking_method}"
 
 
-# contains results for one dust prior sigma, over all dust rednesses
+# contains results for one dust prior sigma and one blue spot extent, over all dust rednesses
 @dataclass(frozen=True)
 class BayesianPriorBlueSpotLightcurveKey(KeyLike):
     oh_filter: UvotFilter
@@ -89,5 +88,4 @@ class BayesianPriorBlueSpotLightcurveKey(KeyLike):
     dust_redness_sigma_pct_per_hundred_nm: float
 
     def __str__(self):
-        # return f"bayesian lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} prior mean redness: {self.dust_redness_mean_pct_per_hundred_nm} prior sigma: {self.dust_redness_sigma_pct_per_hundred_nm} {self.stacking_method}"
-        return f"bayesian lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} prior sigma: {self.dust_redness_sigma_pct_per_hundred_nm} {self.stacking_method}"
+        return f"bayesian blue spot lightcurve for oh: {self.oh_filter} dust: {self.dust_filter} prior sigma: {self.dust_redness_sigma_pct_per_hundred_nm} stacking: {self.stacking_method} extent: {self.blue_spot_extent_km} km"
