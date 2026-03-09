@@ -34,7 +34,7 @@ def do_aperture_photometry_analysis(scp: Products, ref: ProductReference) -> Non
 
     # TODO: magic numbers: take from config or calculate, but needs to be fixed across all epochs
     # parameters of analysis
-    max_aperture_radius = 8e5 * u.km  # type: ignore
+    max_aperture_radius = scp.cfg.max_aperture_radius_km * u.km  # type: ignore
     num_concentric_apertures = 400
 
     # load epoch info and the image to be analyzed

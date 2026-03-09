@@ -14,6 +14,8 @@ from swift_comet_pipeline.pipeline.product_system.registry_and_store import (
     ProductReference,
 )
 
+# TODO: move dataclasses?
+
 
 def build_toposorter(
     scp: Products, target_product: ProductReference
@@ -63,7 +65,7 @@ _STATUS_STYLE = {
 class ProductStatus:
     build_status: ProductBuildStatus
     exists: bool
-    mtime: float
+    mtime: float | None
 
     def __str__(self):
         exist_str = "[file exists]" if self.exists else "[no file]"
