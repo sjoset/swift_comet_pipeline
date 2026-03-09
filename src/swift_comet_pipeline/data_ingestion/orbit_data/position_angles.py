@@ -12,10 +12,11 @@ def get_position_angles(
 
     hor = Horizons(
         id=jpl_horizons_id,
+        id_type="designation",
         location="@swift",
         epochs=Time(at_time).jd,
     )
-    eph = hor.ephemerides()  # type: ignore
+    eph = hor.ephemerides(closest_apparition=True, no_fragments=True)  # type: ignore
     e_df = eph.to_pandas()
 
     dust_tail_pa = e_df.velocityPA[0]

@@ -12,9 +12,6 @@ from astropy.io.fits.card import VerifyWarning
 from astropy.wcs.wcs import FITSFixedWarning
 from pandas.errors import SettingWithCopyWarning
 
-from swift_comet_pipeline.builders.vectorial_model_cacher import (
-    cache_all_vectorial_models,
-)
 from swift_comet_pipeline.modeling.vectorial.vectorial_model import (
     vectorial_model_settings_init,
 )
