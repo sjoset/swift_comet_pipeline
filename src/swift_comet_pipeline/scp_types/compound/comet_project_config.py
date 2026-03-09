@@ -75,3 +75,6 @@ class CometProjectConfig:
     blue_spot_extent_km_step: float = 5000
 
     max_aperture_radius_km: float = 800000
+
+    water_production_fixed_aperture_radius_km: float = 100000
+    water_production_fixed_aperture_radius_window_km: float = 10000

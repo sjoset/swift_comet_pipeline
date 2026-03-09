@@ -33,9 +33,9 @@ from swift_comet_pipeline.scp_types.compound.water_production_filter_pair import
 from swift_comet_pipeline.scp_types.primitive import *
 
 
-# TODO: priority 1: move these somewhere else - into the project config?
-_fixed_aperture_radius = 100000 * u.km  # type: ignore
-_fixed_aperture_window = 10000 * u.km  # type: ignore
+# # TODO: priority 1: move these somewhere else - into the project config?
+# _fixed_aperture_radius = 100000 * u.km  # type: ignore
+# _fixed_aperture_window = 10000 * u.km  # type: ignore
 
 
 # non-bayesian version
@@ -61,6 +61,9 @@ def build_water_production_lightcurve(
     else:
         eids = epochs_to_include
     assert eids is not None
+
+    fixed_aperture_radius = scp.cfg.water_production_fixed_aperture_radius_km * u.km  # type: ignore
+    fixed_aperture_radius_window = scp.cfg.water_production_fixed_aperture_radius_window_km * u.km  # type: ignore
 
     current_filter_pair = WaterProductionFilterPair(
         oh_filter=oh_filter, dust_filter=dust_filter
@@ -125,9 +128,12 @@ def build_water_production_lightcurve(
             oh_filter=oh_filter,
             dust_filter=dust_filter,
             stacking_method=stacking_method,
-            fixed_aperture_radius=_fixed_aperture_radius,
-            fixed_aperture_window_lower=_fixed_aperture_window,
-            fixed_aperture_window_upper=_fixed_aperture_window,
+            fixed_aperture_radius=fixed_aperture_radius,
+            fixed_aperture_window_lower=fixed_aperture_radius_window,
+            fixed_aperture_window_upper=fixed_aperture_radius_window,
+            # fixed_aperture_radius=_fixed_aperture_radius,
+            # fixed_aperture_window_lower=_fixed_aperture_window,
+            # fixed_aperture_window_upper=_fixed_aperture_window,
         )
         aperture_water_production_column = "aperture_matched_q_h2o_median"
         aperture_water_production_err_column = "aperture_matched_q_h2o_median_err"
@@ -213,6 +219,9 @@ def build_bayesian_water_production_lightcurve(
         eids = epochs_to_include
     assert eids is not None
 
+    fixed_aperture_radius = scp.cfg.water_production_fixed_aperture_radius_km * u.km  # type: ignore
+    fixed_aperture_radius_window = scp.cfg.water_production_fixed_aperture_radius_window_km * u.km  # type: ignore
+
     current_filter_pair = WaterProductionFilterPair(
         oh_filter=oh_filter, dust_filter=dust_filter
     )
@@ -288,9 +297,9 @@ def build_bayesian_water_production_lightcurve(
             oh_filter=oh_filter,
             dust_filter=dust_filter,
             stacking_method=stacking_method,
-            fixed_aperture_radius=_fixed_aperture_radius,
-            fixed_aperture_window_lower=_fixed_aperture_window,
-            fixed_aperture_window_upper=_fixed_aperture_window,
+            fixed_aperture_radius=fixed_aperture_radius,
+            fixed_aperture_window_lower=fixed_aperture_radius_window,
+            fixed_aperture_window_upper=fixed_aperture_radius_window,
         )
         negative_production_included = (
             lambda x: x[aperture_water_production_column] > -np.inf
