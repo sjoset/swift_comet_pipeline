@@ -210,8 +210,8 @@ def find_perihelion(
 
     # now look at ephemera for +/- 1 day around perihelion guess and get a more exact solution
     dt = 1 * u.day  # type: ignore
-    refine_window_start = Time(perihelion_base.t_perihelion - dt)
-    refine_window_stop = Time(perihelion_base.t_perihelion + dt)
+    refine_window_start: Time = Time(perihelion_base.t_perihelion - dt)
+    refine_window_stop: Time = Time(perihelion_base.t_perihelion + dt)
     refined_perihelion_result = refine_perihelion_with_ephemerides(
         horizons_id=horizons_id,
         time_start=refine_window_start,
