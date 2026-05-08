@@ -82,7 +82,7 @@ def _window_distance_from_perihelion(
     return TimeDelta(val=delta_t * u.day)  # type: ignore
 
 
-# helper function for find_perihelia_new
+# helper function for find_perihelion
 def closest_perihelion_to_window(
     horizons_id: str, time_start: Time, time_stop: Time
 ) -> OrbitPerihelion | None:

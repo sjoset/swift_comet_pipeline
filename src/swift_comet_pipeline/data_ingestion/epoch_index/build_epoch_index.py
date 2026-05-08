@@ -40,6 +40,7 @@ def build_epoch_index(scp: Products) -> EpochIndex | None:
         # TODO: change this to pass in the time limits of epoch_df and search for the nearest perihelion to that
         # and test for any data sets that span multiple apparitions
         # t_perihelion_list = find_perihelia(scp=scp)
+        print(f"Looking up perihelion closest to {obs_time} ...")
         orbit_perihelion = find_perihelion(
             horizons_id=scp.cfg.jpl_horizons_id,
             time_start=Time(epoch_df.MID_TIME.min(), format="datetime", scale="utc"),
@@ -51,6 +52,9 @@ def build_epoch_index(scp: Products) -> EpochIndex | None:
         t_perihelion = orbit_perihelion.t_perihelion
         t_p = TimeDelta(
             (Time(np.mean(epoch_df.MID_TIME)) - t_perihelion), format="datetime"
+        )
+        print(
+            f"Found closest perihelion to be {t_perihelion}: corresponding to {t_p} from perihelion"
         )
         sky_motion = epoch_df.SKY_MOTION.mean()
         sky_motion_pa = epoch_df.SKY_MOTION_PA.mean()

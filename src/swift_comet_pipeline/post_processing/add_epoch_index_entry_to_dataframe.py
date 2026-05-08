@@ -29,6 +29,7 @@ def add_epoch_index_entry_to_dataframe(
     eid_entries = [f.name if f.name not in ex_times else None for f in fields(eid)]
     eid_entries = list(filter(None, eid_entries))
 
+    # grab all of the non-exposure time entries and create a column based on the variable name
     for ee in eid_entries:
         dfc[ee] = getattr(eid, ee)
 

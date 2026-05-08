@@ -14,10 +14,6 @@ def do_epoch_index(scp: Products) -> None:
     Once complete, runs and caches vectorial models for each heliocentric distance in our dataset
     """
 
-    # p_list = find_perihelia(scp=scp)
-    # if p_list is None:
-    #     return
-
     epoch_index = build_epoch_index(scp=scp)
     if epoch_index is None:
         return
