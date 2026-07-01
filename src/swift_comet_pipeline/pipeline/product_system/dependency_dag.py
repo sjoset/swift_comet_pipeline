@@ -102,7 +102,7 @@ class ProductStatus:
 
 
 def get_mtime_tolerance_threshold() -> u.Quantity:
-    return 30 * u.day  # type: ignore
+    return 300 * u.day  # type: ignore
     # return 24 * u.hour
     # return 1 * u.min
 
@@ -218,7 +218,7 @@ def calculate_statuses(
         # all parents exist - but are we newer than the guys that come after us?
         # the rest are stale, but we are complete
         assert mtime is not None
-        remaining_mtimes = mtimes[i + 1 :]
+        remaining_mtimes = mtimes[i + 1:]
         if any(
             [
                 mtime - mtime_tolerance_threshold_s > x if x else None

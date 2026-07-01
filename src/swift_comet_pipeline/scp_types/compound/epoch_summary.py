@@ -5,7 +5,7 @@ import pandas as pd
 
 from swift_comet_pipeline.scp_types.primitive import *
 
-# TODO: deprecate?
+# TODO: deprecate - this is not used elsewhere
 
 
 @dataclass

@@ -12,7 +12,7 @@ class JohnsonCousinsFilter(Enum):
     B = auto()
     V = auto()
     R = auto()
-    I = auto()
+    I = auto()  # noqa: E741
 
 
 class SDSSFilter(Enum):
@@ -87,6 +87,9 @@ _solar_colors_by_filter_pair = {
 def color_to_reddening(
     color_mag: float, fp: ColorMagnitudeFilterPair, verbose: bool = False
 ) -> tuple[DustReddeningPercent, float] | None:
+    """
+    Returns a tuple of (DustReddeningPercent, mid wavelength in nm)
+    """
 
     solar_color = _solar_colors_by_filter_pair.get(fp)
     if solar_color is None:

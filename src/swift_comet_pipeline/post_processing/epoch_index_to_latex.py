@@ -1,7 +1,6 @@
 import pandas as pd
 
 from swift_comet_pipeline.scp_types.compound import EpochIndex
-from swift_comet_pipeline.scp_types.primitive import *
 
 
 def exposure_time_records(row: pd.Series) -> list[dict]:
