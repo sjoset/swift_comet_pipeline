@@ -31,6 +31,72 @@ from swift_comet_pipeline.swift.uvot_datamodes import (
 )
 
 
+def query_horizons_comet_ephemerides(
+    horizons_id: str, epoch_mid_times: list[Time], horizons_batch_size: int = 20
+) -> pd.DataFrame:
+
+    ephemeris_info = {
+        "r": "HELIO",
+        "r_rate": "HELIO_V",
+        "delta": "OBS_DIS",
+        "alpha": "PHASE",
+        "RA": "RA",
+        "DEC": "DEC",
+        "RA_rate": "RA_RATE",
+        "DEC_rate": "DEC_RATE",
+        "velocityPA": "SKY_MOTION_PA",
+        "sunTargetPA": "ION_TAIL_PA",
+    }
+
+    if horizons_batch_size < 1:
+        raise ValueError("horizons_batch_size must be at least 1.")
+
+    epochs_jd = np.asarray([epoch.jd for epoch in epoch_mid_times])
+
+    if not np.all(np.diff(epochs_jd) > 0):
+        raise ValueError("Horizons epochs must be unique and chronologically ordered.")
+
+    batches = np.array_split(
+        epochs_jd,
+        np.arange(horizons_batch_size, len(epochs_jd), horizons_batch_size),
+    )
+
+    frames: list[pd.DataFrame] = []
+
+    for requested_jd in tqdm(batches, unit="Horizons queries"):
+        eph = Horizons(
+            id=horizons_id,
+            location="@swift",
+            epochs=requested_jd.tolist(),
+        ).ephemerides(
+            quantities="1,3,19,20,24,27",
+        )
+
+        returned_jd = np.asarray(eph["datetime_jd"], dtype=float)
+
+        if len(returned_jd) != len(requested_jd):
+            raise RuntimeError(
+                f"Horizons returned {len(returned_jd)} rows "
+                f"for {len(requested_jd)} requested epochs."
+            )
+
+        if not np.allclose(
+            returned_jd,
+            requested_jd,
+            rtol=0,
+            atol=1e-7,
+        ):
+            raise RuntimeError(
+                "Horizons returned epochs that do not match " "the requested epochs."
+            )
+
+        frames.append(
+            eph[list(ephemeris_info)].to_pandas().rename(columns=ephemeris_info)
+        )
+
+    return pd.concat(frames, ignore_index=True)
+
+
 def build_observation_log(
     swift_data: SwiftDataset,
     horizons_id: str,
@@ -88,7 +154,7 @@ def build_observation_log(
     flattened_observation_series_list = list(
         itertools.chain.from_iterable(observation_entries_list)
     )
-    obs_log = pd.DataFrame(flattened_observation_series_list)
+    obs_log: pd.DataFrame = pd.DataFrame(flattened_observation_series_list)
 
     # Adjust some columns of the dataframe we just constructed
     obs_log = obs_log.rename(columns={"DATE-END": "DATE_END", "DATE-OBS": "DATE_OBS"})
@@ -101,52 +167,13 @@ def build_observation_log(
     dts = (obs_log["DATE_END"] - obs_log["DATE_OBS"]) / 2
     obs_log["MID_TIME"] = obs_log["DATE_OBS"] + dts
 
-    # translates horizons results (left) to observation log column names (right)
-    # documentation of values returned by Horizons available at
-    # https://astroquery.readthedocs.io/en/latest/api/astroquery.jplhorizons.HorizonsClass.html#astroquery.jplhorizons.HorizonsClass.ephemerides
-    ephemeris_info = {
-        # Target heliocentric distance, float, in AU
-        "r": "HELIO",
-        # Target heliocentric distance change rate, float, in km/s
-        "r_rate": "HELIO_V",
-        # Target distance from observation point (@swift in our case), float, in AU
-        "delta": "OBS_DIS",
-        # Target solar phase angle, float, degrees (Sun-Target-Object angle)
-        "alpha": "PHASE",
-        # Target right ascension, float, degrees
-        "RA": "RA",
-        # Target declination, float, degrees
-        "DEC": "DEC",
-        # Rate of change of RA in arcseconds per hour
-        "RA_rate": "RA_RATE",
-        # Rate of change of Dec in arcseconds per hour
-        "DEC_rate": "DEC_RATE",
-        # direction of sky motion, position angle, degrees
-        "velocityPA": "SKY_MOTION_PA",
-        # ion tail position angle, degrees
-        "sunTargetPA": "ION_TAIL_PA",
-    }
-    # make dataframe with columns of the ephemeris_info values
-    horizon_dataframe = pd.DataFrame(columns=list(ephemeris_info.values()))  # type: ignore
+    # chronologically sort the observation log: Horizons batch lookups will sort by time, so we want our data in chronological order to match
+    # for when we concat the horizons dataframe and the obs_log
+    obs_log = obs_log.sort_values("MID_TIME").reset_index()
 
-    horizons_progress_bar = tqdm(obs_log["MID_TIME"], unit="observations")
-
-    # for each row, query Horizons for our object at 'mid_time' and fill the dataframe with response info
-    for k, mid_time in enumerate(horizons_progress_bar):
-        horizons_progress_bar.set_description(
-            f"Horizons querying {obs_log['OBS_ID'][k]} extension {obs_log['EXTENSION'][k]} ..."
-        )
-
-        horizons_response = Horizons(
-            id=horizons_id, location="@swift", epochs=mid_time.jd, id_type="designation"
-        )
-        eph = horizons_response.ephemerides(closest_apparition=True)  # type: ignore
-        # append this row of information to our horizons dataframe
-        horizon_dataframe.loc[len(horizon_dataframe.index)] = [
-            eph[x][0] for x in ephemeris_info.keys()
-        ]
-
-        horizons_response._session.close()
+    horizon_dataframe: pd.DataFrame = query_horizons_comet_ephemerides(
+        horizons_id=horizons_id, epoch_mid_times=obs_log.MID_TIME.to_list()
+    )
 
     # convert arcseconds per hour to arcseconds per minute
     sky_motion_conversion_factor = 1.0 / 60.0
