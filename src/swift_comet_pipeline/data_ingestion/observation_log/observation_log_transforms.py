@@ -8,9 +8,11 @@ from swift_comet_pipeline.scp_types.primitive.swift_uvot_observation_log_datafra
     SwiftUvotObservationLogDataframe,
 )
 
-# TODO: check if we ever use this
+# TODO: we don't use these functions anywhere, remove this file unless we want to rewrite
+# in terms of this SwiftUvotObservationLog
 
 # this should be in sync with swift_uvot_observation_log and observation_log_schema()
+#  or use the schema directly
 _dataframe_column_to_field_name = {
     "OBS_ID": "observation_id",
     "DATE_OBS": "observation_start",
